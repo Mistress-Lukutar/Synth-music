@@ -147,6 +147,11 @@ class MediaPlaybackManager(
         player.addMediaItem(insertIndex, mediaItem)
     }
 
+    fun clearQueue() {
+        _currentQueue.value = emptyList()
+        player.clearMediaItems()
+    }
+
     fun removeFromQueue(index: Int) {
         val queue = _currentQueue.value.toMutableList()
         if (index in queue.indices) {
