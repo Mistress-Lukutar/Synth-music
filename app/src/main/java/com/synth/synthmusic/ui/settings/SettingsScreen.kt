@@ -5,15 +5,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -23,11 +27,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.synth.synthmusic.domain.model.AccentColor
+import com.synth.synthmusic.domain.model.ThemeMode
 import org.koin.androidx.compose.koinViewModel
 
 /**
- * Application settings screen.
+ * Application settings screen with appearance and playback options.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,7 +43,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = koinViewModel()
 ) {
-    val settings by viewModel.settings.collectAsState(initial = null)
+    val settings by viewModel.settings.collectAsState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -61,46 +68,109 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            settings?.let { s ->
-                SettingSwitch(
-                    title = "Gapless Playback",
-                    checked = s.gaplessPlayback,
-                    onCheckedChange = { viewModel.updateGapless(it) }
-                )
-                SettingSwitch(
-                    title = "Auto Rescan Library",
-                    checked = s.autoRescan,
-                    onCheckedChange = { viewModel.updateAutoRescan(it) }
-                )
-                SettingSwitch(
-                    title = "Equalizer",
-                    checked = s.eqEnabled,
-                    onCheckedChange = { viewModel.updateEqEnabled(it) }
-                )
-                SettingSwitch(
-                    title = "Loudness Enhancer",
-                    checked = s.loudnessEnabled,
-                    onCheckedChange = { viewModel.updateLoudness(it) }
+            SettingSectionHeader("Appearance")
+            SettingRadioGroup(
+                title = "Theme",
+                options = ThemeMode.entries,
+                selected = settings.theme,
+                onSelected = { viewModel.updateTheme(it) },
+                label = { it.name }
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            SettingRadioGroup(
+                title = "Accent Color",
+                options = AccentColor.entries,
+                selected = settings.accentColor,
+                onSelected = { viewModel.updateAccentColor(it) },
+                label = { it.name }
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+            SettingSectionHeader("Playback")
+            SettingSwitch(
+                title = "Gapless Playback",
+                checked = settings.gaplessPlayback,
+                onCheckedChange = { viewModel.updateGapless(it) }
+            )
+            SettingSwitch(
+                title = "Auto Rescan Library",
+                checked = settings.autoRescan,
+                onCheckedChange = { viewModel.updateAutoRescan(it) }
+            )
+            SettingSwitch(
+                title = "Equalizer",
+                checked = settings.eqEnabled,
+                onCheckedChange = { viewModel.updateEqEnabled(it) }
+            )
+            SettingSwitch(
+                title = "Loudness Enhancer",
+                checked = settings.loudnessEnabled,
+                onCheckedChange = { viewModel.updateLoudness(it) }
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+            SettingSectionHeader("About")
+            Text(
+                text = "Synth Music v1.0",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+            Text(
+                text = "Offline-first music player built with Jetpack Compose.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingSectionHeader(title: String, modifier: Modifier = Modifier) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier.padding(vertical = 8.dp)
+    )
+}
+
+@Composable
+private fun <T> SettingRadioGroup(
+    title: String,
+    options: List<T>,
+    selected: T,
+    onSelected: (T) -> Unit,
+    label: (T) -> String,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(vertical = 4.dp)
+        )
+        options.forEach { option ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectable(
+                        selected = option == selected,
+                        onClick = { onSelected(option) },
+                        role = Role.RadioButton
+                    )
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = option == selected,
+                    onClick = null
                 )
                 Text(
-                    text = "Theme: ${s.theme.name}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                Text(
-                    text = "Accent: ${s.accentColor.name}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                Text(
-                    text = "Crossfade: ${s.crossfadeDurationMs / 1000}s",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                Text(
-                    text = "ReplayGain: ${s.replayGainMode.name}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    text = label(option),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 8.dp)
                 )
             }
         }
