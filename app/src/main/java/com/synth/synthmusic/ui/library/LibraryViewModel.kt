@@ -2,6 +2,7 @@ package com.synth.synthmusic.ui.library
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.domain.repository.AlbumRepository
 import com.synth.synthmusic.domain.repository.ArtistRepository
 import com.synth.synthmusic.domain.repository.SongRepository
@@ -10,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
@@ -22,11 +24,14 @@ class LibraryViewModel(
     private val songRepository: SongRepository,
     private val albumRepository: AlbumRepository,
     private val artistRepository: ArtistRepository,
-    private val scanMusicUseCase: ScanMusicUseCase
+    private val scanMusicUseCase: ScanMusicUseCase,
+    private val playbackManager: MediaPlaybackManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LibraryUiState())
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
+
+    val currentPlayback = playbackManager.playbackState
 
     init {
         combine(
@@ -53,8 +58,20 @@ class LibraryViewModel(
                 _uiState.update { it.copy(selectedTab = event.tab) }
             }
             is LibraryEvent.ScanLibrary -> scanLibrary()
-            is LibraryEvent.PlaySong -> {
-                // playback logic will be handled in Phase 3
+            is LibraryEvent.PlaySong -> playSong(event.songId)
+        }
+    }
+
+    fun togglePlayPause() {
+        playbackManager.playPause()
+    }
+
+    private fun playSong(songId: String) {
+        viewModelScope.launch {
+            val songs = songRepository.observeAllSongs().first()
+            val index = songs.indexOfFirst { it.id == songId }
+            if (index != -1) {
+                playbackManager.playSongs(songs, index)
             }
         }
     }
