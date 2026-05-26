@@ -5,8 +5,11 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.toRoute
 import com.synth.synthmusic.ui.library.LibraryScreen
 import com.synth.synthmusic.ui.nowplaying.NowPlayingScreen
+import com.synth.synthmusic.ui.playlists.PlaylistDetailScreen
+import com.synth.synthmusic.ui.playlists.PlaylistsScreen
 import com.synth.synthmusic.ui.queue.QueueScreen
 import com.synth.synthmusic.ui.search.SearchScreen
 import com.synth.synthmusic.ui.settings.SettingsScreen
@@ -32,7 +35,8 @@ fun AppNavigation(
                 onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
                 onNavigateToSearch = { navController.navigate(SearchRoute) },
                 onNavigateToSettings = { navController.navigate(SettingsRoute) },
-                onNavigateToQueue = { navController.navigate(QueueRoute) }
+                onNavigateToQueue = { navController.navigate(QueueRoute) },
+                onNavigateToPlaylistDetail = { navController.navigate(PlaylistDetailRoute(it)) }
             )
         }
         composable<NowPlayingRoute> {
@@ -54,6 +58,13 @@ fun AppNavigation(
         }
         composable<SettingsRoute> {
             SettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable<PlaylistDetailRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<PlaylistDetailRoute>()
+            PlaylistDetailScreen(
+                playlistId = route.playlistId,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
