@@ -124,7 +124,8 @@ val appModule = module {
             albumTitle = albumTitle,
             albumArtist = albumArtist,
             albumRepository = get(),
-            songRepository = get()
+            songRepository = get(),
+            playbackManager = get()
         )
     }
 
@@ -132,7 +133,8 @@ val appModule = module {
         com.synth.synthmusic.ui.artists.ArtistDetailViewModel(
             artistName = artistName,
             artistRepository = get(),
-            songRepository = get()
+            songRepository = get(),
+            playbackManager = get()
         )
     }
 

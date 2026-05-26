@@ -9,8 +9,10 @@ import com.synth.synthmusic.domain.repository.SongRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 
 /**
  * ViewModel for album detail screen.
@@ -19,7 +21,8 @@ class AlbumDetailViewModel(
     private val albumTitle: String,
     private val albumArtist: String,
     private val albumRepository: AlbumRepository,
-    private val songRepository: SongRepository
+    private val songRepository: SongRepository,
+    private val playbackManager: com.synth.synthmusic.data.media.MediaPlaybackManager
 ) : ViewModel() {
 
     private val _album = MutableStateFlow<Album?>(null)
@@ -27,6 +30,24 @@ class AlbumDetailViewModel(
 
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     val songs: StateFlow<List<Song>> = _songs.asStateFlow()
+
+    fun playAll() {
+        viewModelScope.launch {
+            val tracks = songRepository.observeSongsByAlbum(albumTitle).first()
+            if (tracks.isNotEmpty()) {
+                playbackManager.playSongs(tracks, 0)
+            }
+        }
+    }
+
+    fun shuffleAll() {
+        viewModelScope.launch {
+            val tracks = songRepository.observeSongsByAlbum(albumTitle).first().shuffled()
+            if (tracks.isNotEmpty()) {
+                playbackManager.playSongs(tracks, 0)
+            }
+        }
+    }
 
     init {
         albumRepository.observeAllAlbums()

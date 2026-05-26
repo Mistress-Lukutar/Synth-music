@@ -107,6 +107,8 @@ fun AppNavigation(
                 albumTitle = route.albumTitle,
                 albumArtist = route.albumArtist,
                 onNavigateBack = { navController.popBackStack() },
+                onPlayAll = { navController.navigate(NowPlayingRoute) },
+                onShuffleAll = { navController.navigate(NowPlayingRoute) },
                 onSongClick = { navController.navigate(NowPlayingRoute) }
             )
         }
@@ -115,6 +117,8 @@ fun AppNavigation(
             ArtistDetailScreen(
                 artistName = route.artistName,
                 onNavigateBack = { navController.popBackStack() },
+                onPlayAll = { navController.navigate(NowPlayingRoute) },
+                onShuffleAll = { navController.navigate(NowPlayingRoute) },
                 onSongClick = { navController.navigate(NowPlayingRoute) }
             )
         }
