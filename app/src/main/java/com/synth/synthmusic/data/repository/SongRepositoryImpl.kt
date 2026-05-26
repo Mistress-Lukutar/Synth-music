@@ -39,6 +39,9 @@ class SongRepositoryImpl(
 
     override suspend fun deleteSong(songId: String) = songDao.deleteById(songId)
 
+    override suspend fun updateSongRating(songId: String, rating: Float) =
+        songDao.updateRating(songId, rating)
+
     override suspend fun deleteAllSongs() = songDao.deleteAll()
 
     override fun searchSongs(query: String): Flow<List<Song>> =

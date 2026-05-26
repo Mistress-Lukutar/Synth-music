@@ -22,7 +22,7 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.synth.synthmusic.ui.nowplaying.components.RatingStars
 import com.synth.synthmusic.ui.share.ShareSongSheet
 import com.synth.synthmusic.ui.share.VolumeOutputSheet
 import com.synth.synthmusic.ui.sleeptimer.SleepTimerDialog
@@ -126,6 +127,10 @@ fun NowPlayingScreen(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                RatingStars(
+                    rating = uiState.rating,
+                    onRatingChanged = { viewModel.onEvent(NowPlayingEvent.UpdateRating(it)) }
+                )
             }
 
             // Seekbar
@@ -189,7 +194,7 @@ fun NowPlayingScreen(
                     Icon(Icons.Default.Share, contentDescription = "Share")
                 }
                 IconButton(onClick = { showVolumeSheet = true }) {
-                    Icon(Icons.Default.VolumeUp, contentDescription = "Volume")
+                    Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Volume")
                 }
                 IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.CycleRepeat) }) {
                     val icon = when (uiState.repeatMode) {
