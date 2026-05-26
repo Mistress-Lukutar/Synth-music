@@ -76,6 +76,10 @@ class LibraryViewModel(
         playbackManager.playPause()
     }
 
+    fun skipNext() {
+        playbackManager.next()
+    }
+
     fun addSongToPlaylist(playlistId: Long, songId: String) {
         viewModelScope.launch {
             playlistRepository.addSongToPlaylist(playlistId, songId)

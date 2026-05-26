@@ -132,7 +132,10 @@ fun LibraryScreen(
             MiniPlayer(
                 song = uiState.songs.find { it.id == playback.currentSongId },
                 isPlaying = playback.isPlaying,
+                positionMs = playback.positionMs,
+                durationMs = playback.durationMs,
                 onTogglePlayPause = { viewModel.togglePlayPause() },
+                onNext = { viewModel.skipNext() },
                 onExpand = onNavigateToNowPlaying
             )
         }
