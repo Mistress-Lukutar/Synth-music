@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -36,6 +37,9 @@ class SettingsDataStore(
         private val EQ_PRESET_ID = intPreferencesKey("eq_preset_id")
         private val BASS_BOOST = intPreferencesKey("bass_boost_strength")
         private val LOUDNESS_ENABLED = booleanPreferencesKey("loudness_enabled")
+        private val PLAYBACK_SPEED = floatPreferencesKey("playback_speed")
+        private val PLAYBACK_PITCH = floatPreferencesKey("playback_pitch")
+        private val SKIP_SILENCE = booleanPreferencesKey("skip_silence")
     }
 
     val settings: Flow<AppSettings> = dataStore.data.map { prefs ->
@@ -49,7 +53,10 @@ class SettingsDataStore(
             eqEnabled = prefs[EQ_ENABLED] ?: false,
             eqPresetId = prefs[EQ_PRESET_ID]?.toLong(),
             bassBoostStrength = prefs[BASS_BOOST] ?: 0,
-            loudnessEnabled = prefs[LOUDNESS_ENABLED] ?: false
+            loudnessEnabled = prefs[LOUDNESS_ENABLED] ?: false,
+            playbackSpeed = prefs[PLAYBACK_SPEED] ?: 1.0f,
+            playbackPitch = prefs[PLAYBACK_PITCH] ?: 1.0f,
+            skipSilence = prefs[SKIP_SILENCE] ?: false
         )
     }
 
@@ -91,5 +98,17 @@ class SettingsDataStore(
 
     suspend fun updateLoudness(enabled: Boolean) {
         dataStore.edit { it[LOUDNESS_ENABLED] = enabled }
+    }
+
+    suspend fun updatePlaybackSpeed(speed: Float) {
+        dataStore.edit { it[PLAYBACK_SPEED] = speed }
+    }
+
+    suspend fun updatePlaybackPitch(pitch: Float) {
+        dataStore.edit { it[PLAYBACK_PITCH] = pitch }
+    }
+
+    suspend fun updateSkipSilence(enabled: Boolean) {
+        dataStore.edit { it[SKIP_SILENCE] = enabled }
     }
 }

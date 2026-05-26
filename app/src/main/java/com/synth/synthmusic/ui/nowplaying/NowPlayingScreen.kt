@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,8 +33,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import com.synth.synthmusic.ui.nowplaying.components.WaveformSlider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import com.synth.synthmusic.ui.nowplaying.components.WaveformSlider
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -50,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.synth.synthmusic.ui.nowplaying.components.LyricsBottomSheet
+import com.synth.synthmusic.ui.nowplaying.components.PlaybackSpeedBottomSheet
 import com.synth.synthmusic.ui.nowplaying.components.RatingStars
 import com.synth.synthmusic.ui.share.ShareSongSheet
 import com.synth.synthmusic.ui.share.VolumeOutputSheet
@@ -74,6 +77,7 @@ fun NowPlayingScreen(
     var showShareSheet by remember { mutableStateOf(false) }
     var showVolumeSheet by remember { mutableStateOf(false) }
     var showLyrics by remember { mutableStateOf(false) }
+    var showSpeedSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -168,6 +172,22 @@ fun NowPlayingScreen(
                         text = formatDuration(uiState.positionMs),
                         style = MaterialTheme.typography.labelSmall
                     )
+                    val speedText = buildString {
+                        append(String.format("%.2f", uiState.playbackSpeed))
+                        append("x")
+                        if (uiState.playbackPitch != 1.0f) {
+                            append(" / P")
+                            append(String.format("%.2f", uiState.playbackPitch))
+                            append("x")
+                        }
+                    }
+                    TextButton(onClick = { showSpeedSheet = true }) {
+                        Text(
+                            text = speedText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     Text(
                         text = formatDuration(uiState.durationMs),
                         style = MaterialTheme.typography.labelSmall
@@ -263,6 +283,15 @@ fun NowPlayingScreen(
             song = uiState.song,
             onSave = { viewModel.onEvent(NowPlayingEvent.SaveLyrics(it)) },
             onDismiss = { showLyrics = false }
+        )
+    }
+    if (showSpeedSheet) {
+        PlaybackSpeedBottomSheet(
+            currentSpeed = uiState.playbackSpeed,
+            currentPitch = uiState.playbackPitch,
+            onSpeedChanged = { viewModel.onEvent(NowPlayingEvent.SetPlaybackSpeed(it)) },
+            onPitchChanged = { viewModel.onEvent(NowPlayingEvent.SetPlaybackPitch(it)) },
+            onDismiss = { showSpeedSheet = false }
         )
     }
 }

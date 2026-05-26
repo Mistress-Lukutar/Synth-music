@@ -21,4 +21,7 @@ interface SettingsRepository {
     suspend fun updateEqPresetId(id: Long?)
     suspend fun updateBassBoost(strength: Int)
     suspend fun updateLoudness(enabled: Boolean)
+    suspend fun updatePlaybackSpeed(speed: Float)
+    suspend fun updatePlaybackPitch(pitch: Float)
+    suspend fun updateSkipSilence(enabled: Boolean)
 }

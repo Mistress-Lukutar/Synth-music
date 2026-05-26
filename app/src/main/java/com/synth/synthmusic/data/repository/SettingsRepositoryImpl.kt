@@ -27,4 +27,7 @@ class SettingsRepositoryImpl(
     override suspend fun updateEqPresetId(id: Long?) = dataStore.updateEqPresetId(id)
     override suspend fun updateBassBoost(strength: Int) = dataStore.updateBassBoost(strength)
     override suspend fun updateLoudness(enabled: Boolean) = dataStore.updateLoudness(enabled)
+    override suspend fun updatePlaybackSpeed(speed: Float) = dataStore.updatePlaybackSpeed(speed)
+    override suspend fun updatePlaybackPitch(pitch: Float) = dataStore.updatePlaybackPitch(pitch)
+    override suspend fun updateSkipSilence(enabled: Boolean) = dataStore.updateSkipSilence(enabled)
 }

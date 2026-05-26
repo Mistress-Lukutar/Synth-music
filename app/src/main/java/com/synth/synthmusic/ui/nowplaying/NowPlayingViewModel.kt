@@ -6,6 +6,7 @@ import androidx.media3.common.Player
 import com.synth.synthmusic.data.local.database.WaveformDataDao
 import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.data.media.waveform.WaveformGenerator
+import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +26,7 @@ import kotlinx.coroutines.launch
 class NowPlayingViewModel(
     private val playbackManager: MediaPlaybackManager,
     private val songRepository: SongRepository,
+    private val settingsRepository: SettingsRepository,
     private val waveformGenerator: WaveformGenerator,
     private val waveformDataDao: WaveformDataDao
 ) : ViewModel() {
@@ -37,10 +39,11 @@ class NowPlayingViewModel(
             playbackManager.playbackState,
             songRepository.observeSongById(
                 playbackManager.playbackState.value.currentSongId ?: ""
-            )
-        ) { playback, song ->
-            playback to song
-        }.onEach { (playback, song) ->
+            ),
+            settingsRepository.settings
+        ) { playback, song, settings ->
+            Triple(playback, song, settings)
+        }.onEach { (playback, song, settings) ->
             _uiState.update {
                 it.copy(
                     song = song,
@@ -50,7 +53,9 @@ class NowPlayingViewModel(
                     repeatMode = playback.repeatMode,
                     shuffleEnabled = playback.shuffleEnabled,
                     rating = song?.rating ?: 0f,
-                    isFavorite = song?.isFavorite ?: false
+                    isFavorite = song?.isFavorite ?: false,
+                    playbackSpeed = settings.playbackSpeed,
+                    playbackPitch = settings.playbackPitch
                 )
             }
         }.launchIn(viewModelScope)
@@ -108,6 +113,18 @@ class NowPlayingViewModel(
                     songRepository.updateSongLyrics(songId, event.lyrics.takeIf { it.isNotBlank() })
                 }
                 _uiState.update { it.copy(song = it.song?.copy(lyrics = event.lyrics)) }
+            }
+            is NowPlayingEvent.SetPlaybackSpeed -> {
+                viewModelScope.launch {
+                    settingsRepository.updatePlaybackSpeed(event.speed)
+                }
+                _uiState.update { it.copy(playbackSpeed = event.speed) }
+            }
+            is NowPlayingEvent.SetPlaybackPitch -> {
+                viewModelScope.launch {
+                    settingsRepository.updatePlaybackPitch(event.pitch)
+                }
+                _uiState.update { it.copy(playbackPitch = event.pitch) }
             }
         }
     }

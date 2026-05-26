@@ -46,6 +46,7 @@ import com.synth.synthmusic.domain.model.Song
  * @param onPlayNext Callback to play this song next in the queue.
  * @param onAddToQueue Callback to append this song to the queue.
  * @param onShare Callback to share the song.
+ * @param isCurrent Whether this song is the currently playing track.
  * @param modifier Modifier for styling.
  */
 @Composable
@@ -58,6 +59,7 @@ fun SongListItem(
     onPlayNext: ((String) -> Unit)? = null,
     onAddToQueue: ((String) -> Unit)? = null,
     onShare: ((String) -> Unit)? = null,
+    isCurrent: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -68,7 +70,10 @@ fun SongListItem(
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            containerColor = if (isCurrent)
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            else
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         )
     ) {
         Row(

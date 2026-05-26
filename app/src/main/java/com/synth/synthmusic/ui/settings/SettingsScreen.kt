@@ -19,6 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -93,6 +94,18 @@ fun SettingsScreen(
                 checked = settings.gaplessPlayback,
                 onCheckedChange = { viewModel.updateGapless(it) }
             )
+            Text(
+                text = "Crossfade: ${settings.crossfadeDurationMs}ms",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            Slider(
+                value = settings.crossfadeDurationMs.toFloat(),
+                onValueChange = { viewModel.updateCrossfade(it.toInt()) },
+                valueRange = 0f..5000f,
+                steps = 9, // 0, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000
+                modifier = Modifier.fillMaxWidth()
+            )
             SettingSwitch(
                 title = "Auto Rescan Library",
                 checked = settings.autoRescan,
@@ -107,6 +120,11 @@ fun SettingsScreen(
                 title = "Loudness Enhancer",
                 checked = settings.loudnessEnabled,
                 onCheckedChange = { viewModel.updateLoudness(it) }
+            )
+            SettingSwitch(
+                title = "Skip Silence",
+                checked = settings.skipSilence,
+                onCheckedChange = { viewModel.updateSkipSilence(it) }
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))

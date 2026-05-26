@@ -30,5 +30,8 @@ data class AppSettings(
     val eqEnabled: Boolean = false,
     val eqPresetId: Long? = null,
     val bassBoostStrength: Int = 0,
-    val loudnessEnabled: Boolean = false
+    val loudnessEnabled: Boolean = false,
+    val playbackSpeed: Float = 1.0f,
+    val playbackPitch: Float = 1.0f,
+    val skipSilence: Boolean = false
 )
