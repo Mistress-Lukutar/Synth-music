@@ -18,7 +18,7 @@ import androidx.room.TypeConverters
         EqPresetEntity::class,
         PlaybackStateEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

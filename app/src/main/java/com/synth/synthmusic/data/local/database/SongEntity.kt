@@ -53,5 +53,7 @@ data class SongEntity(
     @ColumnInfo(name = "date_modified")
     val dateModified: Long,
     @ColumnInfo(name = "lyrics")
-    val lyrics: String?
+    val lyrics: String?,
+    @ColumnInfo(name = "is_favorite")
+    val isFavorite: Boolean = false
 )

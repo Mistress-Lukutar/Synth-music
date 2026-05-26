@@ -45,7 +45,8 @@ class NowPlayingViewModel(
                     durationMs = playback.durationMs,
                     repeatMode = playback.repeatMode,
                     shuffleEnabled = playback.shuffleEnabled,
-                    rating = song?.rating ?: 0f
+                    rating = song?.rating ?: 0f,
+                    isFavorite = song?.isFavorite ?: false
                 )
             }
         }.launchIn(viewModelScope)
@@ -79,6 +80,14 @@ class NowPlayingViewModel(
                     songRepository.updateSongRating(songId, event.rating)
                 }
                 _uiState.update { it.copy(rating = event.rating) }
+            }
+            NowPlayingEvent.ToggleFavorite -> {
+                val songId = _uiState.value.song?.id ?: return
+                val newValue = !_uiState.value.isFavorite
+                viewModelScope.launch {
+                    songRepository.updateSongFavorite(songId, newValue)
+                }
+                _uiState.update { it.copy(isFavorite = newValue) }
             }
         }
     }
