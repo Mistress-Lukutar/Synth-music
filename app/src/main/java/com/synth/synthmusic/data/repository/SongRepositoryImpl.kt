@@ -1,7 +1,8 @@
 package com.synth.synthmusic.data.repository
 
 import com.synth.synthmusic.data.local.database.SongDao
-import com.synth.synthmusic.data.local.database.SongEntity
+import com.synth.synthmusic.data.local.database.toDomain
+import com.synth.synthmusic.data.local.database.toEntity
 import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.domain.repository.SongRepository
 import kotlinx.coroutines.flow.Flow
@@ -47,53 +48,3 @@ class SongRepositoryImpl(
     override fun searchSongs(query: String): Flow<List<Song>> =
         songDao.search(query).map { list -> list.map { it.toDomain() } }
 }
-
-private fun SongEntity.toDomain(): Song = Song(
-    id = id,
-    title = title,
-    artist = artist,
-    album = album,
-    albumArtist = albumArtist,
-    durationMs = durationMs,
-    trackNumber = trackNumber,
-    year = year,
-    genre = genre,
-    comment = comment,
-    path = path,
-    uri = uri,
-    bitrate = bitrate,
-    sampleRate = sampleRate,
-    fileSize = fileSize,
-    artworkUri = artworkUri,
-    rating = rating,
-    playCount = playCount,
-    lastPlayed = lastPlayed,
-    dateAdded = dateAdded,
-    dateModified = dateModified,
-    lyrics = lyrics
-)
-
-private fun Song.toEntity(): SongEntity = SongEntity(
-    id = id,
-    title = title,
-    artist = artist,
-    album = album,
-    albumArtist = albumArtist,
-    durationMs = durationMs,
-    trackNumber = trackNumber,
-    year = year,
-    genre = genre,
-    comment = comment,
-    path = path,
-    uri = uri,
-    bitrate = bitrate,
-    sampleRate = sampleRate,
-    fileSize = fileSize,
-    artworkUri = artworkUri,
-    rating = rating,
-    playCount = playCount,
-    lastPlayed = lastPlayed,
-    dateAdded = dateAdded,
-    dateModified = dateModified,
-    lyrics = lyrics
-)
