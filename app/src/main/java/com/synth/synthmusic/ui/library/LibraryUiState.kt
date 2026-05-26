@@ -1,0 +1,22 @@
+package com.synth.synthmusic.ui.library
+
+import com.synth.synthmusic.domain.model.Album
+import com.synth.synthmusic.domain.model.Artist
+import com.synth.synthmusic.domain.model.Song
+
+/**
+ * UI state for the library screen.
+ */
+data class LibraryUiState(
+    val selectedTab: LibraryTab = LibraryTab.Songs,
+    val songs: List<Song> = emptyList(),
+    val albums: List<Album> = emptyList(),
+    val artists: List<Artist> = emptyList(),
+    val isScanning: Boolean = false,
+    val scanError: String? = null,
+    val songCount: Int = 0
+)
+
+enum class LibraryTab {
+    Songs, Albums, Artists, Folders, Playlists
+}
