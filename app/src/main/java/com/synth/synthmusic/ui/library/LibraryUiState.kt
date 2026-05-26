@@ -18,6 +18,7 @@ data class LibraryUiState(
     val topSongs: List<Song> = emptyList(),
     val recentSongs: List<Song> = emptyList(),
     val historySongs: List<Song> = emptyList(),
+    val folders: List<String> = emptyList(),
     val songCount: Int = 0
 )
 

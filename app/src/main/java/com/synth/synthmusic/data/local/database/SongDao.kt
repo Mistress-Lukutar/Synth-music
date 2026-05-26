@@ -72,6 +72,9 @@ interface SongDao {
     @Query("SELECT * FROM songs WHERE last_played IS NOT NULL ORDER BY last_played DESC LIMIT 100")
     fun observeHistory(): Flow<List<SongEntity>>
 
+    @Query("SELECT DISTINCT substr(path, 1, length(path) - length(rtrim(path, replace(path, '/', '')))) FROM songs")
+    fun observeFolders(): Flow<List<String>>
+
     @Query("SELECT * FROM songs WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%'")
     fun search(query: String): Flow<List<SongEntity>>
 }
