@@ -8,21 +8,26 @@ import com.synth.synthmusic.data.media.AudioEffectsManager
 import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.data.repository.AlbumRepositoryImpl
 import com.synth.synthmusic.data.repository.ArtistRepositoryImpl
+import com.synth.synthmusic.data.repository.BookmarkRepositoryImpl
 import com.synth.synthmusic.data.repository.PlaylistRepositoryImpl
 import com.synth.synthmusic.data.repository.SettingsRepositoryImpl
 import com.synth.synthmusic.data.repository.SongRepositoryImpl
 import com.synth.synthmusic.domain.repository.AlbumRepository
 import com.synth.synthmusic.domain.repository.ArtistRepository
+import com.synth.synthmusic.domain.repository.BookmarkRepository
 import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
+import com.synth.synthmusic.ui.bookmarks.BookmarkViewModel
 import com.synth.synthmusic.ui.equalizer.EqualizerViewModel
 import com.synth.synthmusic.ui.library.LibraryViewModel
 import com.synth.synthmusic.ui.nowplaying.NowPlayingViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistDetailViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistViewModel
 import com.synth.synthmusic.ui.queue.QueueViewModel
+import com.synth.synthmusic.ui.search.SearchViewModel
+import com.synth.synthmusic.ui.settings.SettingsViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -53,6 +58,7 @@ val appModule = module {
     single<ArtistRepository> { ArtistRepositoryImpl(get()) }
     single<SettingsRepository> { SettingsRepositoryImpl(get()) }
     single<PlaylistRepository> { PlaylistRepositoryImpl(get(), get()) }
+    single<BookmarkRepository> { BookmarkRepositoryImpl(get()) }
     single { MediaPlaybackManager(androidContext()) }
     single { AudioEffectsManager(get()) }
 

@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.synth.synthmusic.ui.library.LibraryScreen
 import com.synth.synthmusic.ui.nowplaying.NowPlayingScreen
+import com.synth.synthmusic.ui.bookmarks.BookmarksScreen
 import com.synth.synthmusic.ui.equalizer.EqualizerScreen
 import com.synth.synthmusic.ui.playlists.PlaylistDetailScreen
 import com.synth.synthmusic.ui.playlists.PlaylistsScreen
@@ -64,6 +65,11 @@ fun AppNavigation(
         }
         composable<EqualizerRoute> {
             EqualizerScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable<BookmarksRoute> {
+            BookmarksScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
