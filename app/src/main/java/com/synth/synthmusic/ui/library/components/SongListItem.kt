@@ -1,5 +1,6 @@
 package com.synth.synthmusic.ui.library.components
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -7,11 +8,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -27,14 +39,20 @@ import com.synth.synthmusic.domain.model.Song
  *
  * @param song Song to display.
  * @param onClick Callback invoked when the item is clicked.
+ * @param onNavigateToSongInfo Callback to open song info.
+ * @param onNavigateToEditMetadata Callback to open metadata editor.
  * @param modifier Modifier for styling.
  */
 @Composable
 fun SongListItem(
     song: Song,
     onClick: () -> Unit,
+    onNavigateToSongInfo: ((String) -> Unit)? = null,
+    onNavigateToEditMetadata: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    var expanded by remember { mutableStateOf(false) }
+
     Card(
         onClick = onClick,
         modifier = modifier
@@ -81,6 +99,29 @@ fun SongListItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 4.dp)
             )
+            Box {
+                IconButton(onClick = { expanded = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "More")
+                }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    onNavigateToSongInfo?.let { callback ->
+                        DropdownMenuItem(
+                            text = { Text("Song Info") },
+                            onClick = { expanded = false; callback(song.id) },
+                            leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) }
+                        )
+                    }
+                    onNavigateToEditMetadata?.let { callback ->
+                        DropdownMenuItem(
+                            text = { Text("Edit Metadata") },
+                            onClick = { expanded = false; callback(song.id) }
+                        )
+                    }
+                }
+            }
         }
     }
 }

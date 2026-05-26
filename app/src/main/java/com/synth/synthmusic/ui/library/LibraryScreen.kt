@@ -60,6 +60,8 @@ fun LibraryScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToQueue: () -> Unit,
     onNavigateToPlaylistDetail: (Long) -> Unit,
+    onNavigateToSongInfo: (String) -> Unit,
+    onNavigateToEditMetadata: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = koinViewModel()
 ) {
@@ -148,7 +150,9 @@ fun LibraryScreen(
                 when (uiState.selectedTab) {
                     LibraryTab.Songs -> SongsTab(
                         songs = uiState.songs,
-                        onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) }
+                        onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
+                        onNavigateToSongInfo = onNavigateToSongInfo,
+                        onNavigateToEditMetadata = onNavigateToEditMetadata
                     )
                     LibraryTab.Albums -> AlbumsTab(
                         albums = uiState.albums,
@@ -175,6 +179,8 @@ fun LibraryScreen(
 private fun SongsTab(
     songs: List<com.synth.synthmusic.domain.model.Song>,
     onSongClick: (com.synth.synthmusic.domain.model.Song) -> Unit,
+    onNavigateToSongInfo: (String) -> Unit,
+    onNavigateToEditMetadata: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -184,7 +190,9 @@ private fun SongsTab(
         items(songs, key = { it.id }) { song ->
             SongListItem(
                 song = song,
-                onClick = { onSongClick(song) }
+                onClick = { onSongClick(song) },
+                onNavigateToSongInfo = onNavigateToSongInfo,
+                onNavigateToEditMetadata = onNavigateToEditMetadata
             )
         }
     }

@@ -43,7 +43,9 @@ fun AppNavigation(
                 onNavigateToSearch = { navController.navigate(SearchRoute) },
                 onNavigateToSettings = { navController.navigate(SettingsRoute) },
                 onNavigateToQueue = { navController.navigate(QueueRoute) },
-                onNavigateToPlaylistDetail = { navController.navigate(PlaylistDetailRoute(it)) }
+                onNavigateToPlaylistDetail = { navController.navigate(PlaylistDetailRoute(it)) },
+                onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
+                onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) }
             )
         }
         composable<NowPlayingRoute> {
