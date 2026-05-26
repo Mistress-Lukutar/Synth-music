@@ -7,18 +7,22 @@ import com.synth.synthmusic.data.local.datastore.SettingsDataStore
 import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.data.repository.AlbumRepositoryImpl
 import com.synth.synthmusic.data.repository.ArtistRepositoryImpl
+import com.synth.synthmusic.data.repository.PlaylistRepositoryImpl
 import com.synth.synthmusic.data.repository.SettingsRepositoryImpl
 import com.synth.synthmusic.data.repository.SongRepositoryImpl
 import com.synth.synthmusic.domain.repository.AlbumRepository
 import com.synth.synthmusic.domain.repository.ArtistRepository
+import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
 import com.synth.synthmusic.ui.library.LibraryViewModel
 import com.synth.synthmusic.ui.nowplaying.NowPlayingViewModel
+import com.synth.synthmusic.ui.playlists.PlaylistDetailViewModel
+import com.synth.synthmusic.ui.playlists.PlaylistViewModel
 import com.synth.synthmusic.ui.queue.QueueViewModel
 import org.koin.android.ext.koin.androidContext
-import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 /**
@@ -46,6 +50,7 @@ val appModule = module {
     single<AlbumRepository> { AlbumRepositoryImpl(get()) }
     single<ArtistRepository> { ArtistRepositoryImpl(get()) }
     single<SettingsRepository> { SettingsRepositoryImpl(get()) }
+    single<PlaylistRepository> { PlaylistRepositoryImpl(get(), get()) }
     single { MediaPlaybackManager(androidContext()) }
 
     single {
@@ -76,6 +81,17 @@ val appModule = module {
 
     viewModel {
         QueueViewModel(playbackManager = get())
+    }
+
+    viewModel {
+        PlaylistViewModel(playlistRepository = get())
+    }
+
+    viewModel { (playlistId: Long) ->
+        PlaylistDetailViewModel(
+            playlistId = playlistId,
+            playlistRepository = get()
+        )
     }
 }
 

@@ -46,6 +46,7 @@ import com.synth.synthmusic.ui.library.components.AlbumGridItem
 import com.synth.synthmusic.ui.library.components.ArtistListItem
 import com.synth.synthmusic.ui.library.components.MiniPlayer
 import com.synth.synthmusic.ui.library.components.SongListItem
+import com.synth.synthmusic.ui.playlists.PlaylistsScreen
 import org.koin.androidx.compose.koinViewModel
 
 /**
@@ -58,6 +59,7 @@ fun LibraryScreen(
     onNavigateToSearch: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToQueue: () -> Unit,
+    onNavigateToPlaylistDetail: (Long) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = koinViewModel()
 ) {
@@ -157,7 +159,12 @@ fun LibraryScreen(
                         onArtistClick = { }
                     )
                     LibraryTab.Folders -> EmptyTab(text = "Folders")
-                    LibraryTab.Playlists -> EmptyTab(text = "Playlists")
+                    LibraryTab.Playlists -> {
+                        PlaylistsScreen(
+                            onNavigateToPlaylistDetail = onNavigateToPlaylistDetail,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         }
