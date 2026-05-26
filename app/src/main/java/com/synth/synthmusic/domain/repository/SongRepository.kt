@@ -23,5 +23,6 @@ interface SongRepository {
     fun observeFavoriteSongs(): Flow<List<Song>>
     fun observeTopSongs(): Flow<List<Song>>
     fun observeRecentSongs(): Flow<List<Song>>
+    fun observeHistory(): Flow<List<Song>>
     fun searchSongs(query: String): Flow<List<Song>>
 }

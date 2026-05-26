@@ -63,6 +63,9 @@ class SongRepositoryImpl(
     override fun observeRecentSongs(): Flow<List<Song>> =
         songDao.observeRecentSongs().map { list -> list.map { it.toDomain() } }
 
+    override fun observeHistory(): Flow<List<Song>> =
+        songDao.observeHistory().map { list -> list.map { it.toDomain() } }
+
     override fun searchSongs(query: String): Flow<List<Song>> =
         songDao.search(query).map { list -> list.map { it.toDomain() } }
 }
