@@ -52,7 +52,8 @@ fun AppNavigation(
             NowPlayingScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToQueue = { navController.navigate(QueueRoute) },
-                onNavigateToEqualizer = { navController.navigate(EqualizerRoute) }
+                onNavigateToEqualizer = { navController.navigate(EqualizerRoute) },
+                onNavigateToVisualizer = { navController.navigate(VisualizerRoute) }
             )
         }
         composable<QueueRoute> {

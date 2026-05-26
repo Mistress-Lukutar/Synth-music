@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
@@ -64,6 +65,7 @@ fun NowPlayingScreen(
     onNavigateBack: () -> Unit,
     onNavigateToQueue: () -> Unit,
     onNavigateToEqualizer: () -> Unit,
+    onNavigateToVisualizer: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: NowPlayingViewModel = koinViewModel()
 ) {
@@ -211,6 +213,9 @@ fun NowPlayingScreen(
                 }
                 IconButton(onClick = { showLyrics = true }) {
                     Icon(Icons.AutoMirrored.Filled.Article, contentDescription = "Lyrics")
+                }
+                IconButton(onClick = onNavigateToVisualizer) {
+                    Icon(Icons.Default.GraphicEq, contentDescription = "Visualizer")
                 }
                 IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.CycleRepeat) }) {
                     val icon = when (uiState.repeatMode) {
