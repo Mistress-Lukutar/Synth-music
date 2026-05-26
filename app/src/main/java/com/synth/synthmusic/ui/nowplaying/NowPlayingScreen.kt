@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
@@ -198,6 +200,14 @@ fun NowPlayingScreen(
                 }
                 IconButton(onClick = { showVolumeSheet = true }) {
                     Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Volume")
+                }
+                IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.ToggleFavorite) }) {
+                    Icon(
+                        imageVector = if (uiState.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = "Favorite",
+                        tint = if (uiState.isFavorite) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 IconButton(onClick = { showLyrics = true }) {
                     Icon(Icons.AutoMirrored.Filled.Article, contentDescription = "Lyrics")

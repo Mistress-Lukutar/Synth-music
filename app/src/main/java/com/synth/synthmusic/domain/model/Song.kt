@@ -25,6 +25,7 @@ package com.synth.synthmusic.domain.model
  * @param dateAdded Timestamp when added to library.
  * @param dateModified Timestamp of last file modification.
  * @param lyrics Embedded or external lyrics.
+ * @param isFavorite Whether the song is marked as favorite.
  */
 data class Song(
     val id: String,
@@ -48,5 +49,6 @@ data class Song(
     val lastPlayed: Long?,
     val dateAdded: Long,
     val dateModified: Long,
-    val lyrics: String?
+    val lyrics: String?,
+    val isFavorite: Boolean = false
 )

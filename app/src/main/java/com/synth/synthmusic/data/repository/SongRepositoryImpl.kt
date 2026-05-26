@@ -43,6 +43,9 @@ class SongRepositoryImpl(
     override suspend fun updateSongRating(songId: String, rating: Float) =
         songDao.updateRating(songId, rating)
 
+    override suspend fun updateSongFavorite(songId: String, isFavorite: Boolean) =
+        songDao.updateFavorite(songId, isFavorite)
+
     override suspend fun deleteAllSongs() = songDao.deleteAll()
 
     override fun searchSongs(query: String): Flow<List<Song>> =

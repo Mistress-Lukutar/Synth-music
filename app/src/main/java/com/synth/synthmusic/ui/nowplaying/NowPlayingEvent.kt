@@ -11,4 +11,5 @@ sealed class NowPlayingEvent {
     data object ToggleShuffle : NowPlayingEvent()
     data object CycleRepeat : NowPlayingEvent()
     data class UpdateRating(val rating: Float) : NowPlayingEvent()
+    data object ToggleFavorite : NowPlayingEvent()
 }
