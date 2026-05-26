@@ -2,6 +2,11 @@ package com.synth.synthmusic.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+/**
+ * Application color palette including accent colors and surface colors
+ * for both light and dark themes.
+ */
+
 // Accent colors
 val YellowPrimary = Color(0xFFFFC107)
 val YellowSecondary = Color(0xFFFFD54F)

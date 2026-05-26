@@ -20,6 +20,12 @@ enum class ReplayGainMode { OFF, TRACK, ALBUM }
  * @param bassBoostStrength Bass boost strength (0-1000).
  * @param loudnessEnabled Whether loudness enhancement is active.
  */
+/**
+ * AppSettings class.
+ */
+/**
+ * AppSettings class.
+ */
 data class AppSettings(
     val theme: ThemeMode = ThemeMode.DARK,
     val accentColor: AccentColor = AccentColor.YELLOW,
