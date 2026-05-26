@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.update
 /**
  * ViewModel for the search screen with debounced querying.
  */
-@OptIn(FlowPreview::class)
+@OptIn(FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SearchViewModel(
     private val songRepository: SongRepository
 ) : ViewModel() {
