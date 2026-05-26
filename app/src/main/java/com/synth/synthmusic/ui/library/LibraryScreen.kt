@@ -36,12 +36,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
 import com.synth.synthmusic.ui.library.components.AlbumGridItem
 import com.synth.synthmusic.ui.library.components.ArtistListItem
 import com.synth.synthmusic.ui.library.components.MiniPlayer
@@ -70,6 +73,7 @@ fun LibraryScreen(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    var selectedSongForPlaylist by remember { mutableStateOf<String?>(null) }
 
     val audioPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.READ_MEDIA_AUDIO
@@ -152,7 +156,8 @@ fun LibraryScreen(
                         songs = uiState.songs,
                         onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
-                        onNavigateToEditMetadata = onNavigateToEditMetadata
+                        onNavigateToEditMetadata = onNavigateToEditMetadata,
+                        onAddToPlaylist = { selectedSongForPlaylist = it }
                     )
                     LibraryTab.Albums -> AlbumsTab(
                         albums = uiState.albums,
@@ -173,6 +178,18 @@ fun LibraryScreen(
             }
         }
     }
+
+    selectedSongForPlaylist?.let { songId ->
+        val playlists by viewModel.playlists.collectAsState()
+        AddToPlaylistDialog(
+            playlists = playlists,
+            onConfirm = { playlistId ->
+                viewModel.addSongToPlaylist(playlistId, songId)
+                selectedSongForPlaylist = null
+            },
+            onDismiss = { selectedSongForPlaylist = null }
+        )
+    }
 }
 
 @Composable
@@ -181,6 +198,7 @@ private fun SongsTab(
     onSongClick: (com.synth.synthmusic.domain.model.Song) -> Unit,
     onNavigateToSongInfo: (String) -> Unit,
     onNavigateToEditMetadata: (String) -> Unit,
+    onAddToPlaylist: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -192,7 +210,8 @@ private fun SongsTab(
                 song = song,
                 onClick = { onSongClick(song) },
                 onNavigateToSongInfo = onNavigateToSongInfo,
-                onNavigateToEditMetadata = onNavigateToEditMetadata
+                onNavigateToEditMetadata = onNavigateToEditMetadata,
+                onAddToPlaylist = onAddToPlaylist
             )
         }
     }
