@@ -80,6 +80,20 @@ class LibraryViewModel(
         playbackManager.next()
     }
 
+    fun playNext(songId: String) {
+        viewModelScope.launch {
+            val song = songRepository.getSongById(songId) ?: return@launch
+            playbackManager.playNext(song)
+        }
+    }
+
+    fun addToQueue(songId: String) {
+        viewModelScope.launch {
+            val song = songRepository.getSongById(songId) ?: return@launch
+            playbackManager.addToQueue(song)
+        }
+    }
+
     fun addSongToPlaylist(playlistId: Long, songId: String) {
         viewModelScope.launch {
             playlistRepository.addSongToPlaylist(playlistId, songId)
