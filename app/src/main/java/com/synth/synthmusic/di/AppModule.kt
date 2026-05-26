@@ -44,7 +44,7 @@ val appModule = module {
             androidContext(),
             AppDatabase::class.java,
             "synth_music.db"
-        ).build()
+        ).fallbackToDestructiveMigration(dropAllTables = true).build()
     }
 
     single { get<AppDatabase>().songDao() }
@@ -62,7 +62,7 @@ val appModule = module {
     single<SettingsRepository> { SettingsRepositoryImpl(get()) }
     single<PlaylistRepository> { PlaylistRepositoryImpl(get(), get()) }
     single<BookmarkRepository> { BookmarkRepositoryImpl(get()) }
-    single { MediaPlaybackManager(androidContext()) }
+    single { MediaPlaybackManager(androidContext(), get(), get()) }
     single { AudioEffectsManager(get()) }
 
     single {

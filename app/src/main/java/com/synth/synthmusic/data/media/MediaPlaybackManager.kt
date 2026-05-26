@@ -6,23 +6,37 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.synth.synthmusic.data.local.database.PlaybackStateDao
+import com.synth.synthmusic.data.local.database.PlaybackStateEntity
+import com.synth.synthmusic.data.local.database.SongDao
+import com.synth.synthmusic.data.local.database.toDomain
 import com.synth.synthmusic.domain.model.Song
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
- * Wrapper around ExoPlayer providing playback control and state observation.
+ * Wrapper around ExoPlayer providing playback control, state observation,
+ * and automatic process-death recovery via Room.
  */
 class MediaPlaybackManager(
-    context: Context
+    context: Context,
+    private val playbackStateDao: PlaybackStateDao,
+    private val songDao: SongDao
 ) {
     private val _playbackState = MutableStateFlow(PlaybackState())
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
 
     private val _currentQueue = MutableStateFlow<List<Song>>(emptyList())
     val currentQueue: StateFlow<List<Song>> = _currentQueue.asStateFlow()
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val player: ExoPlayer = ExoPlayer.Builder(context)
         .setAudioAttributes(
@@ -44,6 +58,7 @@ class MediaPlaybackManager(
                     durationMs = player.duration.coerceAtLeast(0)
                 )
             }
+            persistState()
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -53,6 +68,7 @@ class MediaPlaybackManager(
                     currentSongId = player.currentMediaItem?.mediaId
                 )
             }
+            persistState()
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -63,6 +79,7 @@ class MediaPlaybackManager(
                     durationMs = player.duration.coerceAtLeast(0)
                 )
             }
+            persistState()
         }
 
         override fun onPositionDiscontinuity(
@@ -76,32 +93,22 @@ class MediaPlaybackManager(
                     durationMs = player.duration.coerceAtLeast(0)
                 )
             }
+            persistState()
         }
     }
 
     init {
         player.addListener(listener)
+        restoreState()
     }
 
     fun playSongs(songs: List<Song>, startIndex: Int = 0) {
         _currentQueue.value = songs
-        val mediaItems = songs.map { song ->
-            MediaItem.Builder()
-                .setMediaId(song.id)
-                .setUri(song.uri)
-                .setMediaMetadata(
-                    androidx.media3.common.MediaMetadata.Builder()
-                        .setTitle(song.title)
-                        .setArtist(song.artist)
-                        .setAlbumTitle(song.album)
-                        .setArtworkUri(android.net.Uri.parse(song.artworkUri ?: ""))
-                        .build()
-                )
-                .build()
-        }
+        val mediaItems = songs.map { songToMediaItem(it) }
         player.setMediaItems(mediaItems, startIndex, 0)
         player.prepare()
         player.play()
+        persistState()
     }
 
     fun playQueueItem(index: Int) {
@@ -110,46 +117,25 @@ class MediaPlaybackManager(
     }
 
     fun addToQueue(song: Song) {
-        val mediaItem = MediaItem.Builder()
-            .setMediaId(song.id)
-            .setUri(song.uri)
-            .setMediaMetadata(
-                androidx.media3.common.MediaMetadata.Builder()
-                    .setTitle(song.title)
-                    .setArtist(song.artist)
-                    .setAlbumTitle(song.album)
-                    .setArtworkUri(android.net.Uri.parse(song.artworkUri ?: ""))
-                    .build()
-            )
-            .build()
         _currentQueue.update { it + song }
-        player.addMediaItem(mediaItem)
+        player.addMediaItem(songToMediaItem(song))
+        persistState()
     }
 
     fun playNext(song: Song) {
         val currentIndex = player.currentMediaItemIndex
-        val mediaItem = MediaItem.Builder()
-            .setMediaId(song.id)
-            .setUri(song.uri)
-            .setMediaMetadata(
-                androidx.media3.common.MediaMetadata.Builder()
-                    .setTitle(song.title)
-                    .setArtist(song.artist)
-                    .setAlbumTitle(song.album)
-                    .setArtworkUri(android.net.Uri.parse(song.artworkUri ?: ""))
-                    .build()
-            )
-            .build()
         val queue = _currentQueue.value.toMutableList()
         val insertIndex = (currentIndex + 1).coerceAtMost(queue.size)
         queue.add(insertIndex, song)
         _currentQueue.value = queue
-        player.addMediaItem(insertIndex, mediaItem)
+        player.addMediaItem(insertIndex, songToMediaItem(song))
+        persistState()
     }
 
     fun clearQueue() {
         _currentQueue.value = emptyList()
         player.clearMediaItems()
+        persistState()
     }
 
     fun removeFromQueue(index: Int) {
@@ -159,6 +145,7 @@ class MediaPlaybackManager(
             _currentQueue.value = queue
             player.removeMediaItem(index)
         }
+        persistState()
     }
 
     fun playPause() {
@@ -172,6 +159,7 @@ class MediaPlaybackManager(
     fun setShuffleEnabled(enabled: Boolean) {
         player.shuffleModeEnabled = enabled
         _playbackState.update { it.copy(shuffleEnabled = enabled) }
+        persistState()
     }
 
     fun cycleRepeatMode() {
@@ -182,6 +170,7 @@ class MediaPlaybackManager(
         }
         player.repeatMode = next
         _playbackState.update { it.copy(repeatMode = next) }
+        persistState()
     }
 
     fun initAudioEffects(manager: AudioEffectsManager) {
@@ -191,7 +180,72 @@ class MediaPlaybackManager(
     fun release() {
         player.removeListener(listener)
         player.release()
+        scope.cancel()
     }
+
+    private fun persistState() {
+        val state = _playbackState.value
+        val queue = _currentQueue.value
+        scope.launch {
+            playbackStateDao.insert(
+                PlaybackStateEntity(
+                    currentSongId = state.currentSongId,
+                    positionMs = state.positionMs,
+                    isPlaying = false, // do not auto-resume; just restore position
+                    repeatMode = state.repeatMode,
+                    shuffleMode = state.shuffleEnabled,
+                    queueIds = queue.joinToString(",") { it.id }.takeIf { it.isNotEmpty() }
+                )
+            )
+        }
+    }
+
+    private fun restoreState() {
+        scope.launch {
+            val saved = playbackStateDao.get() ?: return@launch
+            val queueIds = saved.queueIds?.split(",")?.filter { it.isNotEmpty() } ?: emptyList()
+            val songs = if (queueIds.isNotEmpty()) {
+                songDao.getByIds(queueIds)
+            } else {
+                saved.currentSongId?.let { id ->
+                    songDao.getById(id)?.let { listOf(it) } ?: emptyList()
+                } ?: emptyList()
+            }
+            if (songs.isEmpty()) return@launch
+
+            val domainSongs = songs.map { it.toDomain() }
+            val startIndex = domainSongs.indexOfFirst { it.id == saved.currentSongId }.coerceAtLeast(0)
+
+            _currentQueue.value = domainSongs
+            val mediaItems = domainSongs.map { song -> songToMediaItem(song) }
+            player.setMediaItems(mediaItems, startIndex, saved.positionMs.coerceAtLeast(0))
+            player.prepare()
+
+            _playbackState.value = PlaybackState(
+                currentSongId = saved.currentSongId,
+                isPlaying = false,
+                positionMs = saved.positionMs,
+                durationMs = player.duration.coerceAtLeast(0),
+                repeatMode = saved.repeatMode,
+                shuffleEnabled = saved.shuffleMode
+            )
+            player.repeatMode = saved.repeatMode
+            player.shuffleModeEnabled = saved.shuffleMode
+        }
+    }
+
+    private fun songToMediaItem(song: Song): MediaItem = with(song) { MediaItem.Builder() }
+        .setMediaId(song.id)
+        .setUri(song.uri)
+        .setMediaMetadata(
+            androidx.media3.common.MediaMetadata.Builder()
+                .setTitle(song.title)
+                .setArtist(song.artist)
+                .setAlbumTitle(song.album)
+                .setArtworkUri(android.net.Uri.parse(song.artworkUri ?: ""))
+                .build()
+        )
+        .build()
 
     /**
      * Current playback state exposed as a data class.
