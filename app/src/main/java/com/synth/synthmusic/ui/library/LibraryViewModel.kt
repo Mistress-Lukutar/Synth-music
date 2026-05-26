@@ -69,6 +69,10 @@ class LibraryViewModel(
             .onEach { list -> _uiState.update { it.copy(recentSongs = list) } }
             .launchIn(viewModelScope)
 
+        songRepository.observeHistory()
+            .onEach { list -> _uiState.update { it.copy(historySongs = list) } }
+            .launchIn(viewModelScope)
+
         playlistRepository.observeAllPlaylists()
             .onEach { list -> _playlists.value = list }
             .launchIn(viewModelScope)
