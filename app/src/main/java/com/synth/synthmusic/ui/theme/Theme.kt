@@ -59,6 +59,12 @@ private fun accentColorScheme(
  * @param content Root composable content.
  */
 @Composable
+/**
+ * SynthMusicTheme implementation.
+ */
+/**
+ * SynthMusicTheme.
+ */
 fun SynthMusicTheme(
     darkTheme: Boolean? = null,
     accentColor: AccentColor? = AccentColor.YELLOW,

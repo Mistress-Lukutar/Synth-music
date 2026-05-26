@@ -21,6 +21,12 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 /**
  * DataStore-backed storage for user application settings.
  */
+/**
+ * SettingsDataStore class.
+ */
+/**
+ * SettingsDataStore class.
+ */
 class SettingsDataStore(
     private val context: Context
 ) {
