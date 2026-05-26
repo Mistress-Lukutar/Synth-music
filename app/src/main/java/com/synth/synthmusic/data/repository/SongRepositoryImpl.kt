@@ -52,6 +52,9 @@ class SongRepositoryImpl(
     override suspend fun incrementPlayCount(songId: String) =
         songDao.incrementPlayCount(songId, System.currentTimeMillis())
 
+    override suspend fun updateSongLyrics(songId: String, lyrics: String?) =
+        songDao.updateLyrics(songId, lyrics)
+
     override suspend fun deleteAllSongs() = songDao.deleteAll()
 
     override fun observeFavoriteSongs(): Flow<List<Song>> =

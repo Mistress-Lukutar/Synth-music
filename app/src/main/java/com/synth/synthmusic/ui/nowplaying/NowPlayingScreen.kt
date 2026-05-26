@@ -261,6 +261,7 @@ fun NowPlayingScreen(
     if (showLyrics) {
         LyricsBottomSheet(
             song = uiState.song,
+            onSave = { viewModel.onEvent(NowPlayingEvent.SaveLyrics(it)) },
             onDismiss = { showLyrics = false }
         )
     }
