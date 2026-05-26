@@ -9,6 +9,7 @@ import androidx.navigation.toRoute
 import com.synth.synthmusic.ui.library.LibraryScreen
 import com.synth.synthmusic.ui.nowplaying.NowPlayingScreen
 import com.synth.synthmusic.ui.bookmarks.BookmarksScreen
+import com.synth.synthmusic.ui.downloads.DownloadsScreen
 import com.synth.synthmusic.ui.equalizer.EqualizerScreen
 import com.synth.synthmusic.ui.folders.FoldersScreen
 import com.synth.synthmusic.ui.metadata.EditMetadataScreen
@@ -18,6 +19,7 @@ import com.synth.synthmusic.ui.playlists.PlaylistsScreen
 import com.synth.synthmusic.ui.queue.QueueScreen
 import com.synth.synthmusic.ui.search.SearchScreen
 import com.synth.synthmusic.ui.settings.SettingsScreen
+import com.synth.synthmusic.ui.visualizer.VisualizerScreen
 
 /**
  * Root navigation host defining all application routes.
@@ -94,6 +96,16 @@ fun AppNavigation(
             val route = backStackEntry.toRoute<EditMetadataRoute>()
             EditMetadataScreen(
                 songId = route.songId,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable<VisualizerRoute> {
+            VisualizerScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable<DownloadsRoute> {
+            DownloadsScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
