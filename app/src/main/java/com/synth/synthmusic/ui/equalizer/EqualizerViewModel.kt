@@ -81,7 +81,8 @@ class EqualizerViewModel(
             val newLevels = (0 until _uiState.value.bandLevels.size).map {
                 audioEffectsManager.getBandLevel(it.toShort()).toInt()
             }
-            _uiState.update { it.copy(bandLevels = newLevels) }
+            val presetName = _uiState.value.presets.find { it.first == presetId }?.second ?: "Custom"
+            _uiState.update { it.copy(bandLevels = newLevels, selectedPresetName = presetName) }
         }
     }
 
@@ -102,5 +103,6 @@ data class EqualizerUiState(
     val maxLevel: Int = 1500,
     val bassBoost: Int = 0,
     val loudnessEnabled: Boolean = false,
-    val presets: List<Pair<Long, String>> = emptyList()
+    val presets: List<Pair<Long, String>> = emptyList(),
+    val selectedPresetName: String = "Custom"
 )

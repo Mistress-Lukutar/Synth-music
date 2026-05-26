@@ -12,11 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -88,8 +84,9 @@ fun EqualizerScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             if (uiState.presets.isNotEmpty()) {
-                PresetDropdown(
+                com.synth.synthmusic.ui.equalizer.components.EqPresetDropdown(
                     presets = uiState.presets,
+                    selectedPresetName = uiState.selectedPresetName,
                     onSelect = { viewModel.loadPreset(it) },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -180,45 +177,4 @@ fun EqualizerScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PresetDropdown(
-    presets: List<Pair<Long, String>>,
-    onSelect: (Long) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var expanded by remember { mutableStateOf(false) }
-    var selected by remember { mutableStateOf("Presets") }
 
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        modifier = modifier
-    ) {
-        TextField(
-            value = selected,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("Preset") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true)
-        )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            presets.forEach { (id, name) ->
-                DropdownMenuItem(
-                    text = { Text(name) },
-                    onClick = {
-                        selected = name
-                        expanded = false
-                        onSelect(id)
-                    }
-                )
-            }
-        }
-    }
-}
