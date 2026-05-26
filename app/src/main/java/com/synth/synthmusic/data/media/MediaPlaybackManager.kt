@@ -143,6 +143,17 @@ class MediaPlaybackManager(
         persistState()
     }
 
+    fun moveQueueItem(fromIndex: Int, toIndex: Int) {
+        val queue = _currentQueue.value.toMutableList()
+        if (fromIndex !in queue.indices) return
+        val item = queue.removeAt(fromIndex)
+        val newIndex = toIndex.coerceIn(0, queue.size)
+        queue.add(newIndex, item)
+        _currentQueue.value = queue
+        player.moveMediaItem(fromIndex, newIndex)
+        persistState()
+    }
+
     fun removeFromQueue(index: Int) {
         val queue = _currentQueue.value.toMutableList()
         if (index in queue.indices) {
