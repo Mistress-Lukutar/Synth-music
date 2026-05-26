@@ -176,6 +176,33 @@ val appModule = module {
     viewModel {
         DownloadsViewModel(songRepository = get())
     }
+
+    viewModel {
+        SettingsViewModel(settingsRepository = get())
+    }
+
+    viewModel {
+        BookmarkViewModel(bookmarkRepository = get())
+    }
+
+    viewModel {
+        SearchViewModel(songRepository = get())
+    }
+
+    viewModel {
+        FoldersViewModel(songRepository = get())
+    }
+
+    viewModel {
+        SleepTimerViewModel(playbackManager = get())
+    }
+
+    viewModel { (songId: String) ->
+        SongInfoViewModel(
+            songId = songId,
+            songRepository = get()
+        )
+    }
 }
 
 /**

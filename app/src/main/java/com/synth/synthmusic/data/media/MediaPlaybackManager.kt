@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Wrapper around ExoPlayer providing playback control, state observation,
@@ -92,11 +93,13 @@ class MediaPlaybackManager(
                 scope.launch {
                     val song = songRepository.getSongById(songId)
                     val gainDb = song?.replayGainTrackDb
-                    if (gainDb != null) {
-                        val volume = 10.0.pow(gainDb / 20.0).toFloat().coerceIn(0f, 1f)
-                        player.volume = volume
+                    val volume = if (gainDb != null) {
+                        10.0.pow(gainDb / 20.0).toFloat().coerceIn(0f, 1f)
                     } else {
-                        player.volume = 1f
+                        1f
+                    }
+                    withContext(Dispatchers.Main) {
+                        player.volume = volume
                     }
                 }
                 scope.launch { songRepository.incrementPlayCount(songId) }
@@ -128,13 +131,15 @@ class MediaPlaybackManager(
     private fun collectPlaybackSettings() {
         scope.launch {
             settingsRepository.settings.collect { settings ->
-                player.setPlaybackParameters(
-                    androidx.media3.common.PlaybackParameters(
-                        settings.playbackSpeed.coerceIn(0.25f, 4.0f),
-                        settings.playbackPitch.coerceIn(0.25f, 4.0f)
+                withContext(Dispatchers.Main) {
+                    player.setPlaybackParameters(
+                        androidx.media3.common.PlaybackParameters(
+                            settings.playbackSpeed.coerceIn(0.25f, 4.0f),
+                            settings.playbackPitch.coerceIn(0.25f, 4.0f)
+                        )
                     )
-                )
-                player.setSkipSilenceEnabled(settings.skipSilence)
+                    player.setSkipSilenceEnabled(settings.skipSilence)
+                }
                 crossfadeDurationMs = settings.crossfadeDurationMs.coerceIn(0, 5000)
             }
         }
@@ -202,7 +207,9 @@ class MediaPlaybackManager(
             fadeManager.fadeTo(0f, 300)
             scope.launch {
                 delay(300)
-                player.pause()
+                withContext(Dispatchers.Main) {
+                    player.pause()
+                }
             }
         } else {
             player.play()
@@ -216,7 +223,9 @@ class MediaPlaybackManager(
             fadeManager.fadeTo(0f, duration)
             scope.launch {
                 delay(duration)
-                player.seekToNext()
+                withContext(Dispatchers.Main) {
+                    player.seekToNext()
+                }
                 fadeManager.fadeTo(1f, duration)
             }
         } else {
@@ -229,7 +238,9 @@ class MediaPlaybackManager(
             fadeManager.fadeTo(0f, duration)
             scope.launch {
                 delay(duration)
-                player.seekToPrevious()
+                withContext(Dispatchers.Main) {
+                    player.seekToPrevious()
+                }
                 fadeManager.fadeTo(1f, duration)
             }
         } else {
@@ -300,19 +311,23 @@ class MediaPlaybackManager(
 
             _currentQueue.value = domainSongs
             val mediaItems = domainSongs.map { song -> songToMediaItem(song) }
-            player.setMediaItems(mediaItems, startIndex, saved.positionMs.coerceAtLeast(0))
-            player.prepare()
+            withContext(Dispatchers.Main) {
+                player.setMediaItems(mediaItems, startIndex, saved.positionMs.coerceAtLeast(0))
+                player.prepare()
+            }
 
             _playbackState.value = PlaybackState(
                 currentSongId = saved.currentSongId,
                 isPlaying = false,
                 positionMs = saved.positionMs,
-                durationMs = player.duration.coerceAtLeast(0),
+                durationMs = withContext(Dispatchers.Main) { player.duration.coerceAtLeast(0) },
                 repeatMode = saved.repeatMode,
                 shuffleEnabled = saved.shuffleMode
             )
-            player.repeatMode = saved.repeatMode
-            player.shuffleModeEnabled = saved.shuffleMode
+            withContext(Dispatchers.Main) {
+                player.repeatMode = saved.repeatMode
+                player.shuffleModeEnabled = saved.shuffleMode
+            }
         }
     }
 
