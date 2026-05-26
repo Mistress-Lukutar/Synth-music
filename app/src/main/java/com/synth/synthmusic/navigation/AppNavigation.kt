@@ -10,6 +10,9 @@ import com.synth.synthmusic.ui.library.LibraryScreen
 import com.synth.synthmusic.ui.nowplaying.NowPlayingScreen
 import com.synth.synthmusic.ui.bookmarks.BookmarksScreen
 import com.synth.synthmusic.ui.equalizer.EqualizerScreen
+import com.synth.synthmusic.ui.folders.FoldersScreen
+import com.synth.synthmusic.ui.metadata.EditMetadataScreen
+import com.synth.synthmusic.ui.metadata.SongInfoScreen
 import com.synth.synthmusic.ui.playlists.PlaylistDetailScreen
 import com.synth.synthmusic.ui.playlists.PlaylistsScreen
 import com.synth.synthmusic.ui.queue.QueueScreen
@@ -70,6 +73,27 @@ fun AppNavigation(
         }
         composable<BookmarksRoute> {
             BookmarksScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable<FolderDetailRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<FolderDetailRoute>()
+            FoldersScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToFolderDetail = { }
+            )
+        }
+        composable<SongInfoRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<SongInfoRoute>()
+            SongInfoScreen(
+                songId = route.songId,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable<EditMetadataRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<EditMetadataRoute>()
+            EditMetadataScreen(
+                songId = route.songId,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

@@ -21,7 +21,9 @@ import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
 import com.synth.synthmusic.ui.bookmarks.BookmarkViewModel
 import com.synth.synthmusic.ui.equalizer.EqualizerViewModel
+import com.synth.synthmusic.ui.folders.FoldersViewModel
 import com.synth.synthmusic.ui.library.LibraryViewModel
+import com.synth.synthmusic.ui.metadata.SongInfoViewModel
 import com.synth.synthmusic.ui.nowplaying.NowPlayingViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistDetailViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistViewModel
