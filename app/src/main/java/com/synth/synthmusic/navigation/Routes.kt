@@ -39,6 +39,9 @@ data class FolderDetailRoute(val folderPath: String)
 data class AlbumDetailRoute(val albumTitle: String, val albumArtist: String)
 
 @Serializable
+data class ArtistDetailRoute(val artistName: String)
+
+@Serializable
 object BookmarksRoute
 
 @Serializable
