@@ -142,6 +142,13 @@ val appModule = module {
             songRepository = get()
         )
     }
+
+    viewModel { (folderPath: String) ->
+        com.synth.synthmusic.ui.folders.FolderDetailViewModel(
+            folderPath = folderPath,
+            songRepository = get()
+        )
+    }
 }
 
 /**
