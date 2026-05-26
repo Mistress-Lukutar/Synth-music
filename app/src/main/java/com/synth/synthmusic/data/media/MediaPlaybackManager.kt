@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -51,6 +52,8 @@ class MediaPlaybackManager(
         )
         .setWakeMode(C.WAKE_MODE_LOCAL)
         .build()
+
+    private val fadeManager = AudioFadeManager(player)
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
@@ -176,11 +179,34 @@ class MediaPlaybackManager(
     }
 
     fun playPause() {
-        if (player.isPlaying) player.pause() else player.play()
+        if (player.isPlaying) {
+            fadeManager.fadeTo(0f, 300)
+            scope.launch {
+                delay(300)
+                player.pause()
+            }
+        } else {
+            player.play()
+            fadeManager.fadeTo(1f, 300)
+        }
     }
 
-    fun next() = player.seekToNext()
-    fun previous() = player.seekToPrevious()
+    fun next() {
+        fadeManager.fadeTo(0f, 400)
+        scope.launch {
+            delay(400)
+            player.seekToNext()
+            fadeManager.fadeTo(1f, 400)
+        }
+    }
+    fun previous() {
+        fadeManager.fadeTo(0f, 400)
+        scope.launch {
+            delay(400)
+            player.seekToPrevious()
+            fadeManager.fadeTo(1f, 400)
+        }
+    }
     fun seekTo(positionMs: Long) = player.seekTo(positionMs)
 
     fun setShuffleEnabled(enabled: Boolean) {
