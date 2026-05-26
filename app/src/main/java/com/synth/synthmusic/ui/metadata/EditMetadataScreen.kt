@@ -37,9 +37,17 @@ fun EditMetadataScreen(
     songId: String,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: SongInfoViewModel = koinViewModel { parametersOf(songId) }
+    viewModel: EditMetadataViewModel = koinViewModel { parametersOf(songId) }
 ) {
     val song by viewModel.song.collectAsState()
+    val s = song
+
+    var title by remember(s?.id) { mutableStateOf(s?.title ?: "") }
+    var artist by remember(s?.id) { mutableStateOf(s?.artist ?: "") }
+    var album by remember(s?.id) { mutableStateOf(s?.album ?: "") }
+    var genre by remember(s?.id) { mutableStateOf(s?.genre ?: "") }
+    var year by remember(s?.id) { mutableStateOf(s?.year?.toString() ?: "") }
+    var comment by remember(s?.id) { mutableStateOf(s?.comment ?: "") }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -55,8 +63,15 @@ fun EditMetadataScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = onNavigateBack) {
-                        Text("Save")
+                    if (s != null) {
+                        TextButton(
+                            onClick = {
+                                viewModel.save(title, artist, album, genre, year, comment)
+                                onNavigateBack()
+                            }
+                        ) {
+                            Text("Save")
+                        }
                     }
                 }
             )
@@ -69,14 +84,7 @@ fun EditMetadataScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            song?.let { s ->
-                var title by remember { mutableStateOf(s.title) }
-                var artist by remember { mutableStateOf(s.artist) }
-                var album by remember { mutableStateOf(s.album) }
-                var genre by remember { mutableStateOf(s.genre) }
-                var year by remember { mutableStateOf(s.year.toString()) }
-                var comment by remember { mutableStateOf(s.comment) }
-
+            if (s != null) {
                 TextField(
                     value = title,
                     onValueChange = { title = it },
@@ -113,7 +121,9 @@ fun EditMetadataScreen(
                     label = { Text("Comment") },
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
                 )
-            } ?: Text("Loading...", style = MaterialTheme.typography.bodyLarge)
+            } else {
+                Text("Loading...", style = MaterialTheme.typography.bodyLarge)
+            }
         }
     }
 }
