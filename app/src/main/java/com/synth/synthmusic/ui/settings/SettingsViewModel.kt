@@ -57,4 +57,16 @@ class SettingsViewModel(
     fun updateLoudness(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.updateLoudness(enabled) }
     }
+
+    fun updatePlaybackSpeed(speed: Float) {
+        viewModelScope.launch { settingsRepository.updatePlaybackSpeed(speed) }
+    }
+
+    fun updatePlaybackPitch(pitch: Float) {
+        viewModelScope.launch { settingsRepository.updatePlaybackPitch(pitch) }
+    }
+
+    fun updateSkipSilence(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.updateSkipSilence(enabled) }
+    }
 }

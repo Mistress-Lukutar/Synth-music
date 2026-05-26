@@ -14,5 +14,7 @@ data class NowPlayingUiState(
     val shuffleEnabled: Boolean = false,
     val rating: Float = 0f,
     val isFavorite: Boolean = false,
-    val waveformAmplitudes: List<Float> = emptyList()
+    val waveformAmplitudes: List<Float> = emptyList(),
+    val playbackSpeed: Float = 1.0f,
+    val playbackPitch: Float = 1.0f
 )

@@ -51,6 +51,7 @@ import com.synth.synthmusic.ui.library.components.ArtistListItem
 import com.synth.synthmusic.ui.library.components.FoldersTab
 import com.synth.synthmusic.ui.library.components.MiniPlayer
 import com.synth.synthmusic.ui.library.components.SongListItem
+import com.synth.synthmusic.ui.share.ShareSongSheet
 import com.synth.synthmusic.ui.playlists.PlaylistsScreen
 import org.koin.androidx.compose.koinViewModel
 
@@ -79,6 +80,7 @@ fun LibraryScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     var selectedSongForPlaylist by remember { mutableStateOf<String?>(null) }
+    var selectedSongForShare by remember { mutableStateOf<String?>(null) }
 
     val audioPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.READ_MEDIA_AUDIO
@@ -171,7 +173,8 @@ fun LibraryScreen(
                         onAddToPlaylist = { selectedSongForPlaylist = it },
                         onPlayNext = { viewModel.playNext(it) },
                         onAddToQueue = { viewModel.addToQueue(it) },
-                        onShare = { /* TODO */ }
+                        onShare = { selectedSongForShare = it },
+                        currentSongId = playback.currentSongId
                     )
                     LibraryTab.Albums -> AlbumsTab(
                         albums = uiState.albums,
@@ -193,7 +196,8 @@ fun LibraryScreen(
                         onAddToPlaylist = { selectedSongForPlaylist = it },
                         onPlayNext = { viewModel.playNext(it) },
                         onAddToQueue = { viewModel.addToQueue(it) },
-                        onShare = { /* TODO */ }
+                        onShare = { selectedSongForShare = it },
+                        currentSongId = playback.currentSongId
                     )
                     LibraryTab.Top -> SongsTab(
                         songs = uiState.topSongs,
@@ -203,7 +207,8 @@ fun LibraryScreen(
                         onAddToPlaylist = { selectedSongForPlaylist = it },
                         onPlayNext = { viewModel.playNext(it) },
                         onAddToQueue = { viewModel.addToQueue(it) },
-                        onShare = { /* TODO */ }
+                        onShare = { selectedSongForShare = it },
+                        currentSongId = playback.currentSongId
                     )
                     LibraryTab.Recent -> SongsTab(
                         songs = uiState.recentSongs,
@@ -213,7 +218,8 @@ fun LibraryScreen(
                         onAddToPlaylist = { selectedSongForPlaylist = it },
                         onPlayNext = { viewModel.playNext(it) },
                         onAddToQueue = { viewModel.addToQueue(it) },
-                        onShare = { /* TODO */ }
+                        onShare = { selectedSongForShare = it },
+                        currentSongId = playback.currentSongId
                     )
                     LibraryTab.History -> SongsTab(
                         songs = uiState.historySongs,
@@ -223,7 +229,8 @@ fun LibraryScreen(
                         onAddToPlaylist = { selectedSongForPlaylist = it },
                         onPlayNext = { viewModel.playNext(it) },
                         onAddToQueue = { viewModel.addToQueue(it) },
-                        onShare = { /* TODO */ }
+                        onShare = { selectedSongForShare = it },
+                        currentSongId = playback.currentSongId
                     )
                     LibraryTab.Playlists -> {
                         PlaylistsScreen(
@@ -247,6 +254,18 @@ fun LibraryScreen(
             onDismiss = { selectedSongForPlaylist = null }
         )
     }
+
+    selectedSongForShare?.let { songId ->
+        val song = uiState.songs.find { it.id == songId }
+            ?: uiState.favoriteSongs.find { it.id == songId }
+            ?: uiState.topSongs.find { it.id == songId }
+            ?: uiState.recentSongs.find { it.id == songId }
+            ?: uiState.historySongs.find { it.id == songId }
+        ShareSongSheet(
+            song = song,
+            onDismiss = { selectedSongForShare = null }
+        )
+    }
 }
 
 @Composable
@@ -259,6 +278,7 @@ private fun SongsTab(
     onPlayNext: (String) -> Unit,
     onAddToQueue: (String) -> Unit,
     onShare: (String) -> Unit,
+    currentSongId: String? = null,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -274,7 +294,8 @@ private fun SongsTab(
                 onAddToPlaylist = onAddToPlaylist,
                 onPlayNext = onPlayNext,
                 onAddToQueue = onAddToQueue,
-                onShare = onShare
+                onShare = onShare,
+                isCurrent = song.id == currentSongId
             )
         }
     }

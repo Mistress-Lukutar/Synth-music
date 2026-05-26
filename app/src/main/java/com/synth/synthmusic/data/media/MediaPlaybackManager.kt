@@ -9,6 +9,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.synth.synthmusic.data.local.database.PlaybackStateDao
 import com.synth.synthmusic.data.local.database.PlaybackStateEntity
 import com.synth.synthmusic.data.local.database.SongDao
+import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.data.local.database.toDomain
 import com.synth.synthmusic.domain.model.Song
@@ -32,7 +33,8 @@ class MediaPlaybackManager(
     context: Context,
     private val playbackStateDao: PlaybackStateDao,
     private val songDao: SongDao,
-    private val songRepository: SongRepository
+    private val songRepository: SongRepository,
+    private val settingsRepository: SettingsRepository
 ) {
     private val _playbackState = MutableStateFlow(PlaybackState())
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
@@ -54,6 +56,7 @@ class MediaPlaybackManager(
         .build()
 
     private val fadeManager = AudioFadeManager(player)
+    private var crossfadeDurationMs: Int = 0
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
@@ -119,6 +122,22 @@ class MediaPlaybackManager(
     init {
         player.addListener(listener)
         restoreState()
+        collectPlaybackSettings()
+    }
+
+    private fun collectPlaybackSettings() {
+        scope.launch {
+            settingsRepository.settings.collect { settings ->
+                player.setPlaybackParameters(
+                    androidx.media3.common.PlaybackParameters(
+                        settings.playbackSpeed.coerceIn(0.25f, 4.0f),
+                        settings.playbackPitch.coerceIn(0.25f, 4.0f)
+                    )
+                )
+                player.setSkipSilenceEnabled(settings.skipSilence)
+                crossfadeDurationMs = settings.crossfadeDurationMs.coerceIn(0, 5000)
+            }
+        }
     }
 
     fun playSongs(songs: List<Song>, startIndex: Int = 0) {
@@ -192,19 +211,29 @@ class MediaPlaybackManager(
     }
 
     fun next() {
-        fadeManager.fadeTo(0f, 400)
-        scope.launch {
-            delay(400)
+        val duration = crossfadeDurationMs.toLong().coerceIn(0, 5000)
+        if (duration > 0) {
+            fadeManager.fadeTo(0f, duration)
+            scope.launch {
+                delay(duration)
+                player.seekToNext()
+                fadeManager.fadeTo(1f, duration)
+            }
+        } else {
             player.seekToNext()
-            fadeManager.fadeTo(1f, 400)
         }
     }
     fun previous() {
-        fadeManager.fadeTo(0f, 400)
-        scope.launch {
-            delay(400)
+        val duration = crossfadeDurationMs.toLong().coerceIn(0, 5000)
+        if (duration > 0) {
+            fadeManager.fadeTo(0f, duration)
+            scope.launch {
+                delay(duration)
+                player.seekToPrevious()
+                fadeManager.fadeTo(1f, duration)
+            }
+        } else {
             player.seekToPrevious()
-            fadeManager.fadeTo(1f, 400)
         }
     }
     fun seekTo(positionMs: Long) = player.seekTo(positionMs)
