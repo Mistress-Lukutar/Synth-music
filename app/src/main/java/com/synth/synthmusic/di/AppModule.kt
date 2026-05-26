@@ -18,6 +18,7 @@ import com.synth.synthmusic.domain.repository.BookmarkRepository
 import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
+import com.synth.synthmusic.data.media.waveform.WaveformGenerator
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
 import com.synth.synthmusic.ui.bookmarks.BookmarkViewModel
 import com.synth.synthmusic.ui.equalizer.EqualizerViewModel
@@ -54,6 +55,7 @@ val appModule = module {
     single { get<AppDatabase>().bookmarkDao() }
     single { get<AppDatabase>().eqPresetDao() }
     single { get<AppDatabase>().playbackStateDao() }
+    single { get<AppDatabase>().waveformDataDao() }
 
     single { SettingsDataStore(androidContext()) }
     single<SongRepository> { SongRepositoryImpl(get()) }
@@ -64,6 +66,7 @@ val appModule = module {
     single<BookmarkRepository> { BookmarkRepositoryImpl(get()) }
     single { MediaPlaybackManager(androidContext(), get(), get(), get()) }
     single { AudioEffectsManager(get()) }
+    single { WaveformGenerator(androidContext()) }
 
     single {
         ScanMusicUseCase(
@@ -88,7 +91,9 @@ val appModule = module {
     viewModel {
         NowPlayingViewModel(
             playbackManager = get(),
-            songRepository = get()
+            songRepository = get(),
+            waveformGenerator = get(),
+            waveformDataDao = get()
         )
     }
 
