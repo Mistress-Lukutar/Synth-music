@@ -13,6 +13,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,6 +47,8 @@ fun AlbumDetailScreen(
     albumTitle: String,
     albumArtist: String,
     onNavigateBack: () -> Unit,
+    onPlayAll: () -> Unit,
+    onShuffleAll: () -> Unit,
     onSongClick: (com.synth.synthmusic.domain.model.Song) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: AlbumDetailViewModel = koinViewModel { parametersOf(albumTitle, albumArtist) }
@@ -81,7 +86,15 @@ fun AlbumDetailScreen(
             item {
                 AlbumHeader(
                     album = album,
-                    songCount = songs.size
+                    songCount = songs.size,
+                    onPlayAll = {
+                        viewModel.playAll()
+                        onPlayAll()
+                    },
+                    onShuffleAll = {
+                        viewModel.shuffleAll()
+                        onShuffleAll()
+                    }
                 )
             }
             items(songs, key = { it.id }) { song ->
@@ -98,37 +111,60 @@ fun AlbumDetailScreen(
 private fun AlbumHeader(
     album: com.synth.synthmusic.domain.model.Album?,
     songCount: Int,
+    onPlayAll: () -> Unit,
+    onShuffleAll: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(16.dp)
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(album?.artworkUri)
-                .crossfade(true)
-                .build(),
-            contentDescription = "Album art",
-            modifier = Modifier
-                .size(120.dp)
-                .aspectRatio(1f),
-            contentScale = ContentScale.Crop
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column {
-            Text(
-                text = album?.artist ?: "",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(album?.artworkUri)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Album art",
+                modifier = Modifier
+                    .size(120.dp)
+                    .aspectRatio(1f),
+                contentScale = ContentScale.Crop
             )
-            Text(
-                text = "$songCount tracks",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = album?.artist ?: "",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "$songCount tracks",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Spacer(modifier = Modifier.padding(vertical = 8.dp))
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = onPlayAll,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Play All")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = onShuffleAll,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(Icons.Default.Shuffle, contentDescription = null)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Shuffle")
+            }
         }
     }
 }

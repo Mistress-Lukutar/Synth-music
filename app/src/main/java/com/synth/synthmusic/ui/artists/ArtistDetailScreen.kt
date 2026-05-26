@@ -1,15 +1,20 @@
 package com.synth.synthmusic.ui.artists
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +40,8 @@ import org.koin.core.parameter.parametersOf
 fun ArtistDetailScreen(
     artistName: String,
     onNavigateBack: () -> Unit,
+    onPlayAll: () -> Unit,
+    onShuffleAll: () -> Unit,
     onSongClick: (com.synth.synthmusic.domain.model.Song) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ArtistDetailViewModel = koinViewModel { parametersOf(artistName) }
@@ -70,12 +77,39 @@ fun ArtistDetailScreen(
                 .padding(innerPadding)
         ) {
             item {
-                Text(
-                    text = "${songs.size} tracks",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(16.dp)
-                )
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "${songs.size} tracks",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.padding(vertical = 8.dp))
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = {
+                                viewModel.playAll()
+                                onPlayAll()
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Play All")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                viewModel.shuffleAll()
+                                onShuffleAll()
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Shuffle, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Shuffle")
+                        }
+                    }
+                }
             }
             items(songs, key = { it.id }) { song ->
                 SongListItem(
