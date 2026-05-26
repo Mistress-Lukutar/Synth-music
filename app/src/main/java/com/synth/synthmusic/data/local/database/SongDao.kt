@@ -60,6 +60,12 @@ interface SongDao {
     @Query("SELECT * FROM songs WHERE is_favorite = 1 ORDER BY title COLLATE NOCASE ASC")
     fun observeFavorites(): Flow<List<SongEntity>>
 
+    @Query("SELECT * FROM songs ORDER BY play_count DESC, title COLLATE NOCASE ASC LIMIT 100")
+    fun observeTopSongs(): Flow<List<SongEntity>>
+
+    @Query("SELECT * FROM songs ORDER BY date_added DESC LIMIT 100")
+    fun observeRecentSongs(): Flow<List<SongEntity>>
+
     @Query("SELECT * FROM songs WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%'")
     fun search(query: String): Flow<List<SongEntity>>
 }
