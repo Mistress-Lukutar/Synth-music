@@ -118,6 +118,15 @@ val appModule = module {
             playlistRepository = get()
         )
     }
+
+    viewModel { (albumTitle: String, albumArtist: String) ->
+        com.synth.synthmusic.ui.albums.AlbumDetailViewModel(
+            albumTitle = albumTitle,
+            albumArtist = albumArtist,
+            albumRepository = get(),
+            songRepository = get()
+        )
+    }
 }
 
 /**
