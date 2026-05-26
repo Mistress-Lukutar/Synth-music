@@ -1,7 +1,7 @@
 package com.synth.synthmusic.ui.visualizer
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -14,24 +14,26 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.dp
+import com.synth.synthmusic.data.media.MediaPlaybackManager
+import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 /**
- * Circular particle audio visualizer screen (placeholder).
+ * Full-screen audio visualizer using the system Visualizer API.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VisualizerScreen(
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    playbackManager: MediaPlaybackManager = koinInject()
 ) {
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val particleColor = primaryColor.copy(alpha = 0.3f)
+    val playback by playbackManager.playbackState.collectAsState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -49,37 +51,38 @@ fun VisualizerScreen(
             )
         }
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            contentAlignment = Alignment.Center
+                .padding(innerPadding)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val centerX = size.width / 2
-                val centerY = size.height / 2
-                val radius = size.minDimension / 4
-
-                for (i in 0..7) {
-                    rotate(degrees = i * 45f, pivot = Offset(centerX, centerY)) {
-                        drawCircle(
-                            color = particleColor,
-                            radius = radius * 0.2f,
-                            center = Offset(centerX + radius, centerY)
-                        )
-                    }
+            val sessionId = playbackManager.player.audioSessionId
+            if (sessionId != 0 && playback.currentSongId != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                ) {
+                    AudioVisualizer(
+                        audioSessionId = sessionId,
+                        barCount = 56,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
-                drawCircle(
-                    color = primaryColor,
-                    radius = radius * 0.15f,
-                    center = Offset(centerX, centerY)
-                )
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Play a song to see the visualizer.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-            Text(
-                text = "Visualizer coming soon",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = 200.dp)
-            )
         }
     }
 }
