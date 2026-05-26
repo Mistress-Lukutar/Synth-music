@@ -54,6 +54,9 @@ interface SongDao {
     @Query("SELECT COUNT(*) FROM songs")
     fun observeCount(): Flow<Int>
 
+    @Query("SELECT * FROM songs WHERE is_favorite = 1 ORDER BY title COLLATE NOCASE ASC")
+    fun observeFavorites(): Flow<List<SongEntity>>
+
     @Query("SELECT * FROM songs WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%'")
     fun search(query: String): Flow<List<SongEntity>>
 }

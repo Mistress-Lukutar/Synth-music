@@ -14,9 +14,10 @@ data class LibraryUiState(
     val artists: List<Artist> = emptyList(),
     val isScanning: Boolean = false,
     val scanError: String? = null,
+    val favoriteSongs: List<Song> = emptyList(),
     val songCount: Int = 0
 )
 
 enum class LibraryTab {
-    Songs, Albums, Artists, Folders, Playlists
+    Songs, Albums, Artists, Folders, Playlists, Favorites
 }
