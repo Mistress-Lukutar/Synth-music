@@ -10,4 +10,5 @@ sealed class NowPlayingEvent {
     data class Seek(val positionMs: Long) : NowPlayingEvent()
     data object ToggleShuffle : NowPlayingEvent()
     data object CycleRepeat : NowPlayingEvent()
+    data class UpdateRating(val rating: Float) : NowPlayingEvent()
 }

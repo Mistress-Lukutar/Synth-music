@@ -44,7 +44,8 @@ class NowPlayingViewModel(
                     positionMs = playback.positionMs,
                     durationMs = playback.durationMs,
                     repeatMode = playback.repeatMode,
-                    shuffleEnabled = playback.shuffleEnabled
+                    shuffleEnabled = playback.shuffleEnabled,
+                    rating = song?.rating ?: 0f
                 )
             }
         }.launchIn(viewModelScope)
@@ -72,6 +73,13 @@ class NowPlayingViewModel(
                 playbackManager.setShuffleEnabled(!_uiState.value.shuffleEnabled)
             }
             is NowPlayingEvent.CycleRepeat -> playbackManager.cycleRepeatMode()
+            is NowPlayingEvent.UpdateRating -> {
+                val songId = _uiState.value.song?.id ?: return
+                viewModelScope.launch {
+                    songRepository.updateSongRating(songId, event.rating)
+                }
+                _uiState.update { it.copy(rating = event.rating) }
+            }
         }
     }
 

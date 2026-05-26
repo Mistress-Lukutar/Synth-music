@@ -15,6 +15,7 @@ interface SongRepository {
     suspend fun getSongById(songId: String): Song?
     suspend fun saveSongs(songs: List<Song>)
     suspend fun deleteSong(songId: String)
+    suspend fun updateSongRating(songId: String, rating: Float)
     suspend fun deleteAllSongs()
     fun searchSongs(query: String): Flow<List<Song>>
 }
