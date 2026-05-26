@@ -19,7 +19,12 @@ import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.data.media.waveform.WaveformGenerator
+import com.synth.synthmusic.domain.usecase.BatchUpdateMetadataUseCase
+import com.synth.synthmusic.domain.usecase.ExportPlaylistUseCase
+import com.synth.synthmusic.domain.usecase.ImportPlaylistUseCase
+import com.synth.synthmusic.domain.usecase.PlaySongUseCase
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
+import com.synth.synthmusic.domain.usecase.UpdateMetadataUseCase
 import com.synth.synthmusic.ui.bookmarks.BookmarkViewModel
 import com.synth.synthmusic.ui.equalizer.EqualizerViewModel
 import com.synth.synthmusic.ui.folders.FoldersViewModel
@@ -76,6 +81,12 @@ val appModule = module {
             artistRepository = get()
         )
     }
+
+    single { PlaySongUseCase(get()) }
+    single { UpdateMetadataUseCase(get()) }
+    single { BatchUpdateMetadataUseCase(get(), get()) }
+    single { ExportPlaylistUseCase(androidContext(), get()) }
+    single { ImportPlaylistUseCase(androidContext(), get(), get()) }
 
     viewModel {
         LibraryViewModel(
