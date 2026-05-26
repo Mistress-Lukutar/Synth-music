@@ -21,4 +21,8 @@ class QueueViewModel(
     fun removeItem(index: Int) {
         playbackManager.removeFromQueue(index)
     }
+
+    fun clearQueue() {
+        playbackManager.clearQueue()
+    }
 }
