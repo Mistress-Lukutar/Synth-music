@@ -215,6 +215,7 @@ Type-safe routes are defined in `navigation/Routes.kt` using Kotlin Serializatio
 | `RECORD_AUDIO` | Visualizer audio capture |
 | `FOREGROUND_SERVICE` | Background playback service |
 | `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Media playback foreground type |
+| `WAKE_LOCK` | Keep CPU awake during playback |
 
 ---
 

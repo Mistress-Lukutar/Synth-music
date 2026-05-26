@@ -10,7 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.MaterialTheme
 
 /**
  * Renders a real-time frequency-bar audio visualizer tied to an audio session.
@@ -24,7 +24,7 @@ import androidx.compose.ui.graphics.Color
 fun AudioVisualizer(
     audioSessionId: Int,
     barCount: Int = 48,
-    color: Color = Color.Cyan,
+    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
     modifier: Modifier = Modifier
 ) {
     if (audioSessionId == 0) {
