@@ -20,6 +20,7 @@ import com.synth.synthmusic.ui.queue.QueueScreen
 import com.synth.synthmusic.ui.search.SearchScreen
 import com.synth.synthmusic.ui.settings.SettingsScreen
 import com.synth.synthmusic.ui.albums.AlbumDetailScreen
+import com.synth.synthmusic.ui.artists.ArtistDetailScreen
 import com.synth.synthmusic.ui.visualizer.VisualizerScreen
 
 /**
@@ -49,6 +50,9 @@ fun AppNavigation(
                 onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) },
                 onNavigateToAlbumDetail = { title, artist ->
                     navController.navigate(AlbumDetailRoute(title, artist))
+                },
+                onNavigateToArtistDetail = { name ->
+                    navController.navigate(ArtistDetailRoute(name))
                 }
             )
         }
@@ -97,6 +101,14 @@ fun AppNavigation(
             AlbumDetailScreen(
                 albumTitle = route.albumTitle,
                 albumArtist = route.albumArtist,
+                onNavigateBack = { navController.popBackStack() },
+                onSongClick = { navController.navigate(NowPlayingRoute) }
+            )
+        }
+        composable<ArtistDetailRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<ArtistDetailRoute>()
+            ArtistDetailScreen(
+                artistName = route.artistName,
                 onNavigateBack = { navController.popBackStack() },
                 onSongClick = { navController.navigate(NowPlayingRoute) }
             )
