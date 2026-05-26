@@ -22,6 +22,10 @@ class QueueViewModel(
         playbackManager.removeFromQueue(index)
     }
 
+    fun moveItem(fromIndex: Int, toIndex: Int) {
+        playbackManager.moveQueueItem(fromIndex, toIndex)
+    }
+
     fun clearQueue() {
         playbackManager.clearQueue()
     }
