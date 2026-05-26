@@ -141,6 +141,10 @@ class MediaPlaybackManager(
         _playbackState.update { it.copy(repeatMode = next) }
     }
 
+    fun initAudioEffects(manager: AudioEffectsManager) {
+        manager.initWithSession(player.audioSessionId)
+    }
+
     fun release() {
         player.removeListener(listener)
         player.release()

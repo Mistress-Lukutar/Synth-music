@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.synth.synthmusic.data.local.database.AppDatabase
 import com.synth.synthmusic.data.local.datastore.SettingsDataStore
+import com.synth.synthmusic.data.media.AudioEffectsManager
 import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.data.repository.AlbumRepositoryImpl
 import com.synth.synthmusic.data.repository.ArtistRepositoryImpl
@@ -16,6 +17,7 @@ import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
+import com.synth.synthmusic.ui.equalizer.EqualizerViewModel
 import com.synth.synthmusic.ui.library.LibraryViewModel
 import com.synth.synthmusic.ui.nowplaying.NowPlayingViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistDetailViewModel
@@ -52,6 +54,7 @@ val appModule = module {
     single<SettingsRepository> { SettingsRepositoryImpl(get()) }
     single<PlaylistRepository> { PlaylistRepositoryImpl(get(), get()) }
     single { MediaPlaybackManager(androidContext()) }
+    single { AudioEffectsManager(get()) }
 
     single {
         ScanMusicUseCase(
@@ -81,6 +84,13 @@ val appModule = module {
 
     viewModel {
         QueueViewModel(playbackManager = get())
+    }
+
+    viewModel {
+        EqualizerViewModel(
+            audioEffectsManager = get(),
+            playbackManager = get()
+        )
     }
 
     viewModel {
