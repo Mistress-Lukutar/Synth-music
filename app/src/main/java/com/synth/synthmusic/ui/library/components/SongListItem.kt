@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -41,6 +42,7 @@ import com.synth.synthmusic.domain.model.Song
  * @param onClick Callback invoked when the item is clicked.
  * @param onNavigateToSongInfo Callback to open song info.
  * @param onNavigateToEditMetadata Callback to open metadata editor.
+ * @param onAddToPlaylist Callback to add song to a playlist.
  * @param modifier Modifier for styling.
  */
 @Composable
@@ -49,6 +51,7 @@ fun SongListItem(
     onClick: () -> Unit,
     onNavigateToSongInfo: ((String) -> Unit)? = null,
     onNavigateToEditMetadata: ((String) -> Unit)? = null,
+    onAddToPlaylist: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -118,6 +121,13 @@ fun SongListItem(
                         DropdownMenuItem(
                             text = { Text("Edit Metadata") },
                             onClick = { expanded = false; callback(song.id) }
+                        )
+                    }
+                    onAddToPlaylist?.let { callback ->
+                        DropdownMenuItem(
+                            text = { Text("Add to Playlist") },
+                            onClick = { expanded = false; callback(song.id) },
+                            leadingIcon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null) }
                         )
                     }
                 }

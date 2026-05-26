@@ -3,8 +3,10 @@ package com.synth.synthmusic.ui.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synth.synthmusic.data.media.MediaPlaybackManager
+import com.synth.synthmusic.domain.model.Playlist
 import com.synth.synthmusic.domain.repository.AlbumRepository
 import com.synth.synthmusic.domain.repository.ArtistRepository
+import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +26,7 @@ class LibraryViewModel(
     private val songRepository: SongRepository,
     private val albumRepository: AlbumRepository,
     private val artistRepository: ArtistRepository,
+    private val playlistRepository: PlaylistRepository,
     private val scanMusicUseCase: ScanMusicUseCase,
     private val playbackManager: MediaPlaybackManager
 ) : ViewModel() {
@@ -32,6 +35,9 @@ class LibraryViewModel(
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
 
     val currentPlayback = playbackManager.playbackState
+
+    private val _playlists = MutableStateFlow<List<Playlist>>(emptyList())
+    val playlists: StateFlow<List<Playlist>> = _playlists.asStateFlow()
 
     init {
         combine(
@@ -50,6 +56,10 @@ class LibraryViewModel(
                 )
             }
         }.launchIn(viewModelScope)
+
+        playlistRepository.observeAllPlaylists()
+            .onEach { list -> _playlists.value = list }
+            .launchIn(viewModelScope)
     }
 
     fun onEvent(event: LibraryEvent) {
@@ -64,6 +74,12 @@ class LibraryViewModel(
 
     fun togglePlayPause() {
         playbackManager.playPause()
+    }
+
+    fun addSongToPlaylist(playlistId: Long, songId: String) {
+        viewModelScope.launch {
+            playlistRepository.addSongToPlaylist(playlistId, songId)
+        }
     }
 
     private fun playSong(songId: String) {

@@ -78,6 +78,7 @@ val appModule = module {
             songRepository = get(),
             albumRepository = get(),
             artistRepository = get(),
+            playlistRepository = get(),
             scanMusicUseCase = get(),
             playbackManager = get()
         )
