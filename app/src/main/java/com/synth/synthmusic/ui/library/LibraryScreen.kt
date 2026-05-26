@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
 import com.synth.synthmusic.ui.library.components.AlbumGridItem
 import com.synth.synthmusic.ui.library.components.ArtistListItem
+import com.synth.synthmusic.ui.library.components.FoldersTab
 import com.synth.synthmusic.ui.library.components.MiniPlayer
 import com.synth.synthmusic.ui.library.components.SongListItem
 import com.synth.synthmusic.ui.playlists.PlaylistsScreen
@@ -179,7 +180,10 @@ fun LibraryScreen(
                         artists = uiState.artists,
                         onArtistClick = { onNavigateToArtistDetail(it.name) }
                     )
-                    LibraryTab.Folders -> EmptyTab(text = "Folders")
+                    LibraryTab.Folders -> FoldersTab(
+                        folders = uiState.folders,
+                        onFolderClick = { /* TODO: navigate to folder detail */ }
+                    )
                     LibraryTab.Favorites -> SongsTab(
                         songs = uiState.favoriteSongs,
                         onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
