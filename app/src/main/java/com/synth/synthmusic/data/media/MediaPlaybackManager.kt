@@ -9,6 +9,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.synth.synthmusic.data.local.database.PlaybackStateDao
 import com.synth.synthmusic.data.local.database.PlaybackStateEntity
 import com.synth.synthmusic.data.local.database.SongDao
+import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.data.local.database.toDomain
 import com.synth.synthmusic.domain.model.Song
 import kotlinx.coroutines.CoroutineScope
@@ -28,7 +29,8 @@ import kotlinx.coroutines.launch
 class MediaPlaybackManager(
     context: Context,
     private val playbackStateDao: PlaybackStateDao,
-    private val songDao: SongDao
+    private val songDao: SongDao,
+    private val songRepository: SongRepository
 ) {
     private val _playbackState = MutableStateFlow(PlaybackState())
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
@@ -78,6 +80,9 @@ class MediaPlaybackManager(
                     positionMs = 0,
                     durationMs = player.duration.coerceAtLeast(0)
                 )
+            }
+            mediaItem?.mediaId?.let { songId ->
+                scope.launch { songRepository.incrementPlayCount(songId) }
             }
             persistState()
         }

@@ -34,6 +34,9 @@ class SongRepositoryImpl(
     override suspend fun getSongById(songId: String): Song? =
         songDao.getById(songId)?.toDomain()
 
+    override suspend fun getSongsByIds(songIds: List<String>): List<Song> =
+        songDao.getByIds(songIds).map { it.toDomain() }
+
     override suspend fun saveSongs(songs: List<Song>) {
         songDao.insertAll(songs.map { it.toEntity() })
     }
@@ -45,6 +48,9 @@ class SongRepositoryImpl(
 
     override suspend fun updateSongFavorite(songId: String, isFavorite: Boolean) =
         songDao.updateFavorite(songId, isFavorite)
+
+    override suspend fun incrementPlayCount(songId: String) =
+        songDao.incrementPlayCount(songId, System.currentTimeMillis())
 
     override suspend fun deleteAllSongs() = songDao.deleteAll()
 
