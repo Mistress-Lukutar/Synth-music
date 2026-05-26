@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.synth.synthmusic.ui.nowplaying.components.LyricsBottomSheet
 import com.synth.synthmusic.ui.nowplaying.components.RatingStars
 import com.synth.synthmusic.ui.share.ShareSongSheet
 import com.synth.synthmusic.ui.share.VolumeOutputSheet
@@ -67,6 +69,7 @@ fun NowPlayingScreen(
     var showSleepTimer by remember { mutableStateOf(false) }
     var showShareSheet by remember { mutableStateOf(false) }
     var showVolumeSheet by remember { mutableStateOf(false) }
+    var showLyrics by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -196,6 +199,9 @@ fun NowPlayingScreen(
                 IconButton(onClick = { showVolumeSheet = true }) {
                     Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Volume")
                 }
+                IconButton(onClick = { showLyrics = true }) {
+                    Icon(Icons.AutoMirrored.Filled.Article, contentDescription = "Lyrics")
+                }
                 IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.CycleRepeat) }) {
                     val icon = when (uiState.repeatMode) {
                         androidx.media3.common.Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne
@@ -224,6 +230,12 @@ fun NowPlayingScreen(
     }
     if (showVolumeSheet) {
         VolumeOutputSheet(onDismiss = { showVolumeSheet = false })
+    }
+    if (showLyrics) {
+        LyricsBottomSheet(
+            song = uiState.song,
+            onDismiss = { showLyrics = false }
+        )
     }
 }
 
