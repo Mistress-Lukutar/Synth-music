@@ -16,6 +16,7 @@ import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
 import com.synth.synthmusic.ui.library.LibraryViewModel
 import com.synth.synthmusic.ui.nowplaying.NowPlayingViewModel
+import com.synth.synthmusic.ui.queue.QueueViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
@@ -71,6 +72,10 @@ val appModule = module {
             playbackManager = get(),
             songRepository = get()
         )
+    }
+
+    viewModel {
+        QueueViewModel(playbackManager = get())
     }
 }
 
