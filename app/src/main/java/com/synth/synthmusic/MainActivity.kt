@@ -1,10 +1,12 @@
 package com.synth.synthmusic
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -28,7 +30,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        startService(Intent(this, com.synth.synthmusic.service.PlaybackService::class.java))
+        ContextCompat.startForegroundService(
+            this,
+            Intent(this, com.synth.synthmusic.service.PlaybackService::class.java)
+        )
         enableEdgeToEdge()
         setContent {
             val settings by settingsDataStore.settings.collectAsState(initial = null)

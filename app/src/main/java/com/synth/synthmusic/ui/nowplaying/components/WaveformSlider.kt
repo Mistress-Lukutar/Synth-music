@@ -9,7 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 
@@ -28,8 +28,8 @@ fun WaveformSlider(
     amplitudes: List<Float>,
     progress: Float,
     onSeek: (Float) -> Unit,
-    playedColor: Color = Color.Cyan,
-    remainingColor: Color = Color.Gray.copy(alpha = 0.4f),
+    playedColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
+    remainingColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
     modifier: Modifier = Modifier
 ) {
     val safeProgress = progress.coerceIn(0f, 1f)

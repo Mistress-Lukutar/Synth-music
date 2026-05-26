@@ -8,7 +8,9 @@ import com.synth.synthmusic.domain.model.Playlist
 import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.domain.repository.PlaylistRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import com.synth.synthmusic.data.local.database.toDomain
 
 /**
  * Implementation of [PlaylistRepository] using Room.
@@ -44,50 +46,19 @@ class PlaylistRepositoryImpl(
     override fun observePlaylistSongs(playlistId: Long): Flow<List<Song>> {
         return playlistDao.observeSongs(playlistId).map { playlistSongs ->
             playlistSongs.mapNotNull { ps ->
-                songDao.getById(ps.songId)?.let { entity ->
-                    Song(
-                        id = entity.id,
-                        title = entity.title,
-                        artist = entity.artist,
-                        album = entity.album,
-                        albumArtist = entity.albumArtist,
-                        durationMs = entity.durationMs,
-                        trackNumber = entity.trackNumber,
-                        year = entity.year,
-                        genre = entity.genre,
-                        comment = entity.comment,
-                        path = entity.path,
-                        uri = entity.uri,
-                        bitrate = entity.bitrate,
-                        sampleRate = entity.sampleRate,
-                        fileSize = entity.fileSize,
-                        artworkUri = entity.artworkUri,
-                        rating = entity.rating,
-                        playCount = entity.playCount,
-                        lastPlayed = entity.lastPlayed,
-                        dateAdded = entity.dateAdded,
-                        dateModified = entity.dateModified,
-                        lyrics = entity.lyrics
-                    )
-                }
+                songDao.getById(ps.songId)?.toDomain()
             }
         }
     }
 
     override suspend fun addSongToPlaylist(playlistId: Long, songId: String) {
-        val currentSongs = playlistDao.observeSongs(playlistId).map { it.size }.let { 0 } // simplify
-        // Actually we need current count. Let's query.
-        val count = playlistDao.observeSongs(playlistId).let { 0 }
-        // Better approach: get current max position
-        val songs = playlistDao.observeSongs(playlistId).let { emptyList<com.synth.synthmusic.data.local.database.PlaylistSongEntity>() }
-        // Since we can't easily get synchronous value from Flow in suspend without first(),
-        // let's rely on the DAO to handle position automatically or use a subquery.
-        // For simplicity, we'll insert at position 0 and let UI reorder later.
+        val currentSongs = playlistDao.observeSongs(playlistId).first()
+        val maxPosition = currentSongs.maxOfOrNull { it.position } ?: -1
         playlistDao.insertSong(
             PlaylistSongEntity(
                 playlistId = playlistId,
                 songId = songId,
-                position = 0
+                position = maxPosition + 1
             )
         )
     }

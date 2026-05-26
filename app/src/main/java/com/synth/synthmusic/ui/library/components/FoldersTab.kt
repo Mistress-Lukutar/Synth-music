@@ -32,7 +32,7 @@ fun FoldersTab(
         modifier = modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp)
     ) {
-        items(folders) { folder ->
+        items(folders, key = { it }) { folder ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
