@@ -1,5 +1,6 @@
 package com.synth.synthmusic
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -27,6 +28,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        startService(Intent(this, com.synth.synthmusic.service.PlaybackService::class.java))
         enableEdgeToEdge()
         setContent {
             val settings by settingsDataStore.settings.collectAsState(initial = null)
