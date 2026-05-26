@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -101,6 +102,9 @@ fun LibraryScreen(
             TopAppBar(
                 title = { Text("Synth Music") },
                 actions = {
+                    IconButton(onClick = { viewModel.shuffleAll() }) {
+                        Icon(Icons.Default.Shuffle, contentDescription = "Shuffle all")
+                    }
                     IconButton(onClick = onNavigateToSearch) {
                         Icon(Icons.Default.Search, contentDescription = "Search")
                     }
