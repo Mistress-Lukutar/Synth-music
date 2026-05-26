@@ -36,7 +36,9 @@ class EditMetadataViewModel(
         album: String,
         genre: String,
         year: String,
-        comment: String
+        comment: String,
+        lyrics: String? = null,
+        artworkUri: String? = null
     ) {
         val current = _song.value ?: return
         viewModelScope.launch {
@@ -50,6 +52,7 @@ class EditMetadataViewModel(
                 tag.setField(FieldKey.GENRE, genre)
                 tag.setField(FieldKey.YEAR, year)
                 tag.setField(FieldKey.COMMENT, comment)
+                lyrics?.let { tag.setField(FieldKey.LYRICS, it) }
                 AudioFileIO.write(audioFile)
             } catch (_: Exception) {
                 // If file write fails, still update DB
@@ -64,7 +67,9 @@ class EditMetadataViewModel(
                         album = album,
                         genre = genre,
                         year = year.toIntOrNull() ?: current.year,
-                        comment = comment
+                        comment = comment,
+                        lyrics = lyrics ?: current.lyrics,
+                        artworkUri = artworkUri ?: current.artworkUri
                     )
                 )
             )
