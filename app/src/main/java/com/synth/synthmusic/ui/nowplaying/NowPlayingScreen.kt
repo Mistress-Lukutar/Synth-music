@@ -32,7 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
+import com.synth.synthmusic.ui.nowplaying.components.WaveformSlider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -142,12 +142,24 @@ fun NowPlayingScreen(
 
             // Seekbar
             Column(modifier = Modifier.fillMaxWidth()) {
-                Slider(
-                    value = uiState.positionMs.toFloat(),
-                    onValueChange = { viewModel.onEvent(NowPlayingEvent.Seek(it.toLong())) },
-                    valueRange = 0f..uiState.durationMs.toFloat().coerceAtLeast(1f),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (uiState.waveformAmplitudes.isNotEmpty()) {
+                    WaveformSlider(
+                        amplitudes = uiState.waveformAmplitudes,
+                        progress = if (uiState.durationMs > 0) uiState.positionMs.toFloat() / uiState.durationMs else 0f,
+                        onSeek = { fraction ->
+                            val pos = (fraction * uiState.durationMs).toLong()
+                            viewModel.onEvent(NowPlayingEvent.Seek(pos))
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    androidx.compose.material3.Slider(
+                        value = uiState.positionMs.toFloat(),
+                        onValueChange = { viewModel.onEvent(NowPlayingEvent.Seek(it.toLong())) },
+                        valueRange = 0f..uiState.durationMs.toFloat().coerceAtLeast(1f),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween

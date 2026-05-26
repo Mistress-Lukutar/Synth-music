@@ -16,9 +16,10 @@ import androidx.room.TypeConverters
         PlaylistSongEntity::class,
         BookmarkEntity::class,
         EqPresetEntity::class,
-        PlaybackStateEntity::class
+        PlaybackStateEntity::class,
+        WaveformDataEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -30,4 +31,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun bookmarkDao(): BookmarkDao
     abstract fun eqPresetDao(): EqPresetDao
     abstract fun playbackStateDao(): PlaybackStateDao
+    abstract fun waveformDataDao(): WaveformDataDao
 }

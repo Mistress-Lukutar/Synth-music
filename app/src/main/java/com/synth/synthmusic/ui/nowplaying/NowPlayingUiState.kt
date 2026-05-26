@@ -13,5 +13,6 @@ data class NowPlayingUiState(
     val repeatMode: Int = androidx.media3.common.Player.REPEAT_MODE_OFF,
     val shuffleEnabled: Boolean = false,
     val rating: Float = 0f,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val waveformAmplitudes: List<Float> = emptyList()
 )

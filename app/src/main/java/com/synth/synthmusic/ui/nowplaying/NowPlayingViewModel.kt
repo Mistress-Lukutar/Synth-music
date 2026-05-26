@@ -3,7 +3,9 @@ package com.synth.synthmusic.ui.nowplaying
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
+import com.synth.synthmusic.data.local.database.WaveformDataDao
 import com.synth.synthmusic.data.media.MediaPlaybackManager
+import com.synth.synthmusic.data.media.waveform.WaveformGenerator
 import com.synth.synthmusic.domain.repository.SongRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,7 +24,9 @@ import kotlinx.coroutines.launch
  */
 class NowPlayingViewModel(
     private val playbackManager: MediaPlaybackManager,
-    private val songRepository: SongRepository
+    private val songRepository: SongRepository,
+    private val waveformGenerator: WaveformGenerator,
+    private val waveformDataDao: WaveformDataDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NowPlayingUiState())
@@ -50,6 +54,15 @@ class NowPlayingViewModel(
                 )
             }
         }.launchIn(viewModelScope)
+
+        // Load waveform when song changes
+        playbackManager.playbackState
+            .onEach { state ->
+                state.currentSongId?.let { songId ->
+                    loadWaveform(songId)
+                }
+            }
+            .launchIn(viewModelScope)
 
         // Poll position while playing
         viewModelScope.launch {
@@ -88,6 +101,27 @@ class NowPlayingViewModel(
                     songRepository.updateSongFavorite(songId, newValue)
                 }
                 _uiState.update { it.copy(isFavorite = newValue) }
+            }
+        }
+    }
+
+    private fun loadWaveform(songId: String) {
+        viewModelScope.launch {
+            val cached = waveformDataDao.getBySongId(songId)
+            if (cached != null) {
+                _uiState.update { it.copy(waveformAmplitudes = cached.amplitudes) }
+                return@launch
+            }
+            val song = songRepository.getSongById(songId) ?: return@launch
+            val amplitudes = waveformGenerator.generate(song.uri, bars = 200)
+            if (amplitudes.isNotEmpty()) {
+                waveformDataDao.insert(
+                    com.synth.synthmusic.data.local.database.WaveformDataEntity(
+                        songId = songId,
+                        amplitudes = amplitudes.toList()
+                    )
+                )
+                _uiState.update { it.copy(waveformAmplitudes = amplitudes.toList()) }
             }
         }
     }
