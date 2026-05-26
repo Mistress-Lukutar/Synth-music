@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +32,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -39,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.synth.synthmusic.ui.sleeptimer.SleepTimerDialog
 import org.koin.androidx.compose.koinViewModel
 
 /**
@@ -54,6 +59,7 @@ fun NowPlayingScreen(
     viewModel: NowPlayingViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showSleepTimer by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -170,6 +176,9 @@ fun NowPlayingScreen(
                 IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.Next) }) {
                     Icon(Icons.Default.SkipNext, contentDescription = "Next")
                 }
+                IconButton(onClick = { showSleepTimer = true }) {
+                    Icon(Icons.Default.Timer, contentDescription = "Sleep Timer")
+                }
                 IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.CycleRepeat) }) {
                     val icon = when (uiState.repeatMode) {
                         androidx.media3.common.Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne
@@ -185,6 +194,10 @@ fun NowPlayingScreen(
                 }
             }
         }
+    }
+
+    if (showSleepTimer) {
+        SleepTimerDialog(onDismiss = { showSleepTimer = false })
     }
 }
 
