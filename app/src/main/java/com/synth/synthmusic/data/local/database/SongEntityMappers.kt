@@ -28,7 +28,9 @@ fun SongEntity.toDomain(): Song = Song(
     dateAdded = dateAdded,
     dateModified = dateModified,
     lyrics = lyrics,
-    isFavorite = isFavorite
+    isFavorite = isFavorite,
+    replayGainTrackDb = replayGainTrackDb,
+    replayGainAlbumDb = replayGainAlbumDb
 )
 
 /**
@@ -57,5 +59,7 @@ fun Song.toEntity(): SongEntity = SongEntity(
     dateAdded = dateAdded,
     dateModified = dateModified,
     lyrics = lyrics,
-    isFavorite = isFavorite
+    isFavorite = isFavorite,
+    replayGainTrackDb = replayGainTrackDb,
+    replayGainAlbumDb = replayGainAlbumDb
 )

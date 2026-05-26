@@ -14,6 +14,7 @@ import com.synth.synthmusic.data.local.database.toDomain
 import com.synth.synthmusic.domain.model.Song
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlin.math.pow
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -82,6 +83,16 @@ class MediaPlaybackManager(
                 )
             }
             mediaItem?.mediaId?.let { songId ->
+                scope.launch {
+                    val song = songRepository.getSongById(songId)
+                    val gainDb = song?.replayGainTrackDb
+                    if (gainDb != null) {
+                        val volume = 10.0.pow(gainDb / 20.0).toFloat().coerceIn(0f, 1f)
+                        player.volume = volume
+                    } else {
+                        player.volume = 1f
+                    }
+                }
                 scope.launch { songRepository.incrementPlayCount(songId) }
             }
             persistState()

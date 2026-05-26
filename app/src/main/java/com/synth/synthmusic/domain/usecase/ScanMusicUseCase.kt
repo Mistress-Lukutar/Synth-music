@@ -5,6 +5,8 @@ import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.MediaStore
+import org.jaudiotagger.audio.AudioFileIO
+import org.jaudiotagger.tag.id3.AbstractID3v2Frame
 import com.synth.synthmusic.domain.model.Album
 import com.synth.synthmusic.domain.model.Artist
 import com.synth.synthmusic.domain.model.Song
@@ -103,11 +105,40 @@ class ScanMusicUseCase(
                     genre = retriever.extractMetadata(
                         MediaMetadataRetriever.METADATA_KEY_GENRE
                     ) ?: ""
-                    lyrics = null // lyrics extraction via JAudioTagger in future
+                    lyrics = null
                 } catch (_: Exception) {
                     // ignore corrupted files
                 } finally {
                     retriever.release()
+                }
+
+                var replayGainTrackDb: Float? = null
+                var replayGainAlbumDb: Float? = null
+                try {
+                    val audioFile = AudioFileIO.read(java.io.File(path))
+                    val tag = audioFile.tag
+                    if (tag != null) {
+                        tag.getFields("TXXX").forEach { field ->
+                            val frame = field as? AbstractID3v2Frame ?: return@forEach
+                            val body = frame.body
+                            val description = try {
+                                body.getObjectValue("Description") as? String
+                            } catch (_: Exception) { null }
+                            val text = try {
+                                body.getObjectValue("Text") as? String
+                            } catch (_: Exception) { null }
+                            when (description) {
+                                "REPLAYGAIN_TRACK_GAIN" -> {
+                                    replayGainTrackDb = text?.replace(" dB", "")?.toFloatOrNull()
+                                }
+                                "REPLAYGAIN_ALBUM_GAIN" -> {
+                                    replayGainAlbumDb = text?.replace(" dB", "")?.toFloatOrNull()
+                                }
+                            }
+                        }
+                    }
+                } catch (_: Exception) {
+                    // ignore tag read errors
                 }
 
                 val artworkUri = "content://media/external/audio/media/$id/albumart"
@@ -136,7 +167,9 @@ class ScanMusicUseCase(
                         lastPlayed = null,
                         dateAdded = cursor.getLong(addedCol) * 1000,
                         dateModified = cursor.getLong(modifiedCol) * 1000,
-                        lyrics = lyrics
+                        lyrics = lyrics,
+                        replayGainTrackDb = replayGainTrackDb,
+                        replayGainAlbumDb = replayGainAlbumDb
                     )
                 )
             }

@@ -15,6 +15,7 @@ navigation = "2.9.0"
 coil = "2.7.0"
 kotlinxSerialization = "1.8.1"
 koin = "4.0.4"
+jaudiotagger = "3.0.1"
 ksp = "2.2.10-2.0.2"
 
 [libraries]
@@ -60,6 +61,9 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 # Koin
 koin-android = { group = "io.insert-koin", name = "koin-android", version.ref = "koin" }
 koin-compose = { group = "io.insert-koin", name = "koin-androidx-compose", version.ref = "koin" }
+
+# JAudioTagger (metadata / ReplayGain)
+jaudiotagger = { group = "net.jthink", name = "jaudiotagger", version.ref = "jaudiotagger" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

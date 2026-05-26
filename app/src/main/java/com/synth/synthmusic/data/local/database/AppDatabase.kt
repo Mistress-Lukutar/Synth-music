@@ -19,7 +19,7 @@ import androidx.room.TypeConverters
         PlaybackStateEntity::class,
         WaveformDataEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
