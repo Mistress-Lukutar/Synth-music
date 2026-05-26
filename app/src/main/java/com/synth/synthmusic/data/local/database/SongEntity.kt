@@ -55,5 +55,9 @@ data class SongEntity(
     @ColumnInfo(name = "lyrics")
     val lyrics: String?,
     @ColumnInfo(name = "is_favorite")
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    @ColumnInfo(name = "replay_gain_track_db")
+    val replayGainTrackDb: Float? = null,
+    @ColumnInfo(name = "replay_gain_album_db")
+    val replayGainAlbumDb: Float? = null
 )

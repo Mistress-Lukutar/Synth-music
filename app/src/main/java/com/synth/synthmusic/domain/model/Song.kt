@@ -50,5 +50,7 @@ data class Song(
     val dateAdded: Long,
     val dateModified: Long,
     val lyrics: String?,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val replayGainTrackDb: Float? = null,
+    val replayGainAlbumDb: Float? = null
 )
