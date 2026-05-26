@@ -21,6 +21,9 @@ class MediaPlaybackManager(
     private val _playbackState = MutableStateFlow(PlaybackState())
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
 
+    private val _currentQueue = MutableStateFlow<List<Song>>(emptyList())
+    val currentQueue: StateFlow<List<Song>> = _currentQueue.asStateFlow()
+
     val player: ExoPlayer = ExoPlayer.Builder(context)
         .setAudioAttributes(
             AudioAttributes.Builder()
@@ -81,6 +84,7 @@ class MediaPlaybackManager(
     }
 
     fun playSongs(songs: List<Song>, startIndex: Int = 0) {
+        _currentQueue.value = songs
         val mediaItems = songs.map { song ->
             MediaItem.Builder()
                 .setMediaId(song.id)
@@ -98,6 +102,20 @@ class MediaPlaybackManager(
         player.setMediaItems(mediaItems, startIndex, 0)
         player.prepare()
         player.play()
+    }
+
+    fun playQueueItem(index: Int) {
+        player.seekTo(index, 0)
+        player.play()
+    }
+
+    fun removeFromQueue(index: Int) {
+        val queue = _currentQueue.value.toMutableList()
+        if (index in queue.indices) {
+            queue.removeAt(index)
+            _currentQueue.value = queue
+            player.removeMediaItem(index)
+        }
     }
 
     fun playPause() {
