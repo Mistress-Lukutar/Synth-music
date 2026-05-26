@@ -135,6 +135,13 @@ val appModule = module {
             songRepository = get()
         )
     }
+
+    viewModel { (songId: String) ->
+        com.synth.synthmusic.ui.metadata.EditMetadataViewModel(
+            songId = songId,
+            songRepository = get()
+        )
+    }
 }
 
 /**
