@@ -17,10 +17,12 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +45,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.synth.synthmusic.ui.share.ShareSongSheet
+import com.synth.synthmusic.ui.share.VolumeOutputSheet
 import com.synth.synthmusic.ui.sleeptimer.SleepTimerDialog
 import org.koin.androidx.compose.koinViewModel
 
@@ -60,6 +64,8 @@ fun NowPlayingScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showSleepTimer by remember { mutableStateOf(false) }
+    var showShareSheet by remember { mutableStateOf(false) }
+    var showVolumeSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -179,6 +185,12 @@ fun NowPlayingScreen(
                 IconButton(onClick = { showSleepTimer = true }) {
                     Icon(Icons.Default.Timer, contentDescription = "Sleep Timer")
                 }
+                IconButton(onClick = { showShareSheet = true }) {
+                    Icon(Icons.Default.Share, contentDescription = "Share")
+                }
+                IconButton(onClick = { showVolumeSheet = true }) {
+                    Icon(Icons.Default.VolumeUp, contentDescription = "Volume")
+                }
                 IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.CycleRepeat) }) {
                     val icon = when (uiState.repeatMode) {
                         androidx.media3.common.Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne
@@ -198,6 +210,15 @@ fun NowPlayingScreen(
 
     if (showSleepTimer) {
         SleepTimerDialog(onDismiss = { showSleepTimer = false })
+    }
+    if (showShareSheet) {
+        ShareSongSheet(
+            song = uiState.song,
+            onDismiss = { showShareSheet = false }
+        )
+    }
+    if (showVolumeSheet) {
+        VolumeOutputSheet(onDismiss = { showVolumeSheet = false })
     }
 }
 
