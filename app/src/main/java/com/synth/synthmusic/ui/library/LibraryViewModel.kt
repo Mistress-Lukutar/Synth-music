@@ -99,6 +99,15 @@ class LibraryViewModel(
         }
     }
 
+    fun shuffleAll() {
+        viewModelScope.launch {
+            val songs = songRepository.observeAllSongs().first().shuffled()
+            if (songs.isNotEmpty()) {
+                playbackManager.playSongs(songs, 0)
+            }
+        }
+    }
+
     fun addToQueue(songId: String) {
         viewModelScope.launch {
             val song = songRepository.getSongById(songId) ?: return@launch
