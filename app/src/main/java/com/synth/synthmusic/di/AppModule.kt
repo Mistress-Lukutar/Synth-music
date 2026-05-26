@@ -26,6 +26,7 @@ import com.synth.synthmusic.domain.usecase.PlaySongUseCase
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
 import com.synth.synthmusic.domain.usecase.UpdateMetadataUseCase
 import com.synth.synthmusic.ui.bookmarks.BookmarkViewModel
+import com.synth.synthmusic.ui.downloads.DownloadsViewModel
 import com.synth.synthmusic.ui.equalizer.EqualizerViewModel
 import com.synth.synthmusic.ui.folders.FoldersViewModel
 import com.synth.synthmusic.ui.library.LibraryViewModel
@@ -170,6 +171,10 @@ val appModule = module {
             folderPath = folderPath,
             songRepository = get()
         )
+    }
+
+    viewModel {
+        DownloadsViewModel(songRepository = get())
     }
 }
 
