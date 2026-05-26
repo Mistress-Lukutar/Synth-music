@@ -166,7 +166,8 @@ fun LibraryScreen(
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
                         onAddToPlaylist = { selectedSongForPlaylist = it },
                         onPlayNext = { viewModel.playNext(it) },
-                        onAddToQueue = { viewModel.addToQueue(it) }
+                        onAddToQueue = { viewModel.addToQueue(it) },
+                        onShare = { /* TODO */ }
                     )
                     LibraryTab.Albums -> AlbumsTab(
                         albums = uiState.albums,
@@ -184,7 +185,8 @@ fun LibraryScreen(
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
                         onAddToPlaylist = { selectedSongForPlaylist = it },
                         onPlayNext = { viewModel.playNext(it) },
-                        onAddToQueue = { viewModel.addToQueue(it) }
+                        onAddToQueue = { viewModel.addToQueue(it) },
+                        onShare = { /* TODO */ }
                     )
                     LibraryTab.Top -> SongsTab(
                         songs = uiState.topSongs,
@@ -193,7 +195,8 @@ fun LibraryScreen(
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
                         onAddToPlaylist = { selectedSongForPlaylist = it },
                         onPlayNext = { viewModel.playNext(it) },
-                        onAddToQueue = { viewModel.addToQueue(it) }
+                        onAddToQueue = { viewModel.addToQueue(it) },
+                        onShare = { /* TODO */ }
                     )
                     LibraryTab.Recent -> SongsTab(
                         songs = uiState.recentSongs,
@@ -202,7 +205,8 @@ fun LibraryScreen(
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
                         onAddToPlaylist = { selectedSongForPlaylist = it },
                         onPlayNext = { viewModel.playNext(it) },
-                        onAddToQueue = { viewModel.addToQueue(it) }
+                        onAddToQueue = { viewModel.addToQueue(it) },
+                        onShare = { /* TODO */ }
                     )
                     LibraryTab.Playlists -> {
                         PlaylistsScreen(
@@ -237,6 +241,7 @@ private fun SongsTab(
     onAddToPlaylist: (String) -> Unit,
     onPlayNext: (String) -> Unit,
     onAddToQueue: (String) -> Unit,
+    onShare: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -251,7 +256,8 @@ private fun SongsTab(
                 onNavigateToEditMetadata = onNavigateToEditMetadata,
                 onAddToPlaylist = onAddToPlaylist,
                 onPlayNext = onPlayNext,
-                onAddToQueue = onAddToQueue
+                onAddToQueue = onAddToQueue,
+                onShare = onShare
             )
         }
     }

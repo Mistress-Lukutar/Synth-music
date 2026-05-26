@@ -45,6 +45,7 @@ import com.synth.synthmusic.domain.model.Song
  * @param onAddToPlaylist Callback to add song to a playlist.
  * @param onPlayNext Callback to play this song next in the queue.
  * @param onAddToQueue Callback to append this song to the queue.
+ * @param onShare Callback to share the song.
  * @param modifier Modifier for styling.
  */
 @Composable
@@ -56,6 +57,7 @@ fun SongListItem(
     onAddToPlaylist: ((String) -> Unit)? = null,
     onPlayNext: ((String) -> Unit)? = null,
     onAddToQueue: ((String) -> Unit)? = null,
+    onShare: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -144,6 +146,12 @@ fun SongListItem(
                     onAddToQueue?.let { callback ->
                         DropdownMenuItem(
                             text = { Text("Add to Queue") },
+                            onClick = { expanded = false; callback(song.id) }
+                        )
+                    }
+                    onShare?.let { callback ->
+                        DropdownMenuItem(
+                            text = { Text("Share") },
                             onClick = { expanded = false; callback(song.id) }
                         )
                     }
