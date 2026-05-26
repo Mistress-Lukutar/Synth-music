@@ -13,10 +13,12 @@ interface SongRepository {
     fun observeSongsByFolder(folderPath: String): Flow<List<Song>>
     fun observeSongById(songId: String): Flow<Song?>
     suspend fun getSongById(songId: String): Song?
+    suspend fun getSongsByIds(songIds: List<String>): List<Song>
     suspend fun saveSongs(songs: List<Song>)
     suspend fun deleteSong(songId: String)
     suspend fun updateSongRating(songId: String, rating: Float)
     suspend fun updateSongFavorite(songId: String, isFavorite: Boolean)
+    suspend fun incrementPlayCount(songId: String)
     suspend fun deleteAllSongs()
     fun observeFavoriteSongs(): Flow<List<Song>>
     fun searchSongs(query: String): Flow<List<Song>>
