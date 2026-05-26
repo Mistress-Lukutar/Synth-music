@@ -13,7 +13,9 @@ import com.synth.synthmusic.domain.repository.ArtistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
+import com.synth.synthmusic.ui.library.LibraryViewModel
 import org.koin.android.ext.koin.androidContext
+import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
 /**
@@ -48,6 +50,15 @@ val appModule = module {
             songRepository = get(),
             albumRepository = get(),
             artistRepository = get()
+        )
+    }
+
+    viewModel {
+        LibraryViewModel(
+            songRepository = get(),
+            albumRepository = get(),
+            artistRepository = get(),
+            scanMusicUseCase = get()
         )
     }
 }
