@@ -160,7 +160,9 @@ fun LibraryScreen(
                         onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
-                        onAddToPlaylist = { selectedSongForPlaylist = it }
+                        onAddToPlaylist = { selectedSongForPlaylist = it },
+                        onPlayNext = { viewModel.playNext(it) },
+                        onAddToQueue = { viewModel.addToQueue(it) }
                     )
                     LibraryTab.Albums -> AlbumsTab(
                         albums = uiState.albums,
@@ -202,6 +204,8 @@ private fun SongsTab(
     onNavigateToSongInfo: (String) -> Unit,
     onNavigateToEditMetadata: (String) -> Unit,
     onAddToPlaylist: (String) -> Unit,
+    onPlayNext: (String) -> Unit,
+    onAddToQueue: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -214,7 +218,9 @@ private fun SongsTab(
                 onClick = { onSongClick(song) },
                 onNavigateToSongInfo = onNavigateToSongInfo,
                 onNavigateToEditMetadata = onNavigateToEditMetadata,
-                onAddToPlaylist = onAddToPlaylist
+                onAddToPlaylist = onAddToPlaylist,
+                onPlayNext = onPlayNext,
+                onAddToQueue = onAddToQueue
             )
         }
     }

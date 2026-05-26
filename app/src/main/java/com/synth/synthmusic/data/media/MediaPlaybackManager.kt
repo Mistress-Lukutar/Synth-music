@@ -109,6 +109,44 @@ class MediaPlaybackManager(
         player.play()
     }
 
+    fun addToQueue(song: Song) {
+        val mediaItem = MediaItem.Builder()
+            .setMediaId(song.id)
+            .setUri(song.uri)
+            .setMediaMetadata(
+                androidx.media3.common.MediaMetadata.Builder()
+                    .setTitle(song.title)
+                    .setArtist(song.artist)
+                    .setAlbumTitle(song.album)
+                    .setArtworkUri(android.net.Uri.parse(song.artworkUri ?: ""))
+                    .build()
+            )
+            .build()
+        _currentQueue.update { it + song }
+        player.addMediaItem(mediaItem)
+    }
+
+    fun playNext(song: Song) {
+        val currentIndex = player.currentMediaItemIndex
+        val mediaItem = MediaItem.Builder()
+            .setMediaId(song.id)
+            .setUri(song.uri)
+            .setMediaMetadata(
+                androidx.media3.common.MediaMetadata.Builder()
+                    .setTitle(song.title)
+                    .setArtist(song.artist)
+                    .setAlbumTitle(song.album)
+                    .setArtworkUri(android.net.Uri.parse(song.artworkUri ?: ""))
+                    .build()
+            )
+            .build()
+        val queue = _currentQueue.value.toMutableList()
+        val insertIndex = (currentIndex + 1).coerceAtMost(queue.size)
+        queue.add(insertIndex, song)
+        _currentQueue.value = queue
+        player.addMediaItem(insertIndex, mediaItem)
+    }
+
     fun removeFromQueue(index: Int) {
         val queue = _currentQueue.value.toMutableList()
         if (index in queue.indices) {

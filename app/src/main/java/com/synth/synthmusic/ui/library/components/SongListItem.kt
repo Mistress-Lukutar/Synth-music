@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -43,6 +43,8 @@ import com.synth.synthmusic.domain.model.Song
  * @param onNavigateToSongInfo Callback to open song info.
  * @param onNavigateToEditMetadata Callback to open metadata editor.
  * @param onAddToPlaylist Callback to add song to a playlist.
+ * @param onPlayNext Callback to play this song next in the queue.
+ * @param onAddToQueue Callback to append this song to the queue.
  * @param modifier Modifier for styling.
  */
 @Composable
@@ -52,6 +54,8 @@ fun SongListItem(
     onNavigateToSongInfo: ((String) -> Unit)? = null,
     onNavigateToEditMetadata: ((String) -> Unit)? = null,
     onAddToPlaylist: ((String) -> Unit)? = null,
+    onPlayNext: ((String) -> Unit)? = null,
+    onAddToQueue: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -123,11 +127,23 @@ fun SongListItem(
                             onClick = { expanded = false; callback(song.id) }
                         )
                     }
+                    onPlayNext?.let { callback ->
+                        DropdownMenuItem(
+                            text = { Text("Play Next") },
+                            onClick = { expanded = false; callback(song.id) }
+                        )
+                    }
+                    onAddToQueue?.let { callback ->
+                        DropdownMenuItem(
+                            text = { Text("Add to Queue") },
+                            onClick = { expanded = false; callback(song.id) }
+                        )
+                    }
                     onAddToPlaylist?.let { callback ->
                         DropdownMenuItem(
                             text = { Text("Add to Playlist") },
                             onClick = { expanded = false; callback(song.id) },
-                            leadingIcon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null) }
+                            leadingIcon = { Icon(Icons.AutoMirrored.Default.PlaylistAdd, contentDescription = null) }
                         )
                     }
                 }
