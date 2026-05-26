@@ -48,6 +48,9 @@ class SongRepositoryImpl(
 
     override suspend fun deleteAllSongs() = songDao.deleteAll()
 
+    override fun observeFavoriteSongs(): Flow<List<Song>> =
+        songDao.observeFavorites().map { list -> list.map { it.toDomain() } }
+
     override fun searchSongs(query: String): Flow<List<Song>> =
         songDao.search(query).map { list -> list.map { it.toDomain() } }
 }

@@ -173,6 +173,15 @@ fun LibraryScreen(
                         onArtistClick = { }
                     )
                     LibraryTab.Folders -> EmptyTab(text = "Folders")
+                    LibraryTab.Favorites -> SongsTab(
+                        songs = uiState.favoriteSongs,
+                        onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
+                        onNavigateToSongInfo = onNavigateToSongInfo,
+                        onNavigateToEditMetadata = onNavigateToEditMetadata,
+                        onAddToPlaylist = { selectedSongForPlaylist = it },
+                        onPlayNext = { viewModel.playNext(it) },
+                        onAddToQueue = { viewModel.addToQueue(it) }
+                    )
                     LibraryTab.Playlists -> {
                         PlaylistsScreen(
                             onNavigateToPlaylistDetail = onNavigateToPlaylistDetail,
