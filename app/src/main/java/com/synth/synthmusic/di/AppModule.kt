@@ -157,6 +157,14 @@ val appModule = module {
         )
     }
 
+    viewModel { (songIds: List<String>) ->
+        com.synth.synthmusic.ui.metadata.BatchEditViewModel(
+            songIds = songIds,
+            songRepository = get(),
+            batchUpdateMetadataUseCase = get()
+        )
+    }
+
     viewModel { (folderPath: String) ->
         com.synth.synthmusic.ui.folders.FolderDetailViewModel(
             folderPath = folderPath,

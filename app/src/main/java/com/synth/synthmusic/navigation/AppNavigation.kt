@@ -13,6 +13,7 @@ import com.synth.synthmusic.ui.downloads.DownloadsScreen
 import com.synth.synthmusic.ui.equalizer.EqualizerScreen
 import com.synth.synthmusic.ui.folders.FolderDetailScreen
 import com.synth.synthmusic.ui.folders.FoldersScreen
+import com.synth.synthmusic.ui.metadata.BatchEditScreen
 import com.synth.synthmusic.ui.metadata.EditMetadataScreen
 import com.synth.synthmusic.ui.metadata.SongInfoScreen
 import com.synth.synthmusic.ui.playlists.PlaylistDetailScreen
@@ -133,6 +134,13 @@ fun AppNavigation(
             val route = backStackEntry.toRoute<EditMetadataRoute>()
             EditMetadataScreen(
                 songId = route.songId,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable<BatchEditRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<BatchEditRoute>()
+            BatchEditScreen(
+                songIds = route.songIds,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
