@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.synth.synthmusic.ui.library.components.AlbumGridItem
 import com.synth.synthmusic.ui.library.components.ArtistListItem
+import com.synth.synthmusic.ui.library.components.MiniPlayer
 import com.synth.synthmusic.ui.library.components.SongListItem
 import org.koin.androidx.compose.koinViewModel
 
@@ -61,6 +62,7 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val playback by viewModel.currentPlayback.collectAsState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -117,7 +119,15 @@ fun LibraryScreen(
                 }
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = {
+            MiniPlayer(
+                song = uiState.songs.find { it.id == playback.currentSongId },
+                isPlaying = playback.isPlaying,
+                onTogglePlayPause = { viewModel.togglePlayPause() },
+                onExpand = onNavigateToNowPlaying
+            )
+        }
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
             ScrollableTabRow(

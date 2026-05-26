@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.synth.synthmusic.data.local.database.AppDatabase
 import com.synth.synthmusic.data.local.datastore.SettingsDataStore
+import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.data.repository.AlbumRepositoryImpl
 import com.synth.synthmusic.data.repository.ArtistRepositoryImpl
 import com.synth.synthmusic.data.repository.SettingsRepositoryImpl
@@ -14,6 +15,7 @@ import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
 import com.synth.synthmusic.ui.library.LibraryViewModel
+import com.synth.synthmusic.ui.nowplaying.NowPlayingViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
@@ -43,6 +45,7 @@ val appModule = module {
     single<AlbumRepository> { AlbumRepositoryImpl(get()) }
     single<ArtistRepository> { ArtistRepositoryImpl(get()) }
     single<SettingsRepository> { SettingsRepositoryImpl(get()) }
+    single { MediaPlaybackManager(androidContext()) }
 
     single {
         ScanMusicUseCase(
@@ -58,7 +61,15 @@ val appModule = module {
             songRepository = get(),
             albumRepository = get(),
             artistRepository = get(),
-            scanMusicUseCase = get()
+            scanMusicUseCase = get(),
+            playbackManager = get()
+        )
+    }
+
+    viewModel {
+        NowPlayingViewModel(
+            playbackManager = get(),
+            songRepository = get()
         )
     }
 }
