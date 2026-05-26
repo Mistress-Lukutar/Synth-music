@@ -21,5 +21,7 @@ interface SongRepository {
     suspend fun incrementPlayCount(songId: String)
     suspend fun deleteAllSongs()
     fun observeFavoriteSongs(): Flow<List<Song>>
+    fun observeTopSongs(): Flow<List<Song>>
+    fun observeRecentSongs(): Flow<List<Song>>
     fun searchSongs(query: String): Flow<List<Song>>
 }

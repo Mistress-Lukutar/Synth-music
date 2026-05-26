@@ -182,6 +182,24 @@ fun LibraryScreen(
                         onPlayNext = { viewModel.playNext(it) },
                         onAddToQueue = { viewModel.addToQueue(it) }
                     )
+                    LibraryTab.Top -> SongsTab(
+                        songs = uiState.topSongs,
+                        onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
+                        onNavigateToSongInfo = onNavigateToSongInfo,
+                        onNavigateToEditMetadata = onNavigateToEditMetadata,
+                        onAddToPlaylist = { selectedSongForPlaylist = it },
+                        onPlayNext = { viewModel.playNext(it) },
+                        onAddToQueue = { viewModel.addToQueue(it) }
+                    )
+                    LibraryTab.Recent -> SongsTab(
+                        songs = uiState.recentSongs,
+                        onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
+                        onNavigateToSongInfo = onNavigateToSongInfo,
+                        onNavigateToEditMetadata = onNavigateToEditMetadata,
+                        onAddToPlaylist = { selectedSongForPlaylist = it },
+                        onPlayNext = { viewModel.playNext(it) },
+                        onAddToQueue = { viewModel.addToQueue(it) }
+                    )
                     LibraryTab.Playlists -> {
                         PlaylistsScreen(
                             onNavigateToPlaylistDetail = onNavigateToPlaylistDetail,
