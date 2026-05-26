@@ -69,6 +69,7 @@ fun LibraryScreen(
     onNavigateToEditMetadata: (String) -> Unit,
     onNavigateToAlbumDetail: (String, String) -> Unit,
     onNavigateToArtistDetail: (String) -> Unit,
+    onNavigateToFolderDetail: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = koinViewModel()
 ) {
@@ -182,7 +183,7 @@ fun LibraryScreen(
                     )
                     LibraryTab.Folders -> FoldersTab(
                         folders = uiState.folders,
-                        onFolderClick = { /* TODO: navigate to folder detail */ }
+                        onFolderClick = { onNavigateToFolderDetail(it) }
                     )
                     LibraryTab.Favorites -> SongsTab(
                         songs = uiState.favoriteSongs,
