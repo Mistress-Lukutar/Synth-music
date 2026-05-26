@@ -14,8 +14,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.synth.synthmusic.R
 import com.synth.synthmusic.domain.model.Album
 
 /**
@@ -45,6 +47,8 @@ fun AlbumGridItem(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(album.artworkUri)
                     .crossfade(true)
+                    .placeholder(R.drawable.ic_placeholder_artwork)
+                    .error(R.drawable.ic_placeholder_artwork)
                     .build(),
                 contentDescription = "Album art",
                 modifier = Modifier
