@@ -30,6 +30,7 @@ import com.synth.synthmusic.ui.playlists.PlaylistViewModel
 import com.synth.synthmusic.ui.queue.QueueViewModel
 import com.synth.synthmusic.ui.search.SearchViewModel
 import com.synth.synthmusic.ui.settings.SettingsViewModel
+import com.synth.synthmusic.ui.sleeptimer.SleepTimerViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
