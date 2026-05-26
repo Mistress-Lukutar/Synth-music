@@ -100,12 +100,20 @@ fun SongListItem(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Text(
-                text = formatDuration(song.durationMs),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = formatDuration(song.durationMs),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (song.playCount > 0) {
+                    Text(
+                        text = "${song.playCount} plays",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
             Box {
                 IconButton(onClick = { expanded = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "More")
