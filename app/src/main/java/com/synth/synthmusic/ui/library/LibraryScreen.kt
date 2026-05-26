@@ -66,6 +66,7 @@ fun LibraryScreen(
     onNavigateToPlaylistDetail: (Long) -> Unit,
     onNavigateToSongInfo: (String) -> Unit,
     onNavigateToEditMetadata: (String) -> Unit,
+    onNavigateToAlbumDetail: (String, String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = koinViewModel()
 ) {
@@ -171,7 +172,7 @@ fun LibraryScreen(
                     )
                     LibraryTab.Albums -> AlbumsTab(
                         albums = uiState.albums,
-                        onAlbumClick = { }
+                        onAlbumClick = { onNavigateToAlbumDetail(it.title, it.artist) }
                     )
                     LibraryTab.Artists -> ArtistsTab(
                         artists = uiState.artists,
