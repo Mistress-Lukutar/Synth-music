@@ -102,6 +102,13 @@ class NowPlayingViewModel(
                 }
                 _uiState.update { it.copy(isFavorite = newValue) }
             }
+            is NowPlayingEvent.SaveLyrics -> {
+                val songId = _uiState.value.song?.id ?: return
+                viewModelScope.launch {
+                    songRepository.updateSongLyrics(songId, event.lyrics.takeIf { it.isNotBlank() })
+                }
+                _uiState.update { it.copy(song = it.song?.copy(lyrics = event.lyrics)) }
+            }
         }
     }
 

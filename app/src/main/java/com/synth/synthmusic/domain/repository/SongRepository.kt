@@ -19,6 +19,7 @@ interface SongRepository {
     suspend fun updateSongRating(songId: String, rating: Float)
     suspend fun updateSongFavorite(songId: String, isFavorite: Boolean)
     suspend fun incrementPlayCount(songId: String)
+    suspend fun updateSongLyrics(songId: String, lyrics: String?)
     suspend fun deleteAllSongs()
     fun observeFavoriteSongs(): Flow<List<Song>>
     fun observeTopSongs(): Flow<List<Song>>

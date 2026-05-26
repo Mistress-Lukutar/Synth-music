@@ -12,4 +12,5 @@ sealed class NowPlayingEvent {
     data object CycleRepeat : NowPlayingEvent()
     data class UpdateRating(val rating: Float) : NowPlayingEvent()
     data object ToggleFavorite : NowPlayingEvent()
+    data class SaveLyrics(val lyrics: String) : NowPlayingEvent()
 }
