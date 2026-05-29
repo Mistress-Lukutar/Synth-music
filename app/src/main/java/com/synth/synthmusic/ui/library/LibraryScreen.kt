@@ -189,7 +189,7 @@ fun LibraryScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(vertical = 8.dp)
                         ) {
-                            if (uiState.recentSongs.isNotEmpty()) {
+                            if (uiState.recentCollections.isNotEmpty()) {
                                 item {
                                     SectionHeader(title = "Recently Played", onViewAll = {})
                                 }
@@ -199,12 +199,21 @@ fun LibraryScreen(
                                         modifier = Modifier.padding(bottom = 8.dp)
                                     ) {
                                         itemsIndexed(
-                                            uiState.recentSongs,
-                                            key = { _, song -> song.id }
-                                        ) { index, song ->
+                                            uiState.recentCollections,
+                                            key = { _, collection -> collection.id }
+                                        ) { _, collection ->
                                             RecentlyPlayedCard(
-                                                song = song,
-                                                onClick = { viewModel.playRecentSongAt(index) }
+                                                collection = collection,
+                                                onClick = {
+                                                    when (collection.type) {
+                                                        com.synth.synthmusic.domain.model.CollectionType.ALBUM ->
+                                                            onNavigateToAlbumDetail(collection.name, collection.extra ?: "")
+                                                        com.synth.synthmusic.domain.model.CollectionType.ARTIST ->
+                                                            onNavigateToArtistDetail(collection.name)
+                                                        com.synth.synthmusic.domain.model.CollectionType.PLAYLIST ->
+                                                            onNavigateToPlaylistDetail(collection.identifier.toLong())
+                                                    }
+                                                }
                                             )
                                         }
                                     }
@@ -252,7 +261,6 @@ fun LibraryScreen(
 
                     LibraryTab.Favorites -> SongsTab(
                         songs = uiState.favoriteSongs,
-                        recentSongs = emptyList(),
                         onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
@@ -265,7 +273,6 @@ fun LibraryScreen(
 
                     LibraryTab.Top -> SongsTab(
                         songs = uiState.topSongs,
-                        recentSongs = emptyList(),
                         onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
@@ -278,7 +285,6 @@ fun LibraryScreen(
 
                     LibraryTab.Recent -> SongsTab(
                         songs = uiState.recentSongs,
-                        recentSongs = emptyList(),
                         onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
@@ -291,7 +297,6 @@ fun LibraryScreen(
 
                     LibraryTab.History -> SongsTab(
                         songs = uiState.historySongs,
-                        recentSongs = emptyList(),
                         onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
@@ -329,7 +334,6 @@ fun LibraryScreen(
         val song = uiState.songs.find { it.id == songId }
             ?: uiState.favoriteSongs.find { it.id == songId }
             ?: uiState.topSongs.find { it.id == songId }
-            ?: uiState.recentSongs.find { it.id == songId }
             ?: uiState.historySongs.find { it.id == songId }
         ShareSongSheet(
             song = song,
@@ -341,7 +345,6 @@ fun LibraryScreen(
 @Composable
 private fun SongsTab(
     songs: List<com.synth.synthmusic.domain.model.Song>,
-    recentSongs: List<com.synth.synthmusic.domain.model.Song>,
     onSongClick: (com.synth.synthmusic.domain.model.Song) -> Unit,
     onNavigateToSongInfo: (String) -> Unit,
     onNavigateToEditMetadata: (String) -> Unit,
@@ -356,25 +359,6 @@ private fun SongsTab(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
-        if (recentSongs.isNotEmpty()) {
-            item {
-                SectionHeader(title = "Recently Played", onViewAll = {})
-            }
-            item {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    modifier = Modifier.padding(bottom = 8.dp)
-                ) {
-                    items(recentSongs, key = { it.id }) { song ->
-                        RecentlyPlayedCard(
-                            song = song,
-                            onClick = { onSongClick(song) }
-                        )
-                    }
-                }
-            }
-        }
-
         if (songs.isNotEmpty()) {
             item {
                 SectionHeader(title = "Songs", onViewAll = {})

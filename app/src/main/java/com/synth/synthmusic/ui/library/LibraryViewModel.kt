@@ -7,6 +7,7 @@ import com.synth.synthmusic.domain.model.Playlist
 import com.synth.synthmusic.domain.repository.AlbumRepository
 import com.synth.synthmusic.domain.repository.ArtistRepository
 import com.synth.synthmusic.domain.repository.PlaylistRepository
+import com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +29,8 @@ class LibraryViewModel(
     private val artistRepository: ArtistRepository,
     private val playlistRepository: PlaylistRepository,
     private val scanMusicUseCase: ScanMusicUseCase,
-    private val playbackManager: MediaPlaybackManager
+    private val playbackManager: MediaPlaybackManager,
+    private val recentlyPlayedRepository: RecentlyPlayedCollectionRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LibraryUiState())
@@ -67,6 +69,10 @@ class LibraryViewModel(
 
         songRepository.observeRecentSongs()
             .onEach { list -> _uiState.update { it.copy(recentSongs = list) } }
+            .launchIn(viewModelScope)
+
+        recentlyPlayedRepository.observeRecent()
+            .onEach { list -> _uiState.update { it.copy(recentCollections = list) } }
             .launchIn(viewModelScope)
 
         songRepository.observeHistory()
@@ -135,13 +141,6 @@ class LibraryViewModel(
 
     fun playQueueItem(index: Int) {
         playbackManager.playQueueItem(index)
-    }
-
-    fun playRecentSongAt(index: Int) {
-        val tracks = _uiState.value.recentSongs
-        if (index in tracks.indices) {
-            playbackManager.playSongs(tracks, index)
-        }
     }
 
     private fun playSong(songId: String) {
