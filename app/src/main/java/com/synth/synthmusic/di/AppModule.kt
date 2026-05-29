@@ -128,7 +128,8 @@ val appModule = module {
     viewModel { (playlistId: Long) ->
         PlaylistDetailViewModel(
             playlistId = playlistId,
-            playlistRepository = get()
+            playlistRepository = get(),
+            playbackManager = get()
         )
     }
 
@@ -169,7 +170,8 @@ val appModule = module {
     viewModel { (folderPath: String) ->
         com.synth.synthmusic.ui.folders.FolderDetailViewModel(
             folderPath = folderPath,
-            songRepository = get()
+            songRepository = get(),
+            playbackManager = get()
         )
     }
 
@@ -186,7 +188,10 @@ val appModule = module {
     }
 
     viewModel {
-        SearchViewModel(songRepository = get())
+        SearchViewModel(
+            songRepository = get(),
+            playbackManager = get()
+        )
     }
 
     viewModel {

@@ -2,6 +2,7 @@ package com.synth.synthmusic.ui.playlists
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.domain.model.Playlist
 import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.domain.repository.PlaylistRepository
@@ -17,7 +18,8 @@ import kotlinx.coroutines.launch
  */
 class PlaylistDetailViewModel(
     private val playlistId: Long,
-    private val playlistRepository: PlaylistRepository
+    private val playlistRepository: PlaylistRepository,
+    private val playbackManager: MediaPlaybackManager
 ) : ViewModel() {
 
     private val _playlist = MutableStateFlow<Playlist?>(null)
@@ -36,6 +38,27 @@ class PlaylistDetailViewModel(
         playlistRepository.observePlaylistSongs(playlistId)
             .onEach { list -> _songs.value = list }
             .launchIn(viewModelScope)
+    }
+
+    fun playSongAt(index: Int) {
+        val tracks = _songs.value
+        if (index in tracks.indices) {
+            playbackManager.playSongs(tracks, index)
+        }
+    }
+
+    fun playAll() {
+        val tracks = _songs.value
+        if (tracks.isNotEmpty()) {
+            playbackManager.playSongs(tracks, 0)
+        }
+    }
+
+    fun shuffleAll() {
+        val tracks = _songs.value.shuffled()
+        if (tracks.isNotEmpty()) {
+            playbackManager.playSongs(tracks, 0)
+        }
     }
 
     fun removeSong(songId: String) {

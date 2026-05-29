@@ -137,6 +137,13 @@ class LibraryViewModel(
         playbackManager.playQueueItem(index)
     }
 
+    fun playRecentSongAt(index: Int) {
+        val tracks = _uiState.value.recentSongs
+        if (index in tracks.indices) {
+            playbackManager.playSongs(tracks, index)
+        }
+    }
+
     private fun playSong(songId: String) {
         viewModelScope.launch {
             val songs = songRepository.observeAllSongs().first()

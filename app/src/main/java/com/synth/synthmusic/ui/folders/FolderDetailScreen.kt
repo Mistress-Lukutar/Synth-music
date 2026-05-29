@@ -1,11 +1,20 @@
 package com.synth.synthmusic.ui.folders
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,7 +38,7 @@ import org.koin.core.parameter.parametersOf
 fun FolderDetailScreen(
     folderPath: String,
     onNavigateBack: () -> Unit,
-    onSongClick: (com.synth.synthmusic.domain.model.Song) -> Unit,
+    onNavigateToNowPlaying: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FolderDetailViewModel = koinViewModel { parametersOf(folderPath) }
 ) {
@@ -54,12 +63,47 @@ fun FolderDetailScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(innerPadding),
+            contentPadding = PaddingValues(vertical = 8.dp)
         ) {
-            items(songs, key = { it.id }) { song ->
+            item {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("${songs.size} tracks")
+                    Spacer(modifier = Modifier.padding(vertical = 8.dp))
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = {
+                                viewModel.playAll()
+                                onNavigateToNowPlaying()
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Play All")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                viewModel.shuffleAll()
+                                onNavigateToNowPlaying()
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Shuffle, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Shuffle")
+                        }
+                    }
+                }
+            }
+            itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
                 SongListItem(
                     song = song,
-                    onClick = { onSongClick(song) }
+                    onClick = {
+                        viewModel.playSongAt(index)
+                        onNavigateToNowPlaying()
+                    }
                 )
             }
         }

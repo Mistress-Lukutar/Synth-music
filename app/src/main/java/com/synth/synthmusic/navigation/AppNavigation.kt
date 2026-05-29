@@ -108,7 +108,8 @@ fun AppNavigation(
         }
         composable<SearchRoute> {
             SearchScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) }
             )
         }
         composable<SettingsRoute> {
@@ -131,7 +132,7 @@ fun AppNavigation(
             FolderDetailScreen(
                 folderPath = route.folderPath,
                 onNavigateBack = { navController.popBackStack() },
-                onSongClick = { navController.navigate(NowPlayingRoute) }
+                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) }
             )
         }
         composable<AlbumDetailRoute> { backStackEntry ->
@@ -140,9 +141,7 @@ fun AppNavigation(
                 albumTitle = route.albumTitle,
                 albumArtist = route.albumArtist,
                 onNavigateBack = { navController.popBackStack() },
-                onPlayAll = { navController.navigate(NowPlayingRoute) },
-                onShuffleAll = { navController.navigate(NowPlayingRoute) },
-                onSongClick = { navController.navigate(NowPlayingRoute) }
+                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) }
             )
         }
         composable<ArtistDetailRoute> { backStackEntry ->
@@ -150,9 +149,7 @@ fun AppNavigation(
             ArtistDetailScreen(
                 artistName = route.artistName,
                 onNavigateBack = { navController.popBackStack() },
-                onPlayAll = { navController.navigate(NowPlayingRoute) },
-                onShuffleAll = { navController.navigate(NowPlayingRoute) },
-                onSongClick = { navController.navigate(NowPlayingRoute) }
+                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) }
             )
         }
         composable<SongInfoRoute> { backStackEntry ->
@@ -190,7 +187,8 @@ fun AppNavigation(
             val route = backStackEntry.toRoute<PlaylistDetailRoute>()
             PlaylistDetailScreen(
                 playlistId = route.playlistId,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) }
             )
         }
     }
