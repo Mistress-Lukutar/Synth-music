@@ -31,6 +31,13 @@ class AlbumDetailViewModel(
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     val songs: StateFlow<List<Song>> = _songs.asStateFlow()
 
+    fun playSongAt(index: Int) {
+        val tracks = _songs.value
+        if (index in tracks.indices) {
+            playbackManager.playSongs(tracks, index)
+        }
+    }
+
     fun playAll() {
         viewModelScope.launch {
             val tracks = songRepository.observeSongsByAlbum(albumTitle).first()

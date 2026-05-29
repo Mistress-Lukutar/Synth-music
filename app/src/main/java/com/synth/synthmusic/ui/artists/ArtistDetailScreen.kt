@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
@@ -40,9 +40,7 @@ import org.koin.core.parameter.parametersOf
 fun ArtistDetailScreen(
     artistName: String,
     onNavigateBack: () -> Unit,
-    onPlayAll: () -> Unit,
-    onShuffleAll: () -> Unit,
-    onSongClick: (com.synth.synthmusic.domain.model.Song) -> Unit,
+    onNavigateToNowPlaying: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ArtistDetailViewModel = koinViewModel { parametersOf(artistName) }
 ) {
@@ -88,7 +86,7 @@ fun ArtistDetailScreen(
                         Button(
                             onClick = {
                                 viewModel.playAll()
-                                onPlayAll()
+                                onNavigateToNowPlaying()
                             },
                             modifier = Modifier.weight(1f)
                         ) {
@@ -100,7 +98,7 @@ fun ArtistDetailScreen(
                         Button(
                             onClick = {
                                 viewModel.shuffleAll()
-                                onShuffleAll()
+                                onNavigateToNowPlaying()
                             },
                             modifier = Modifier.weight(1f)
                         ) {
@@ -111,10 +109,13 @@ fun ArtistDetailScreen(
                     }
                 }
             }
-            items(songs, key = { it.id }) { song ->
+            itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
                 SongListItem(
                     song = song,
-                    onClick = { onSongClick(song) }
+                    onClick = {
+                        viewModel.playSongAt(index)
+                        onNavigateToNowPlaying()
+                    }
                 )
             }
         }

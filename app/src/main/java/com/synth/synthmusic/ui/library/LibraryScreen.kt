@@ -198,10 +198,16 @@ fun LibraryScreen(
                                         contentPadding = PaddingValues(horizontal = 16.dp),
                                         modifier = Modifier.padding(bottom = 8.dp)
                                     ) {
-                                        items(uiState.recentSongs, key = { it.id }) { song ->
+                                        itemsIndexed(
+                                            uiState.recentSongs,
+                                            key = { _, song -> song.id }
+                                        ) { index, song ->
                                             RecentlyPlayedCard(
                                                 song = song,
-                                                onClick = { viewModel.onEvent(LibraryEvent.PlaySong(song.id)) }
+                                                onClick = {
+                                                    viewModel.playRecentSongAt(index)
+                                                    onNavigateToNowPlaying()
+                                                }
                                             )
                                         }
                                     }

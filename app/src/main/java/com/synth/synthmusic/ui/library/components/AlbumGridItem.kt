@@ -1,5 +1,6 @@
 package com.synth.synthmusic.ui.library.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,6 +36,7 @@ fun AlbumGridItem(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .clickable { onClick() }
             .padding(8.dp)
     ) {
         AsyncImage(

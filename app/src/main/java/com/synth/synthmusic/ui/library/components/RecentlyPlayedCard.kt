@@ -1,6 +1,7 @@
 package com.synth.synthmusic.ui.library.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -40,7 +41,9 @@ fun RecentlyPlayedCard(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier.padding(end = 12.dp),
+        modifier = modifier
+            .clickable { onClick() }
+            .padding(end = 12.dp),
         horizontalAlignment = Alignment.Start
     ) {
         Box(

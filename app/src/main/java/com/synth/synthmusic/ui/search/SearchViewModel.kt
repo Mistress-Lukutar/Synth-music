@@ -19,7 +19,8 @@ import kotlinx.coroutines.flow.update
  */
 @OptIn(FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SearchViewModel(
-    private val songRepository: SongRepository
+    private val songRepository: SongRepository,
+    private val playbackManager: com.synth.synthmusic.data.media.MediaPlaybackManager
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -44,5 +45,12 @@ class SearchViewModel(
 
     fun onQueryChanged(newQuery: String) {
         _query.value = newQuery
+    }
+
+    fun playSearchResultAt(index: Int) {
+        val tracks = _results.value
+        if (index in tracks.indices) {
+            playbackManager.playSongs(tracks, index)
+        }
     }
 }
