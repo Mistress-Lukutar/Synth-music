@@ -66,6 +66,10 @@ class PlaylistRepositoryImpl(
     override suspend fun removeSongFromPlaylist(playlistId: Long, songId: String) {
         playlistDao.deleteSong(playlistId, songId)
     }
+
+    override suspend fun isSongInPlaylist(playlistId: Long, songId: String): Boolean {
+        return playlistDao.hasSong(playlistId, songId)
+    }
 }
 
 private fun PlaylistEntity.toDomain(): Playlist = Playlist(
