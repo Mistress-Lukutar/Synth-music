@@ -62,7 +62,6 @@ import com.synth.synthmusic.ui.library.components.ArtistListItem
 import com.synth.synthmusic.ui.library.components.FoldersTab
 import com.synth.synthmusic.ui.library.components.RecentlyPlayedCard
 import com.synth.synthmusic.ui.library.components.SongListItem
-import com.synth.synthmusic.ui.playlists.PlaylistsScreen
 import com.synth.synthmusic.ui.share.ShareSongSheet
 import org.koin.androidx.compose.koinViewModel
 
@@ -307,25 +306,15 @@ fun LibraryScreen(
                         currentSongId = playback.currentSongId
                     )
 
-                    LibraryTab.Playlists -> {
-                        PlaylistsScreen(
-                            onNavigateToPlaylistDetail = onNavigateToPlaylistDetail,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
+
                 }
             }
         }
     }
 
     selectedSongForPlaylist?.let { songId ->
-        val playlists by viewModel.playlists.collectAsState()
         AddToPlaylistDialog(
-            playlists = playlists,
-            onConfirm = { playlistId ->
-                viewModel.addSongToPlaylist(playlistId, songId)
-                selectedSongForPlaylist = null
-            },
+            songId = songId,
             onDismiss = { selectedSongForPlaylist = null }
         )
     }

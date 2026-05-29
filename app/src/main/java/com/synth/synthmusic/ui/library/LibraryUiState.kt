@@ -26,5 +26,5 @@ data class LibraryUiState(
 )
 
 enum class LibraryTab {
-    Songs, Albums, Artists, Folders, Playlists, Favorites, Top, Recent, History
+    Songs, Albums, Artists, Folders, Favorites, Top, Recent, History
 }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
@@ -49,6 +50,7 @@ import com.synth.synthmusic.domain.model.Song
  * @param onPlayNext Callback to play this song next in the queue.
  * @param onAddToQueue Callback to append this song to the queue.
  * @param onShare Callback to share the song.
+ * @param onRemoveFromPlaylist Callback to remove the song from the current playlist.
  * @param isCurrent Whether this song is the currently playing track.
  * @param modifier Modifier for styling.
  */
@@ -62,6 +64,7 @@ fun SongListItem(
     onPlayNext: ((String) -> Unit)? = null,
     onAddToQueue: ((String) -> Unit)? = null,
     onShare: ((String) -> Unit)? = null,
+    onRemoveFromPlaylist: ((String) -> Unit)? = null,
     isCurrent: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -113,52 +116,69 @@ fun SongListItem(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(end = 4.dp)
         )
-        Box {
-            IconButton(onClick = { expanded = true }, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.MoreVert, contentDescription = "More")
+        val hasMenu = listOf(
+            onNavigateToSongInfo,
+            onNavigateToEditMetadata,
+            onPlayNext,
+            onAddToQueue,
+            onShare,
+            onAddToPlaylist
+        ).any { it != null }
+
+        if (hasMenu) {
+            Box {
+                IconButton(onClick = { expanded = true }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "More")
+                }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    onNavigateToSongInfo?.let { callback ->
+                        DropdownMenuItem(
+                            text = { Text("Song Info") },
+                            onClick = { expanded = false; callback(song.id) },
+                            leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) }
+                        )
+                    }
+                    onNavigateToEditMetadata?.let { callback ->
+                        DropdownMenuItem(
+                            text = { Text("Edit Metadata") },
+                            onClick = { expanded = false; callback(song.id) }
+                        )
+                    }
+                    onPlayNext?.let { callback ->
+                        DropdownMenuItem(
+                            text = { Text("Play Next") },
+                            onClick = { expanded = false; callback(song.id) }
+                        )
+                    }
+                    onAddToQueue?.let { callback ->
+                        DropdownMenuItem(
+                            text = { Text("Add to Queue") },
+                            onClick = { expanded = false; callback(song.id) }
+                        )
+                    }
+                    onShare?.let { callback ->
+                        DropdownMenuItem(
+                            text = { Text("Share") },
+                            onClick = { expanded = false; callback(song.id) }
+                        )
+                    }
+                    onAddToPlaylist?.let { callback ->
+                        DropdownMenuItem(
+                            text = { Text("Add to Playlist") },
+                            onClick = { expanded = false; callback(song.id) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Default.PlaylistAdd, contentDescription = null) }
+                        )
+                    }
+                }
             }
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                onNavigateToSongInfo?.let { callback ->
-                    DropdownMenuItem(
-                        text = { Text("Song Info") },
-                        onClick = { expanded = false; callback(song.id) },
-                        leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) }
-                    )
-                }
-                onNavigateToEditMetadata?.let { callback ->
-                    DropdownMenuItem(
-                        text = { Text("Edit Metadata") },
-                        onClick = { expanded = false; callback(song.id) }
-                    )
-                }
-                onPlayNext?.let { callback ->
-                    DropdownMenuItem(
-                        text = { Text("Play Next") },
-                        onClick = { expanded = false; callback(song.id) }
-                    )
-                }
-                onAddToQueue?.let { callback ->
-                    DropdownMenuItem(
-                        text = { Text("Add to Queue") },
-                        onClick = { expanded = false; callback(song.id) }
-                    )
-                }
-                onShare?.let { callback ->
-                    DropdownMenuItem(
-                        text = { Text("Share") },
-                        onClick = { expanded = false; callback(song.id) }
-                    )
-                }
-                onAddToPlaylist?.let { callback ->
-                    DropdownMenuItem(
-                        text = { Text("Add to Playlist") },
-                        onClick = { expanded = false; callback(song.id) },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Default.PlaylistAdd, contentDescription = null) }
-                    )
-                }
+        }
+
+        onRemoveFromPlaylist?.let { callback ->
+            IconButton(onClick = { callback(song.id) }, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Delete, contentDescription = "Remove")
             }
         }
     }

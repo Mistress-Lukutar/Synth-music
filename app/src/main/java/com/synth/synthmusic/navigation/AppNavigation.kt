@@ -109,7 +109,9 @@ fun AppNavigation(
         composable<SearchRoute> {
             SearchScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) }
+                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
+                onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
+                onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) }
             )
         }
         composable<SettingsRoute> {
@@ -132,7 +134,9 @@ fun AppNavigation(
             FolderDetailScreen(
                 folderPath = route.folderPath,
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) }
+                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
+                onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
+                onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) }
             )
         }
         composable<AlbumDetailRoute> { backStackEntry ->
@@ -141,7 +145,9 @@ fun AppNavigation(
                 albumTitle = route.albumTitle,
                 albumArtist = route.albumArtist,
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) }
+                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
+                onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
+                onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) }
             )
         }
         composable<ArtistDetailRoute> { backStackEntry ->
@@ -149,7 +155,9 @@ fun AppNavigation(
             ArtistDetailScreen(
                 artistName = route.artistName,
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) }
+                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
+                onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
+                onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) }
             )
         }
         composable<SongInfoRoute> { backStackEntry ->
@@ -188,7 +196,9 @@ fun AppNavigation(
             PlaylistDetailScreen(
                 playlistId = route.playlistId,
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) }
+                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
+                onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
+                onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) }
             )
         }
     }

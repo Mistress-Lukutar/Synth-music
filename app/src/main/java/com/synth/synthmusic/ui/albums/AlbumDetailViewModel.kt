@@ -63,6 +63,16 @@ class AlbumDetailViewModel(
         }
     }
 
+    fun playNext(songId: String) {
+        val song = _songs.value.find { it.id == songId } ?: return
+        playbackManager.playNext(song)
+    }
+
+    fun addToQueue(songId: String) {
+        val song = _songs.value.find { it.id == songId } ?: return
+        playbackManager.addToQueue(song)
+    }
+
     private fun recordAlbumPlayed() {
         val a = _album.value ?: return
         viewModelScope.launch {

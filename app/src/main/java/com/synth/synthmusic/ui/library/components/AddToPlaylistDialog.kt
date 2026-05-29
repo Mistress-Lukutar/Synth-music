@@ -7,23 +7,34 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.synth.synthmusic.domain.model.Playlist
+import com.synth.synthmusic.domain.repository.PlaylistRepository
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 /**
- * Dialog for picking a playlist to add a song to.
+ * Self-contained dialog for adding a song to a playlist.
  *
- * @param playlists Available playlists.
- * @param onConfirm Callback with selected playlist ID.
+ * Fetches the playlist list internally and performs the add operation
+ * without requiring the caller to supply playlists or a confirm callback.
+ *
+ * @param songId ID of the song to add.
  * @param onDismiss Dismiss callback.
+ * @param playlistRepository Injected playlist repository.
  */
 @Composable
 fun AddToPlaylistDialog(
-    playlists: List<Playlist>,
-    onConfirm: (Long) -> Unit,
-    onDismiss: () -> Unit
+    songId: String,
+    onDismiss: () -> Unit,
+    playlistRepository: PlaylistRepository = koinInject()
 ) {
+    val playlists by playlistRepository.observeAllPlaylists().collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add to Playlist") },
@@ -31,7 +42,12 @@ fun AddToPlaylistDialog(
             LazyColumn {
                 items(playlists, key = { it.id }) { playlist ->
                     TextButton(
-                        onClick = { onConfirm(playlist.id); onDismiss() },
+                        onClick = {
+                            scope.launch {
+                                playlistRepository.addSongToPlaylist(playlist.id, songId)
+                            }
+                            onDismiss()
+                        },
                         modifier = Modifier.padding(vertical = 4.dp)
                     ) {
                         Text(playlist.name)
