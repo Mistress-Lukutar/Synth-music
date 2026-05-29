@@ -16,7 +16,22 @@ class RecentlyPlayedCollectionRepositoryImpl(
 ) : RecentlyPlayedCollectionRepository {
 
     override suspend fun recordPlayed(collection: RecentlyPlayedCollection) {
-        dao.insert(collection.toEntity())
+        val existing = dao.findByTypeAndIdentifier(
+            type = collection.type.name.lowercase(),
+            identifier = collection.identifier
+        )
+        if (existing != null) {
+            dao.update(
+                existing.copy(
+                    name = collection.name,
+                    extra = collection.extra,
+                    artworkUri = collection.artworkUri,
+                    playedAt = collection.playedAt
+                )
+            )
+        } else {
+            dao.insert(collection.toEntity())
+        }
         dao.trimOld()
     }
 
