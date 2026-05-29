@@ -49,4 +49,14 @@ class FolderDetailViewModel(
             playbackManager.playSongs(tracks, 0)
         }
     }
+
+    fun playNext(songId: String) {
+        val song = _songs.value.find { it.id == songId } ?: return
+        playbackManager.playNext(song)
+    }
+
+    fun addToQueue(songId: String) {
+        val song = _songs.value.find { it.id == songId } ?: return
+        playbackManager.addToQueue(song)
+    }
 }

@@ -1,9 +1,17 @@
 package com.synth.synthmusic.ui.playlists
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
@@ -21,13 +29,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.synth.synthmusic.ui.playlists.components.PlaylistItem
+import com.synth.synthmusic.R
+import com.synth.synthmusic.ui.playlists.components.PlaylistGridCard
 import org.koin.androidx.compose.koinViewModel
 
 /**
- * Playlist list screen with create, rename, and delete actions.
+ * Playlist list screen with grid cards, create, rename, and delete actions.
+ *
+ * Displays playlists in a 2-column grid with the app logo header.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,7 +55,19 @@ fun PlaylistsScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(title = { Text("Playlists") })
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_logo_yellow),
+                            contentDescription = "Synth",
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Playlists")
+                    }
+                }
+            )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { viewModel.openCreateDialog() }) {
@@ -50,18 +75,24 @@ fun PlaylistsScreen(
             }
         }
     ) { innerPadding ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            items(playlists, key = { it.id }) { playlist ->
-                PlaylistItem(
-                    playlist = playlist,
-                    onClick = { onNavigateToPlaylistDetail(playlist.id) },
-                    onRename = { viewModel.renamePlaylist(playlist.id, it) },
-                    onDelete = { viewModel.deletePlaylist(playlist.id) }
-                )
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(8.dp)
+            ) {
+                items(playlists, key = { it.id }) { playlist ->
+                    PlaylistGridCard(
+                        playlist = playlist,
+                        onClick = { onNavigateToPlaylistDetail(playlist.id) },
+                        onRename = { viewModel.renamePlaylist(playlist.id, it) },
+                        onDelete = { viewModel.deletePlaylist(playlist.id) }
+                    )
+                }
             }
         }
     }

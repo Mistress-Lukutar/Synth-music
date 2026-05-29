@@ -25,9 +25,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
 import com.synth.synthmusic.ui.library.components.SongListItem
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -41,11 +45,14 @@ fun ArtistDetailScreen(
     artistName: String,
     onNavigateBack: () -> Unit,
     onNavigateToNowPlaying: () -> Unit,
+    onNavigateToSongInfo: (String) -> Unit,
+    onNavigateToEditMetadata: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ArtistDetailViewModel = koinViewModel { parametersOf(artistName) }
 ) {
     val artist by viewModel.artist.collectAsState()
     val songs by viewModel.songs.collectAsState()
+    var selectedSongForPlaylist by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -106,9 +113,21 @@ fun ArtistDetailScreen(
             itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
                 SongListItem(
                     song = song,
-                    onClick = { viewModel.playSongAt(index) }
+                    onClick = { viewModel.playSongAt(index) },
+                    onNavigateToSongInfo = onNavigateToSongInfo,
+                    onNavigateToEditMetadata = onNavigateToEditMetadata,
+                    onAddToPlaylist = { selectedSongForPlaylist = it },
+                    onPlayNext = { viewModel.playNext(it) },
+                    onAddToQueue = { viewModel.addToQueue(it) }
                 )
             }
         }
+    }
+
+    selectedSongForPlaylist?.let { songId ->
+        AddToPlaylistDialog(
+            songId = songId,
+            onDismiss = { selectedSongForPlaylist = null }
+        )
     }
 }
