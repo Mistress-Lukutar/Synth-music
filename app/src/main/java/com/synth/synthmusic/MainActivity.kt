@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.synth.synthmusic.data.local.datastore.SettingsDataStore
+import com.synth.synthmusic.domain.model.AppSettings
 import com.synth.synthmusic.domain.model.ThemeMode
 import com.synth.synthmusic.navigation.AppNavigation
 import com.synth.synthmusic.ui.theme.SynthMusicTheme
@@ -31,15 +32,15 @@ class MainActivity : ComponentActivity() {
         startService(Intent(this, com.synth.synthmusic.service.PlaybackService::class.java))
         enableEdgeToEdge()
         setContent {
-            val settings by settingsDataStore.settings.collectAsState(initial = null)
-            val darkTheme = when (settings?.theme) {
+            val settings by settingsDataStore.settings.collectAsState(initial = AppSettings())
+            val darkTheme = when (settings.theme) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
-                ThemeMode.SYSTEM, null -> null // follow system
+                ThemeMode.SYSTEM -> null // follow system
             }
             SynthMusicTheme(
                 darkTheme = darkTheme,
-                accentColor = settings?.accentColor
+                accentColor = settings.accentColor
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
