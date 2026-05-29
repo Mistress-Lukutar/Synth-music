@@ -7,6 +7,7 @@ import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.domain.repository.SongRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.io.File
 
 /**
  * Implementation of [SongRepository] using Room.
@@ -69,7 +70,12 @@ class SongRepositoryImpl(
     override fun observeHistory(): Flow<List<Song>> =
         songDao.observeHistory().map { list -> list.map { it.toDomain() } }
 
-    override fun observeFolders(): Flow<List<String>> = songDao.observeFolders()
+    override fun observeFolders(): Flow<List<String>> = observeAllSongs()
+        .map { songs ->
+            songs.mapNotNull { File(it.path).parentFile?.absolutePath }
+                .distinct()
+                .sorted()
+        }
 
     override fun searchSongs(query: String): Flow<List<Song>> =
         songDao.search(query).map { list -> list.map { it.toDomain() } }
