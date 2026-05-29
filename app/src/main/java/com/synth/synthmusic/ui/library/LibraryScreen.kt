@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
@@ -183,18 +184,53 @@ fun LibraryScreen(
             }
             Box(modifier = Modifier.fillMaxSize()) {
                 when (uiState.selectedTab) {
-                    LibraryTab.Songs -> SongsTab(
-                        songs = uiState.songs,
-                        recentSongs = uiState.recentSongs,
-                        onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
-                        onNavigateToSongInfo = onNavigateToSongInfo,
-                        onNavigateToEditMetadata = onNavigateToEditMetadata,
-                        onAddToPlaylist = { selectedSongForPlaylist = it },
-                        onPlayNext = { viewModel.playNext(it) },
-                        onAddToQueue = { viewModel.addToQueue(it) },
-                        onShare = { selectedSongForShare = it },
-                        currentSongId = playback.currentSongId
-                    )
+                    LibraryTab.Songs -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(vertical = 8.dp)
+                        ) {
+                            if (uiState.recentSongs.isNotEmpty()) {
+                                item {
+                                    SectionHeader(title = "Recently Played", onViewAll = {})
+                                }
+                                item {
+                                    LazyRow(
+                                        contentPadding = PaddingValues(horizontal = 16.dp),
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                    ) {
+                                        items(uiState.recentSongs, key = { it.id }) { song ->
+                                            RecentlyPlayedCard(
+                                                song = song,
+                                                onClick = { viewModel.onEvent(LibraryEvent.PlaySong(song.id)) }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (uiState.queueSongs.isNotEmpty()) {
+                                item {
+                                    SectionHeader(title = "Queue", onViewAll = {})
+                                }
+                                itemsIndexed(
+                                    items = uiState.queueSongs,
+                                    key = { _, song -> song.id }
+                                ) { index, song ->
+                                    SongListItem(
+                                        song = song,
+                                        onClick = { viewModel.playQueueItem(index) },
+                                        onNavigateToSongInfo = onNavigateToSongInfo,
+                                        onNavigateToEditMetadata = onNavigateToEditMetadata,
+                                        onAddToPlaylist = { selectedSongForPlaylist = it },
+                                        onPlayNext = { viewModel.playNext(it) },
+                                        onAddToQueue = { viewModel.addToQueue(it) },
+                                        onShare = { selectedSongForShare = it },
+                                        isCurrent = song.id == playback.currentSongId
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     LibraryTab.Albums -> AlbumsTab(
                         albums = uiState.albums,
