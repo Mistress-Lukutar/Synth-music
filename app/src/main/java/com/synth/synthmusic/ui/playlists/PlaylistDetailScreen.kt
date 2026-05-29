@@ -82,10 +82,7 @@ fun PlaylistDetailScreen(
                     Spacer(modifier = Modifier.padding(vertical = 8.dp))
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Button(
-                            onClick = {
-                                viewModel.playAll()
-                                onNavigateToNowPlaying()
-                            },
+                            onClick = { viewModel.playAll() },
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(Icons.Default.PlayArrow, contentDescription = null)
@@ -94,10 +91,7 @@ fun PlaylistDetailScreen(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
-                            onClick = {
-                                viewModel.shuffleAll()
-                                onNavigateToNowPlaying()
-                            },
+                            onClick = { viewModel.shuffleAll() },
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(Icons.Default.Shuffle, contentDescription = null)
@@ -113,7 +107,6 @@ fun PlaylistDetailScreen(
                         .fillMaxWidth()
                         .clickable {
                             viewModel.playSongAt(index)
-                            onNavigateToNowPlaying()
                         }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically

@@ -72,10 +72,7 @@ fun FolderDetailScreen(
                     Spacer(modifier = Modifier.padding(vertical = 8.dp))
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Button(
-                            onClick = {
-                                viewModel.playAll()
-                                onNavigateToNowPlaying()
-                            },
+                            onClick = { viewModel.playAll() },
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(Icons.Default.PlayArrow, contentDescription = null)
@@ -84,10 +81,7 @@ fun FolderDetailScreen(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
-                            onClick = {
-                                viewModel.shuffleAll()
-                                onNavigateToNowPlaying()
-                            },
+                            onClick = { viewModel.shuffleAll() },
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(Icons.Default.Shuffle, contentDescription = null)
@@ -100,10 +94,7 @@ fun FolderDetailScreen(
             itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
                 SongListItem(
                     song = song,
-                    onClick = {
-                        viewModel.playSongAt(index)
-                        onNavigateToNowPlaying()
-                    }
+                    onClick = { viewModel.playSongAt(index) }
                 )
             }
         }
