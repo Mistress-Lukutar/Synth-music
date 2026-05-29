@@ -6,6 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.synth.synthmusic.ui.home.MainScreen
 import com.synth.synthmusic.ui.library.LibraryScreen
 import com.synth.synthmusic.ui.nowplaying.NowPlayingScreen
 import com.synth.synthmusic.ui.bookmarks.BookmarksScreen
@@ -22,6 +23,7 @@ import com.synth.synthmusic.ui.search.SearchScreen
 import com.synth.synthmusic.ui.settings.SettingsScreen
 import com.synth.synthmusic.ui.albums.AlbumDetailScreen
 import com.synth.synthmusic.ui.artists.ArtistDetailScreen
+import com.synth.synthmusic.ui.splash.SplashScreen
 import com.synth.synthmusic.ui.visualizer.VisualizerScreen
 
 /**
@@ -37,14 +39,23 @@ fun AppNavigation(
 ) {
     NavHost(
         navController = navController,
-        startDestination = LibraryRoute,
+        startDestination = SplashRoute,
         modifier = modifier
     ) {
-        composable<LibraryRoute> {
-            LibraryScreen(
+        composable<SplashRoute> {
+            SplashScreen(
+                onNavigateToHome = {
+                    navController.navigate(HomeRoute) {
+                        popUpTo(SplashRoute) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable<HomeRoute> {
+            MainScreen(
                 onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
                 onNavigateToSearch = { navController.navigate(SearchRoute) },
-                onNavigateToSettings = { navController.navigate(SettingsRoute) },
                 onNavigateToQueue = { navController.navigate(QueueRoute) },
                 onNavigateToPlaylistDetail = { navController.navigate(PlaylistDetailRoute(it)) },
                 onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
@@ -60,6 +71,28 @@ fun AppNavigation(
                 }
             )
         }
+
+        // Legacy direct library route – redirects to home
+        composable<LibraryRoute> {
+            LibraryScreen(
+                onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
+                onNavigateToSearch = { navController.navigate(SearchRoute) },
+                onNavigateToQueue = { navController.navigate(QueueRoute) },
+                onNavigateToPlaylistDetail = { navController.navigate(PlaylistDetailRoute(it)) },
+                onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
+                onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) },
+                onNavigateToAlbumDetail = { title, artist ->
+                    navController.navigate(AlbumDetailRoute(title, artist))
+                },
+                onNavigateToArtistDetail = { name ->
+                    navController.navigate(ArtistDetailRoute(name))
+                },
+                onNavigateToFolderDetail = { path ->
+                    navController.navigate(FolderDetailRoute(path))
+                }
+            )
+        }
+
         composable<NowPlayingRoute> {
             NowPlayingScreen(
                 onNavigateBack = { navController.popBackStack() },
