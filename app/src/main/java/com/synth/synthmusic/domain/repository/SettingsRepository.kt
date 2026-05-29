@@ -14,6 +14,8 @@ interface SettingsRepository {
     suspend fun updateTheme(theme: ThemeMode)
     suspend fun updateAccentColor(color: AccentColor)
     suspend fun updateCrossfade(durationMs: Int)
+    suspend fun updateFadeInDuration(durationMs: Int)
+    suspend fun updateFadeOutDuration(durationMs: Int)
     suspend fun updateGapless(enabled: Boolean)
     suspend fun updateReplayGain(mode: ReplayGainMode)
     suspend fun updateAutoRescan(enabled: Boolean)

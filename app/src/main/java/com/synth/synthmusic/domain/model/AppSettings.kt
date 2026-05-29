@@ -30,6 +30,8 @@ data class AppSettings(
     val theme: ThemeMode = ThemeMode.DARK,
     val accentColor: AccentColor = AccentColor.YELLOW,
     val crossfadeDurationMs: Int = 5000,
+    val fadeInDurationMs: Int = 300,
+    val fadeOutDurationMs: Int = 300,
     val gaplessPlayback: Boolean = true,
     val replayGainMode: ReplayGainMode = ReplayGainMode.TRACK,
     val autoRescan: Boolean = true,

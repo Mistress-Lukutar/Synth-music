@@ -34,6 +34,14 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.updateCrossfade(durationMs) }
     }
 
+    fun updateFadeInDuration(durationMs: Int) {
+        viewModelScope.launch { settingsRepository.updateFadeInDuration(durationMs) }
+    }
+
+    fun updateFadeOutDuration(durationMs: Int) {
+        viewModelScope.launch { settingsRepository.updateFadeOutDuration(durationMs) }
+    }
+
     fun updateGapless(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.updateGapless(enabled) }
     }
