@@ -10,6 +10,7 @@ import com.synth.synthmusic.domain.model.Song
 data class LibraryUiState(
     val selectedTab: LibraryTab = LibraryTab.Songs,
     val songs: List<Song> = emptyList(),
+    val queueSongs: List<Song> = emptyList(),
     val albums: List<Album> = emptyList(),
     val artists: List<Artist> = emptyList(),
     val isScanning: Boolean = false,

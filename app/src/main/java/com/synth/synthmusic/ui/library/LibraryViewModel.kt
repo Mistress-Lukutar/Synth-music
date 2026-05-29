@@ -80,6 +80,10 @@ class LibraryViewModel(
         playlistRepository.observeAllPlaylists()
             .onEach { list -> _playlists.value = list }
             .launchIn(viewModelScope)
+
+        playbackManager.currentQueue
+            .onEach { list -> _uiState.update { it.copy(queueSongs = list) } }
+            .launchIn(viewModelScope)
     }
 
     fun onEvent(event: LibraryEvent) {
@@ -127,6 +131,10 @@ class LibraryViewModel(
         viewModelScope.launch {
             playlistRepository.addSongToPlaylist(playlistId, songId)
         }
+    }
+
+    fun playQueueItem(index: Int) {
+        playbackManager.playQueueItem(index)
     }
 
     private fun playSong(songId: String) {
