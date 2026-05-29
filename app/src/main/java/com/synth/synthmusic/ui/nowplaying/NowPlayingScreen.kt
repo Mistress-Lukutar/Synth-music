@@ -146,24 +146,16 @@ fun NowPlayingScreen(
 
             // Seekbar
             Column(modifier = Modifier.fillMaxWidth()) {
-                if (uiState.waveformAmplitudes.isNotEmpty()) {
-                    WaveformSlider(
-                        amplitudes = uiState.waveformAmplitudes,
-                        progress = if (uiState.durationMs > 0) uiState.positionMs.toFloat() / uiState.durationMs else 0f,
-                        onSeek = { fraction ->
-                            val pos = (fraction * uiState.durationMs).toLong()
-                            viewModel.onEvent(NowPlayingEvent.Seek(pos))
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    androidx.compose.material3.Slider(
-                        value = uiState.positionMs.toFloat(),
-                        onValueChange = { viewModel.onEvent(NowPlayingEvent.Seek(it.toLong())) },
-                        valueRange = 0f..uiState.durationMs.toFloat().coerceAtLeast(1f),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+                WaveformSlider(
+                    amplitudes = uiState.waveformAmplitudes.takeIf { it.isNotEmpty() }
+                        ?: List(200) { 0.05f },
+                    progress = if (uiState.durationMs > 0) uiState.positionMs.toFloat() / uiState.durationMs else 0f,
+                    onSeek = { fraction ->
+                        val pos = (fraction * uiState.durationMs).toLong()
+                        viewModel.onEvent(NowPlayingEvent.Seek(pos))
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween

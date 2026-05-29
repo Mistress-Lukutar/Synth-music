@@ -40,24 +40,24 @@ fun WaveformSlider(
             .height(48.dp)
             .pointerInput(Unit) {
                 detectTapGestures { offset ->
-                    val p = (offset.x / size.width).coerceIn(0f, 1f)
+                    val p = if (size.width > 0f) (offset.x / size.width).coerceIn(0f, 1f) else 0f
                     onSeek(p)
                 }
             }
             .pointerInput(Unit) {
                 detectDragGestures { change, _ ->
-                    val p = (change.position.x / size.width).coerceIn(0f, 1f)
+                    val p = if (size.width > 0f) (change.position.x / size.width).coerceIn(0f, 1f) else 0f
                     onSeek(p)
                     change.consume()
                 }
             }
     ) {
-        if (amplitudes.isEmpty()) return@Canvas
+        if (amplitudes.isEmpty() || size.width <= 0f || size.height <= 0f) return@Canvas
 
         val barCount = amplitudes.size
         val barWidth = size.width / barCount
         val gap = barWidth * 0.25f
-        val drawWidth = barWidth - gap
+        val drawWidth = (barWidth - gap).coerceAtLeast(1f)
         val maxBarHeight = size.height
 
         for (i in 0 until barCount) {

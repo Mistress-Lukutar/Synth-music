@@ -75,7 +75,9 @@ class MediaPlaybackManager(
             _playbackState.update {
                 it.copy(
                     isPlaying = isPlaying,
-                    currentSongId = player.currentMediaItem?.mediaId
+                    currentSongId = player.currentMediaItem?.mediaId,
+                    positionMs = player.currentPosition,
+                    durationMs = player.duration.coerceAtLeast(0)
                 )
             }
             persistState()
