@@ -110,10 +110,7 @@ fun SearchScreen(
                     itemsIndexed(results, key = { _, song -> song.id }) { index, song ->
                         SongListItem(
                             song = song,
-                            onClick = {
-                                viewModel.playSearchResultAt(index)
-                                onNavigateToNowPlaying()
-                            }
+                            onClick = { viewModel.playSearchResultAt(index) }
                         )
                     }
                 }

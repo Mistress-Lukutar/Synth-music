@@ -85,23 +85,14 @@ fun AlbumDetailScreen(
                 AlbumHeader(
                     album = album,
                     songCount = songs.size,
-                    onPlayAll = {
-                        viewModel.playAll()
-                        onNavigateToNowPlaying()
-                    },
-                    onShuffleAll = {
-                        viewModel.shuffleAll()
-                        onNavigateToNowPlaying()
-                    }
+                    onPlayAll = { viewModel.playAll() },
+                    onShuffleAll = { viewModel.shuffleAll() }
                 )
             }
             itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
                 SongListItem(
                     song = song,
-                    onClick = {
-                        viewModel.playSongAt(index)
-                        onNavigateToNowPlaying()
-                    }
+                    onClick = { viewModel.playSongAt(index) }
                 )
             }
         }

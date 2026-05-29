@@ -204,10 +204,7 @@ fun LibraryScreen(
                                         ) { index, song ->
                                             RecentlyPlayedCard(
                                                 song = song,
-                                                onClick = {
-                                                    viewModel.playRecentSongAt(index)
-                                                    onNavigateToNowPlaying()
-                                                }
+                                                onClick = { viewModel.playRecentSongAt(index) }
                                             )
                                         }
                                     }
