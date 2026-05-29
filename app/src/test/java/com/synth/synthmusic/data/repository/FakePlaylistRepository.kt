@@ -37,4 +37,5 @@ class FakePlaylistRepository : PlaylistRepository {
     override fun observePlaylistSongs(playlistId: Long): Flow<List<Song>> = flowOf(emptyList())
     override suspend fun addSongToPlaylist(playlistId: Long, songId: String) {}
     override suspend fun removeSongFromPlaylist(playlistId: Long, songId: String) {}
+    override suspend fun isSongInPlaylist(playlistId: Long, songId: String): Boolean = false
 }

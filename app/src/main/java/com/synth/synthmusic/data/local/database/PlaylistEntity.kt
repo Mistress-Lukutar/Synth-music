@@ -17,5 +17,7 @@ data class PlaylistEntity(
     @ColumnInfo(name = "created_at")
     val createdAt: Long,
     @ColumnInfo(name = "song_count")
-    val songCount: Int
+    val songCount: Int,
+    @ColumnInfo(name = "artwork_uri")
+    val artworkUri: String?
 )

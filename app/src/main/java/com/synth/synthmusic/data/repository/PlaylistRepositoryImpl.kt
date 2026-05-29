@@ -29,7 +29,8 @@ class PlaylistRepositoryImpl(
         val entity = PlaylistEntity(
             name = name,
             createdAt = System.currentTimeMillis(),
-            songCount = 0
+            songCount = 0,
+            artworkUri = null
         )
         return playlistDao.insert(entity)
     }
@@ -53,6 +54,8 @@ class PlaylistRepositoryImpl(
 
     override suspend fun addSongToPlaylist(playlistId: Long, songId: String) {
         val currentSongs = playlistDao.observeSongs(playlistId).first()
+        if (currentSongs.any { it.songId == songId }) return
+
         val maxPosition = currentSongs.maxOfOrNull { it.position } ?: -1
         playlistDao.insertSong(
             PlaylistSongEntity(
@@ -61,10 +64,32 @@ class PlaylistRepositoryImpl(
                 position = maxPosition + 1
             )
         )
+
+        val entity = playlistDao.getById(playlistId) ?: return
+        val song = songDao.getById(songId)
+        playlistDao.update(
+            entity.copy(
+                songCount = currentSongs.size + 1,
+                artworkUri = entity.artworkUri ?: song?.artworkUri
+            )
+        )
     }
 
     override suspend fun removeSongFromPlaylist(playlistId: Long, songId: String) {
         playlistDao.deleteSong(playlistId, songId)
+
+        val currentSongs = playlistDao.observeSongs(playlistId).first()
+        val entity = playlistDao.getById(playlistId) ?: return
+        val newArtwork = if (currentSongs.isNotEmpty()) {
+            songDao.getById(currentSongs.first().songId)?.artworkUri
+        } else null
+
+        playlistDao.update(
+            entity.copy(
+                songCount = currentSongs.size,
+                artworkUri = newArtwork
+            )
+        )
     }
 
     override suspend fun isSongInPlaylist(playlistId: Long, songId: String): Boolean {
@@ -76,5 +101,6 @@ private fun PlaylistEntity.toDomain(): Playlist = Playlist(
     id = id,
     name = name,
     createdAt = createdAt,
-    songCount = songCount
+    songCount = songCount,
+    artworkUri = artworkUri
 )

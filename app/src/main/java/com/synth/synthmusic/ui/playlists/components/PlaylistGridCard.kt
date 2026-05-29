@@ -47,7 +47,7 @@ fun PlaylistGridCard(
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     GridCardItem(
-        imageUri = null,
+        imageUri = playlist.artworkUri,
         title = playlist.name,
         subtitle = null,
         meta = "${playlist.songCount} tracks",
