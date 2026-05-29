@@ -36,6 +36,8 @@ class SettingsDataStore(
         private val THEME = stringPreferencesKey("theme")
         private val ACCENT_COLOR = stringPreferencesKey("accent_color")
         private val CROSSFADE_DURATION = intPreferencesKey("crossfade_duration_ms")
+        private val FADE_IN_DURATION = intPreferencesKey("fade_in_duration_ms")
+        private val FADE_OUT_DURATION = intPreferencesKey("fade_out_duration_ms")
         private val GAPLESS_PLAYBACK = booleanPreferencesKey("gapless_playback")
         private val REPLAY_GAIN_MODE = stringPreferencesKey("replay_gain_mode")
         private val AUTO_RESCAN = booleanPreferencesKey("auto_rescan")
@@ -53,6 +55,8 @@ class SettingsDataStore(
             theme = prefs[THEME]?.let { ThemeMode.valueOf(it) } ?: ThemeMode.DARK,
             accentColor = prefs[ACCENT_COLOR]?.let { AccentColor.valueOf(it) } ?: AccentColor.YELLOW,
             crossfadeDurationMs = prefs[CROSSFADE_DURATION] ?: 5000,
+            fadeInDurationMs = prefs[FADE_IN_DURATION] ?: 300,
+            fadeOutDurationMs = prefs[FADE_OUT_DURATION] ?: 300,
             gaplessPlayback = prefs[GAPLESS_PLAYBACK] ?: true,
             replayGainMode = prefs[REPLAY_GAIN_MODE]?.let { ReplayGainMode.valueOf(it) } ?: ReplayGainMode.TRACK,
             autoRescan = prefs[AUTO_RESCAN] ?: true,
@@ -76,6 +80,14 @@ class SettingsDataStore(
 
     suspend fun updateCrossfade(durationMs: Int) {
         dataStore.edit { it[CROSSFADE_DURATION] = durationMs }
+    }
+
+    suspend fun updateFadeInDuration(durationMs: Int) {
+        dataStore.edit { it[FADE_IN_DURATION] = durationMs }
+    }
+
+    suspend fun updateFadeOutDuration(durationMs: Int) {
+        dataStore.edit { it[FADE_OUT_DURATION] = durationMs }
     }
 
     suspend fun updateGapless(enabled: Boolean) {

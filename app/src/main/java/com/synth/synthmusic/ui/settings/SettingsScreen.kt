@@ -105,6 +105,30 @@ fun SettingsScreen(
                 steps = 9,
                 modifier = Modifier.fillMaxWidth()
             )
+            Text(
+                text = "Fade In: ${settings.fadeInDurationMs}ms",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            Slider(
+                value = settings.fadeInDurationMs.toFloat(),
+                onValueChange = { viewModel.updateFadeInDuration(it.toInt()) },
+                valueRange = 0f..2000f,
+                steps = 19,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                text = "Fade Out: ${settings.fadeOutDurationMs}ms",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            Slider(
+                value = settings.fadeOutDurationMs.toFloat(),
+                onValueChange = { viewModel.updateFadeOutDuration(it.toInt()) },
+                valueRange = 0f..2000f,
+                steps = 19,
+                modifier = Modifier.fillMaxWidth()
+            )
             SettingSwitch(
                 title = "Auto Rescan Library",
                 checked = settings.autoRescan,

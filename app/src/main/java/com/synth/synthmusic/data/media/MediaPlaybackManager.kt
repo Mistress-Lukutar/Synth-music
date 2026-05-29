@@ -24,15 +24,17 @@ import com.synth.synthmusic.data.local.database.toDomain
 import com.synth.synthmusic.domain.model.Song
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlin.math.pow
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 
 /**
@@ -94,8 +96,12 @@ class MediaPlaybackManager(
         .setWakeMode(C.WAKE_MODE_LOCAL)
         .build()
 
-    private val fadeManager = AudioFadeManager(player)
+    private val fadeManager = AudioFadeManager(player, scope)
     private var crossfadeDurationMs: Int = 0
+    private var fadeInDurationMs: Int = 300
+    private var fadeOutDurationMs: Int = 300
+    private var currentTargetVolume: Float = 1f
+    private var endOfTrackJob: Job? = null
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
@@ -118,6 +124,12 @@ class MediaPlaybackManager(
                     durationMs = player.duration.coerceAtLeast(0)
                 )
             }
+            if (isPlaying) {
+                fadeManager.fadeIn(fadeInDurationMs.toLong(), currentTargetVolume)
+                startEndOfTrackMonitor()
+            } else {
+                stopEndOfTrackMonitor()
+            }
             persistState()
         }
 
@@ -130,20 +142,14 @@ class MediaPlaybackManager(
                 )
             }
             mediaItem?.mediaId?.let { songId ->
-                scope.launch {
-                    val song = songRepository.getSongById(songId)
-                    val gainDb = song?.replayGainTrackDb
-                    val volume = if (gainDb != null) {
-                        10.0.pow(gainDb / 20.0).toFloat().coerceIn(0f, 1f)
-                    } else {
-                        1f
-                    }
-                    withContext(Dispatchers.Main) {
-                        player.volume = volume
-                    }
-                }
+                updateTargetVolume(songId)
                 scope.launch { songRepository.incrementPlayCount(songId) }
             }
+            if (player.isPlaying) {
+                fadeManager.fadeIn(crossfadeDurationMs.toLong(), currentTargetVolume)
+            }
+            stopEndOfTrackMonitor()
+            startEndOfTrackMonitor()
             persistState()
         }
 
@@ -181,6 +187,8 @@ class MediaPlaybackManager(
                     player.setSkipSilenceEnabled(settings.skipSilence)
                 }
                 crossfadeDurationMs = settings.crossfadeDurationMs.coerceIn(0, 5000)
+                fadeInDurationMs = settings.fadeInDurationMs.coerceIn(0, 2000)
+                fadeOutDurationMs = settings.fadeOutDurationMs.coerceIn(0, 2000)
             }
         }
     }
@@ -188,15 +196,30 @@ class MediaPlaybackManager(
     fun playSongs(songs: List<Song>, startIndex: Int = 0) {
         _currentQueue.value = songs
         val mediaItems = songs.map { songToMediaItem(it) }
-        player.setMediaItems(mediaItems, startIndex, 0)
-        player.prepare()
-        player.play()
+        if (player.isPlaying && crossfadeDurationMs > 0) {
+            fadeManager.fadeOut(crossfadeDurationMs.toLong()) {
+                player.setMediaItems(mediaItems, startIndex, 0)
+                player.prepare()
+                player.play()
+            }
+        } else {
+            player.setMediaItems(mediaItems, startIndex, 0)
+            player.prepare()
+            player.play()
+        }
         persistState()
     }
 
     fun playQueueItem(index: Int) {
-        player.seekTo(index, 0)
-        player.play()
+        if (player.isPlaying && crossfadeDurationMs > 0) {
+            fadeManager.fadeOut(crossfadeDurationMs.toLong()) {
+                player.seekTo(index, 0)
+                player.play()
+            }
+        } else {
+            player.seekTo(index, 0)
+            player.play()
+        }
     }
 
     fun addToQueue(song: Song) {
@@ -216,8 +239,15 @@ class MediaPlaybackManager(
     }
 
     fun clearQueue() {
-        _currentQueue.value = emptyList()
-        player.clearMediaItems()
+        if (player.isPlaying && fadeOutDurationMs > 0) {
+            fadeManager.fadeOut(fadeOutDurationMs.toLong()) {
+                _currentQueue.value = emptyList()
+                player.clearMediaItems()
+            }
+        } else {
+            _currentQueue.value = emptyList()
+            player.clearMediaItems()
+        }
         persistState()
     }
 
@@ -244,50 +274,45 @@ class MediaPlaybackManager(
 
     fun playPause() {
         if (player.isPlaying) {
-            fadeManager.fadeTo(0f, 300)
-            scope.launch {
-                delay(300)
-                withContext(Dispatchers.Main) {
-                    player.pause()
-                }
+            fadeManager.fadeOut(fadeOutDurationMs.toLong()) {
+                player.pause()
             }
         } else {
             player.play()
-            fadeManager.fadeTo(1f, 300)
+            fadeManager.fadeIn(fadeInDurationMs.toLong(), currentTargetVolume)
         }
     }
 
     fun next() {
-        val duration = crossfadeDurationMs.toLong().coerceIn(0, 5000)
-        if (duration > 0) {
-            fadeManager.fadeTo(0f, duration)
-            scope.launch {
-                delay(duration)
-                withContext(Dispatchers.Main) {
-                    player.seekToNext()
-                }
-                fadeManager.fadeTo(1f, duration)
+        if (crossfadeDurationMs > 0) {
+            fadeManager.fadeOut(crossfadeDurationMs.toLong()) {
+                player.seekToNext()
             }
         } else {
             player.seekToNext()
         }
     }
+
     fun previous() {
-        val duration = crossfadeDurationMs.toLong().coerceIn(0, 5000)
-        if (duration > 0) {
-            fadeManager.fadeTo(0f, duration)
-            scope.launch {
-                delay(duration)
-                withContext(Dispatchers.Main) {
-                    player.seekToPrevious()
-                }
-                fadeManager.fadeTo(1f, duration)
+        if (crossfadeDurationMs > 0) {
+            fadeManager.fadeOut(crossfadeDurationMs.toLong()) {
+                player.seekToPrevious()
             }
         } else {
             player.seekToPrevious()
         }
     }
-    fun seekTo(positionMs: Long) = player.seekTo(positionMs)
+
+    fun seekTo(positionMs: Long) {
+        if (fadeOutDurationMs > 0) {
+            fadeManager.fadeOut(fadeOutDurationMs.toLong()) {
+                player.seekTo(positionMs)
+                fadeManager.fadeIn(fadeInDurationMs.toLong(), currentTargetVolume)
+            }
+        } else {
+            player.seekTo(positionMs)
+        }
+    }
 
     fun setShuffleEnabled(enabled: Boolean) {
         player.shuffleModeEnabled = enabled
@@ -311,9 +336,48 @@ class MediaPlaybackManager(
     }
 
     fun release() {
+        stopEndOfTrackMonitor()
+        fadeManager.cancel()
         player.removeListener(listener)
         player.release()
         scope.cancel()
+    }
+
+    private fun startEndOfTrackMonitor() {
+        stopEndOfTrackMonitor()
+        if (crossfadeDurationMs <= 0) return
+        endOfTrackJob = scope.launch(Dispatchers.Main) {
+            while (isActive) {
+                if (player.isPlaying && player.duration > 0) {
+                    val remaining = player.duration - player.currentPosition
+                    if (remaining <= crossfadeDurationMs && !fadeManager.isFading && player.volume > 0f) {
+                        fadeManager.fadeOut(crossfadeDurationMs.toLong())
+                    }
+                }
+                delay(100)
+            }
+        }
+    }
+
+    private fun stopEndOfTrackMonitor() {
+        endOfTrackJob?.cancel()
+        endOfTrackJob = null
+    }
+
+    private fun updateTargetVolume(songId: String) {
+        scope.launch {
+            val song = songRepository.getSongById(songId)
+            val gainDb = song?.replayGainTrackDb
+            val volume = if (gainDb != null) {
+                10.0.pow(gainDb / 20.0).toFloat().coerceIn(0f, 1f)
+            } else {
+                1f
+            }
+            currentTargetVolume = volume
+            withContext(Dispatchers.Main) {
+                player.volume = volume
+            }
+        }
     }
 
     private fun persistState() {
