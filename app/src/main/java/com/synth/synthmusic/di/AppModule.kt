@@ -62,6 +62,7 @@ val appModule = module {
     single { get<AppDatabase>().eqPresetDao() }
     single { get<AppDatabase>().playbackStateDao() }
     single { get<AppDatabase>().waveformDataDao() }
+    single { get<AppDatabase>().recentlyPlayedCollectionDao() }
 
     single { SettingsDataStore(androidContext()) }
     single<SongRepository> { SongRepositoryImpl(get()) }
@@ -70,6 +71,9 @@ val appModule = module {
     single<SettingsRepository> { SettingsRepositoryImpl(get()) }
     single<PlaylistRepository> { PlaylistRepositoryImpl(get(), get()) }
     single<BookmarkRepository> { BookmarkRepositoryImpl(get()) }
+    single<com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository> {
+        com.synth.synthmusic.data.repository.RecentlyPlayedCollectionRepositoryImpl(get())
+    }
     single { MediaPlaybackManager(androidContext(), get(), get(), get(), get()) }
     single { AudioEffectsManager(get()) }
     single { WaveformGenerator(androidContext()) }
@@ -96,7 +100,8 @@ val appModule = module {
             artistRepository = get(),
             playlistRepository = get(),
             scanMusicUseCase = get(),
-            playbackManager = get()
+            playbackManager = get(),
+            recentlyPlayedRepository = get()
         )
     }
 
@@ -129,7 +134,8 @@ val appModule = module {
         PlaylistDetailViewModel(
             playlistId = playlistId,
             playlistRepository = get(),
-            playbackManager = get()
+            playbackManager = get(),
+            recentlyPlayedRepository = get()
         )
     }
 
@@ -139,7 +145,8 @@ val appModule = module {
             albumArtist = albumArtist,
             albumRepository = get(),
             songRepository = get(),
-            playbackManager = get()
+            playbackManager = get(),
+            recentlyPlayedRepository = get()
         )
     }
 
@@ -148,7 +155,8 @@ val appModule = module {
             artistName = artistName,
             artistRepository = get(),
             songRepository = get(),
-            playbackManager = get()
+            playbackManager = get(),
+            recentlyPlayedRepository = get()
         )
     }
 

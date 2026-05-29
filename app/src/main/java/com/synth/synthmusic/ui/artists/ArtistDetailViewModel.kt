@@ -4,7 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synth.synthmusic.domain.model.Artist
 import com.synth.synthmusic.domain.model.Song
+import com.synth.synthmusic.domain.model.CollectionType
+import com.synth.synthmusic.domain.model.RecentlyPlayedCollection
 import com.synth.synthmusic.domain.repository.ArtistRepository
+import com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +24,8 @@ class ArtistDetailViewModel(
     private val artistName: String,
     private val artistRepository: ArtistRepository,
     private val songRepository: SongRepository,
-    private val playbackManager: com.synth.synthmusic.data.media.MediaPlaybackManager
+    private val playbackManager: com.synth.synthmusic.data.media.MediaPlaybackManager,
+    private val recentlyPlayedRepository: RecentlyPlayedCollectionRepository
 ) : ViewModel() {
 
     private val _artist = MutableStateFlow<Artist?>(null)
@@ -34,6 +38,7 @@ class ArtistDetailViewModel(
         val tracks = _songs.value
         if (index in tracks.indices) {
             playbackManager.playSongs(tracks, index)
+            recordArtistPlayed()
         }
     }
 
@@ -42,6 +47,7 @@ class ArtistDetailViewModel(
             val tracks = songRepository.observeSongsByArtist(artistName).first()
             if (tracks.isNotEmpty()) {
                 playbackManager.playSongs(tracks, 0)
+                recordArtistPlayed()
             }
         }
     }
@@ -51,7 +57,24 @@ class ArtistDetailViewModel(
             val tracks = songRepository.observeSongsByArtist(artistName).first().shuffled()
             if (tracks.isNotEmpty()) {
                 playbackManager.playSongs(tracks, 0)
+                recordArtistPlayed()
             }
+        }
+    }
+
+    private fun recordArtistPlayed() {
+        val art = _artist.value ?: return
+        viewModelScope.launch {
+            recentlyPlayedRepository.recordPlayed(
+                RecentlyPlayedCollection(
+                    type = CollectionType.ARTIST,
+                    identifier = art.id,
+                    name = art.name,
+                    extra = null,
+                    artworkUri = _songs.value.firstOrNull()?.artworkUri,
+                    playedAt = System.currentTimeMillis()
+                )
+            )
         }
     }
 

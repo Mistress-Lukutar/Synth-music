@@ -2,6 +2,7 @@ package com.synth.synthmusic.ui.library
 
 import com.synth.synthmusic.domain.model.Album
 import com.synth.synthmusic.domain.model.Artist
+import com.synth.synthmusic.domain.model.RecentlyPlayedCollection
 import com.synth.synthmusic.domain.model.Song
 
 /**
@@ -18,6 +19,7 @@ data class LibraryUiState(
     val favoriteSongs: List<Song> = emptyList(),
     val topSongs: List<Song> = emptyList(),
     val recentSongs: List<Song> = emptyList(),
+    val recentCollections: List<RecentlyPlayedCollection> = emptyList(),
     val historySongs: List<Song> = emptyList(),
     val folders: List<String> = emptyList(),
     val songCount: Int = 0

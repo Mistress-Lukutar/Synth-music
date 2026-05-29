@@ -3,9 +3,12 @@ package com.synth.synthmusic.ui.playlists
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synth.synthmusic.data.media.MediaPlaybackManager
+import com.synth.synthmusic.domain.model.CollectionType
 import com.synth.synthmusic.domain.model.Playlist
+import com.synth.synthmusic.domain.model.RecentlyPlayedCollection
 import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.domain.repository.PlaylistRepository
+import com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +22,8 @@ import kotlinx.coroutines.launch
 class PlaylistDetailViewModel(
     private val playlistId: Long,
     private val playlistRepository: PlaylistRepository,
-    private val playbackManager: MediaPlaybackManager
+    private val playbackManager: MediaPlaybackManager,
+    private val recentlyPlayedRepository: RecentlyPlayedCollectionRepository
 ) : ViewModel() {
 
     private val _playlist = MutableStateFlow<Playlist?>(null)
@@ -44,6 +48,7 @@ class PlaylistDetailViewModel(
         val tracks = _songs.value
         if (index in tracks.indices) {
             playbackManager.playSongs(tracks, index)
+            recordPlaylistPlayed()
         }
     }
 
@@ -51,6 +56,7 @@ class PlaylistDetailViewModel(
         val tracks = _songs.value
         if (tracks.isNotEmpty()) {
             playbackManager.playSongs(tracks, 0)
+            recordPlaylistPlayed()
         }
     }
 
@@ -58,6 +64,23 @@ class PlaylistDetailViewModel(
         val tracks = _songs.value.shuffled()
         if (tracks.isNotEmpty()) {
             playbackManager.playSongs(tracks, 0)
+            recordPlaylistPlayed()
+        }
+    }
+
+    private fun recordPlaylistPlayed() {
+        val pl = _playlist.value ?: return
+        viewModelScope.launch {
+            recentlyPlayedRepository.recordPlayed(
+                RecentlyPlayedCollection(
+                    type = CollectionType.PLAYLIST,
+                    identifier = pl.id.toString(),
+                    name = pl.name,
+                    extra = null,
+                    artworkUri = _songs.value.firstOrNull()?.artworkUri,
+                    playedAt = System.currentTimeMillis()
+                )
+            )
         }
     }
 

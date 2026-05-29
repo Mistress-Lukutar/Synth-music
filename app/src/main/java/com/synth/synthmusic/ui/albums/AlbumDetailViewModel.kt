@@ -4,7 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synth.synthmusic.domain.model.Album
 import com.synth.synthmusic.domain.model.Song
+import com.synth.synthmusic.domain.model.CollectionType
+import com.synth.synthmusic.domain.model.RecentlyPlayedCollection
 import com.synth.synthmusic.domain.repository.AlbumRepository
+import com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +25,8 @@ class AlbumDetailViewModel(
     private val albumArtist: String,
     private val albumRepository: AlbumRepository,
     private val songRepository: SongRepository,
-    private val playbackManager: com.synth.synthmusic.data.media.MediaPlaybackManager
+    private val playbackManager: com.synth.synthmusic.data.media.MediaPlaybackManager,
+    private val recentlyPlayedRepository: RecentlyPlayedCollectionRepository
 ) : ViewModel() {
 
     private val _album = MutableStateFlow<Album?>(null)
@@ -35,6 +39,7 @@ class AlbumDetailViewModel(
         val tracks = _songs.value
         if (index in tracks.indices) {
             playbackManager.playSongs(tracks, index)
+            recordAlbumPlayed()
         }
     }
 
@@ -43,6 +48,7 @@ class AlbumDetailViewModel(
             val tracks = songRepository.observeSongsByAlbum(albumTitle).first()
             if (tracks.isNotEmpty()) {
                 playbackManager.playSongs(tracks, 0)
+                recordAlbumPlayed()
             }
         }
     }
@@ -52,7 +58,24 @@ class AlbumDetailViewModel(
             val tracks = songRepository.observeSongsByAlbum(albumTitle).first().shuffled()
             if (tracks.isNotEmpty()) {
                 playbackManager.playSongs(tracks, 0)
+                recordAlbumPlayed()
             }
+        }
+    }
+
+    private fun recordAlbumPlayed() {
+        val a = _album.value ?: return
+        viewModelScope.launch {
+            recentlyPlayedRepository.recordPlayed(
+                RecentlyPlayedCollection(
+                    type = CollectionType.ALBUM,
+                    identifier = a.id,
+                    name = a.title,
+                    extra = a.artist,
+                    artworkUri = a.artworkUri,
+                    playedAt = System.currentTimeMillis()
+                )
+            )
         }
     }
 
