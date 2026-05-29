@@ -6,6 +6,12 @@ import kotlinx.serialization.Serializable
  * Type-safe navigation routes for the application.
  */
 @Serializable
+object SplashRoute
+
+@Serializable
+object HomeRoute
+
+@Serializable
 object LibraryRoute
 
 @Serializable

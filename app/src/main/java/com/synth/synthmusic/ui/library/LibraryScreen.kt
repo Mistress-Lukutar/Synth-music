@@ -4,34 +4,41 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -45,15 +52,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.synth.synthmusic.R
 import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
 import com.synth.synthmusic.ui.library.components.AlbumGridItem
 import com.synth.synthmusic.ui.library.components.ArtistListItem
 import com.synth.synthmusic.ui.library.components.FoldersTab
-import com.synth.synthmusic.ui.library.components.MiniPlayer
+import com.synth.synthmusic.ui.library.components.RecentlyPlayedCard
 import com.synth.synthmusic.ui.library.components.SongListItem
-import com.synth.synthmusic.ui.share.ShareSongSheet
 import com.synth.synthmusic.ui.playlists.PlaylistsScreen
+import com.synth.synthmusic.ui.share.ShareSongSheet
 import org.koin.androidx.compose.koinViewModel
 
 /**
@@ -64,7 +73,6 @@ import org.koin.androidx.compose.koinViewModel
 fun LibraryScreen(
     onNavigateToNowPlaying: () -> Unit,
     onNavigateToSearch: () -> Unit,
-    onNavigateToSettings: () -> Unit,
     onNavigateToQueue: () -> Unit,
     onNavigateToPlaylistDetail: (Long) -> Unit,
     onNavigateToSongInfo: (String) -> Unit,
@@ -82,6 +90,7 @@ fun LibraryScreen(
     val context = LocalContext.current
     var selectedSongForPlaylist by remember { mutableStateOf<String?>(null) }
     var selectedSongForShare by remember { mutableStateOf<String?>(null) }
+    var menuExpanded by remember { mutableStateOf(false) }
 
     val audioPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.READ_MEDIA_AUDIO
@@ -107,49 +116,57 @@ fun LibraryScreen(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
-                title = { Text("Synth Music") },
-                actions = {
-                    IconButton(onClick = { viewModel.shuffleAll() }) {
-                        Icon(Icons.Default.Shuffle, contentDescription = "Shuffle all")
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_logo_yellow),
+                            contentDescription = "Synth",
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Library")
                     }
+                },
+                actions = {
                     IconButton(onClick = onNavigateToSearch) {
                         Icon(Icons.Default.Search, contentDescription = "Search")
                     }
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    Box {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Rescan Library") },
+                                onClick = {
+                                    menuExpanded = false
+                                    permissionLauncher.launch(audioPermission)
+                                },
+                                leadingIcon = {
+                                    if (uiState.isScanning) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                    } else {
+                                        Icon(
+                                            Icons.Default.Refresh,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            )
+                        }
                     }
                 },
                 scrollBehavior = scrollBehavior
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    permissionLauncher.launch(audioPermission)
-                }
-            ) {
-                if (uiState.isScanning) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(12.dp)
-                    )
-                } else {
-                    Icon(Icons.Default.Refresh, contentDescription = "Scan library")
-                }
-            }
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        bottomBar = {
-            MiniPlayer(
-                song = uiState.songs.find { it.id == playback.currentSongId },
-                isPlaying = playback.isPlaying,
-                positionMs = playback.positionMs,
-                durationMs = playback.durationMs,
-                onTogglePlayPause = { viewModel.togglePlayPause() },
-                onNext = { viewModel.skipNext() },
-                onExpand = onNavigateToNowPlaying
-            )
-        }
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
             PrimaryScrollableTabRow(
@@ -168,6 +185,7 @@ fun LibraryScreen(
                 when (uiState.selectedTab) {
                     LibraryTab.Songs -> SongsTab(
                         songs = uiState.songs,
+                        recentSongs = uiState.recentSongs,
                         onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
@@ -177,20 +195,25 @@ fun LibraryScreen(
                         onShare = { selectedSongForShare = it },
                         currentSongId = playback.currentSongId
                     )
+
                     LibraryTab.Albums -> AlbumsTab(
                         albums = uiState.albums,
                         onAlbumClick = { onNavigateToAlbumDetail(it.title, it.artist) }
                     )
+
                     LibraryTab.Artists -> ArtistsTab(
                         artists = uiState.artists,
                         onArtistClick = { onNavigateToArtistDetail(it.name) }
                     )
+
                     LibraryTab.Folders -> FoldersTab(
                         folders = uiState.folders,
                         onFolderClick = { onNavigateToFolderDetail(it) }
                     )
+
                     LibraryTab.Favorites -> SongsTab(
                         songs = uiState.favoriteSongs,
+                        recentSongs = emptyList(),
                         onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
@@ -200,8 +223,10 @@ fun LibraryScreen(
                         onShare = { selectedSongForShare = it },
                         currentSongId = playback.currentSongId
                     )
+
                     LibraryTab.Top -> SongsTab(
                         songs = uiState.topSongs,
+                        recentSongs = emptyList(),
                         onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
@@ -211,8 +236,10 @@ fun LibraryScreen(
                         onShare = { selectedSongForShare = it },
                         currentSongId = playback.currentSongId
                     )
+
                     LibraryTab.Recent -> SongsTab(
                         songs = uiState.recentSongs,
+                        recentSongs = emptyList(),
                         onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
@@ -222,8 +249,10 @@ fun LibraryScreen(
                         onShare = { selectedSongForShare = it },
                         currentSongId = playback.currentSongId
                     )
+
                     LibraryTab.History -> SongsTab(
                         songs = uiState.historySongs,
+                        recentSongs = emptyList(),
                         onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
@@ -233,6 +262,7 @@ fun LibraryScreen(
                         onShare = { selectedSongForShare = it },
                         currentSongId = playback.currentSongId
                     )
+
                     LibraryTab.Playlists -> {
                         PlaylistsScreen(
                             onNavigateToPlaylistDetail = onNavigateToPlaylistDetail,
@@ -272,6 +302,7 @@ fun LibraryScreen(
 @Composable
 private fun SongsTab(
     songs: List<com.synth.synthmusic.domain.model.Song>,
+    recentSongs: List<com.synth.synthmusic.domain.model.Song>,
     onSongClick: (com.synth.synthmusic.domain.model.Song) -> Unit,
     onNavigateToSongInfo: (String) -> Unit,
     onNavigateToEditMetadata: (String) -> Unit,
@@ -286,17 +317,67 @@ private fun SongsTab(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
-        items(songs, key = { it.id }) { song ->
-            SongListItem(
-                song = song,
-                onClick = { onSongClick(song) },
-                onNavigateToSongInfo = onNavigateToSongInfo,
-                onNavigateToEditMetadata = onNavigateToEditMetadata,
-                onAddToPlaylist = onAddToPlaylist,
-                onPlayNext = onPlayNext,
-                onAddToQueue = onAddToQueue,
-                onShare = onShare,
-                isCurrent = song.id == currentSongId
+        if (recentSongs.isNotEmpty()) {
+            item {
+                SectionHeader(title = "Recently Played", onViewAll = {})
+            }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    items(recentSongs, key = { it.id }) { song ->
+                        RecentlyPlayedCard(
+                            song = song,
+                            onClick = { onSongClick(song) }
+                        )
+                    }
+                }
+            }
+        }
+
+        if (songs.isNotEmpty()) {
+            item {
+                SectionHeader(title = "Songs", onViewAll = {})
+            }
+            items(songs, key = { it.id }) { song ->
+                SongListItem(
+                    song = song,
+                    onClick = { onSongClick(song) },
+                    onNavigateToSongInfo = onNavigateToSongInfo,
+                    onNavigateToEditMetadata = onNavigateToEditMetadata,
+                    onAddToPlaylist = onAddToPlaylist,
+                    onPlayNext = onPlayNext,
+                    onAddToQueue = onAddToQueue,
+                    onShare = onShare,
+                    isCurrent = song.id == currentSongId
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(
+    title: String,
+    onViewAll: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = onViewAll) {
+            Text(
+                text = "View all",
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }
@@ -340,4 +421,3 @@ private fun ArtistsTab(
         }
     }
 }
-
