@@ -13,8 +13,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -68,12 +70,15 @@ class NowPlayingViewModel(
             }
             .launchIn(viewModelScope)
 
-        // Load waveform when song changes
+        // Load waveform when song changes; cancel previous generation on rapid skips
         playbackManager.playbackState
             .map { it.currentSongId }
             .filterNotNull()
-            .onEach { songId ->
-                loadWaveform(songId)
+            .flatMapLatest { songId ->
+                flow { emit(loadWaveform(songId)) }
+            }
+            .onEach { amplitudes ->
+                _uiState.update { it.copy(waveformAmplitudes = amplitudes) }
             }
             .launchIn(viewModelScope)
 
@@ -133,24 +138,26 @@ class NowPlayingViewModel(
         }
     }
 
-    private fun loadWaveform(songId: String) {
-        viewModelScope.launch {
+    private suspend fun loadWaveform(songId: String): List<Float> {
+        return try {
             val cached = waveformDataDao.getBySongId(songId)
             if (cached != null) {
-                _uiState.update { it.copy(waveformAmplitudes = cached.amplitudes) }
-                return@launch
-            }
-            val song = songRepository.getSongById(songId) ?: return@launch
-            val amplitudes = waveformGenerator.generate(song.uri, bars = 200)
-            if (amplitudes.isNotEmpty()) {
-                waveformDataDao.insert(
-                    com.synth.synthmusic.data.local.database.WaveformDataEntity(
-                        songId = songId,
-                        amplitudes = amplitudes.toList()
+                cached.amplitudes
+            } else {
+                val song = songRepository.getSongById(songId) ?: return emptyList()
+                val amplitudes = waveformGenerator.generate(song.uri, bars = 200)
+                if (amplitudes.isNotEmpty()) {
+                    waveformDataDao.insert(
+                        com.synth.synthmusic.data.local.database.WaveformDataEntity(
+                            songId = songId,
+                            amplitudes = amplitudes.toList()
+                        )
                     )
-                )
-                _uiState.update { it.copy(waveformAmplitudes = amplitudes.toList()) }
+                }
+                amplitudes.toList()
             }
+        } catch (e: Exception) {
+            emptyList()
         }
     }
 
