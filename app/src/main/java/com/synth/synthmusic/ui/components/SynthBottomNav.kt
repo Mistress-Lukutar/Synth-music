@@ -10,16 +10,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.height
 
 /**
  * Data class representing a single bottom navigation item.
  */
 data class BottomNavItem(
-    val label: String,
+    val contentDescription: String,
     val icon: ImageVector
 )
 
@@ -45,7 +46,7 @@ fun SynthBottomNav(
 
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.surface,
-        modifier = modifier
+        modifier = modifier.height(56.dp)
     ) {
         items.forEachIndexed { index, item ->
             val selected = selectedIndex == index
@@ -53,17 +54,15 @@ fun SynthBottomNav(
                 icon = {
                     Icon(
                         imageVector = item.icon,
-                        contentDescription = item.label
+                        contentDescription = item.contentDescription
                     )
                 },
-                label = { Text(item.label) },
+                label = null,
                 selected = selected,
                 onClick = { onItemSelected(index) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = MaterialTheme.colorScheme.primary,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
                     unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     indicatorColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                 )
             )
