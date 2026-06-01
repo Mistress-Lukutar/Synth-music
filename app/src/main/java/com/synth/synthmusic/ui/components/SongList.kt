@@ -27,7 +27,7 @@ import com.synth.synthmusic.ui.library.components.SongListItem
 fun SongList(
     songs: List<Song>,
     currentSongId: String?,
-    onSongClick: (Int) -> Unit,
+    onSongClick: (Song) -> Unit,
     onNavigateToSongInfo: ((String) -> Unit)? = null,
     onNavigateToEditMetadata: ((String) -> Unit)? = null,
     onAddToPlaylist: ((String) -> Unit)? = null,
@@ -45,7 +45,7 @@ fun SongList(
         ) { index, song ->
             SongListItem(
                 song = song,
-                onClick = { onSongClick(index) },
+                onClick = { onSongClick(song) },
                 onNavigateToSongInfo = onNavigateToSongInfo,
                 onNavigateToEditMetadata = onNavigateToEditMetadata,
                 onAddToPlaylist = onAddToPlaylist,

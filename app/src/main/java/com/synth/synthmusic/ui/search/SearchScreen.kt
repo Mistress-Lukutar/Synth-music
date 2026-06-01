@@ -113,7 +113,7 @@ fun SearchScreen(
                 SongList(
                     songs = results,
                     currentSongId = playback.currentSongId,
-                    onSongClick = { viewModel.playSearchResultAt(it) },
+                    onSongClick = { viewModel.playSong(it) },
                     onNavigateToSongInfo = onNavigateToSongInfo,
                     onNavigateToEditMetadata = onNavigateToEditMetadata,
                     onAddToPlaylist = { selectedSongForPlaylist = it },

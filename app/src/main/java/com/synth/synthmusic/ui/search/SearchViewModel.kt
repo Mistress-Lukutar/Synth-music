@@ -56,6 +56,14 @@ class SearchViewModel(
         }
     }
 
+    fun playSong(song: Song) {
+        val tracks = _results.value
+        val index = tracks.indexOfFirst { it.id == song.id }
+        if (index != -1) {
+            playbackManager.playSongs(tracks, index)
+        }
+    }
+
     fun playNext(songId: String) {
         val song = _results.value.find { it.id == songId } ?: return
         playbackManager.playNext(song)

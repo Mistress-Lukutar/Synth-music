@@ -248,7 +248,7 @@ fun LibraryScreen(
                     LibraryTab.Top -> SongList(
                         songs = uiState.topSongs,
                         currentSongId = playback.currentSongId,
-                        onSongClick = { index -> viewModel.onEvent(LibraryEvent.PlaySong(uiState.topSongs[index].id)) },
+                        onSongClick = { song -> viewModel.onEvent(LibraryEvent.PlaySong(song.id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
                         onAddToPlaylist = { selectedSongForPlaylist = it },
@@ -261,7 +261,7 @@ fun LibraryScreen(
                     LibraryTab.History -> SongList(
                         songs = uiState.historySongs,
                         currentSongId = playback.currentSongId,
-                        onSongClick = { index -> viewModel.onEvent(LibraryEvent.PlaySong(uiState.historySongs[index].id)) },
+                        onSongClick = { song -> viewModel.onEvent(LibraryEvent.PlaySong(song.id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
                         onAddToPlaylist = { selectedSongForPlaylist = it },
@@ -285,7 +285,7 @@ fun LibraryScreen(
     }
 
     selectedSongForShare?.let { songId ->
-        val song = uiState.songs.find { it.id == songId }
+        val song = uiState.queueSongs.find { it.id == songId }
             ?: uiState.topSongs.find { it.id == songId }
             ?: uiState.historySongs.find { it.id == songId }
         ShareSongSheet(
