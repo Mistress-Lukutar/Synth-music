@@ -30,20 +30,8 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.updateAccentColor(color) }
     }
 
-    fun updateCrossfade(durationMs: Int) {
-        viewModelScope.launch { settingsRepository.updateCrossfade(durationMs) }
-    }
-
-    fun updateFadeInDuration(durationMs: Int) {
-        viewModelScope.launch { settingsRepository.updateFadeInDuration(durationMs) }
-    }
-
-    fun updateFadeOutDuration(durationMs: Int) {
-        viewModelScope.launch { settingsRepository.updateFadeOutDuration(durationMs) }
-    }
-
-    fun updateGapless(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.updateGapless(enabled) }
+    fun updateFadeDuration(durationMs: Int) {
+        viewModelScope.launch { settingsRepository.updateFadeDuration(durationMs) }
     }
 
     fun updateReplayGain(mode: ReplayGainMode) {

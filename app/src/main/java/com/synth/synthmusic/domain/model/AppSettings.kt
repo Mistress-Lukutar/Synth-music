@@ -11,8 +11,7 @@ enum class ReplayGainMode { OFF, TRACK, ALBUM }
  *
  * @param theme UI theme mode.
  * @param accentColor Accent color for the app.
- * @param crossfadeDurationMs Crossfade duration in milliseconds (0 = disabled).
- * @param gaplessPlayback Whether gapless playback is enabled.
+ * @param fadeDurationMs Fade duration in milliseconds for crossfade, fade in, and fade out (0 = disabled).
  * @param replayGainMode ReplayGain volume normalization mode.
  * @param autoRescan Whether to automatically rescan library on startup.
  * @param eqEnabled Whether the equalizer is active.
@@ -29,10 +28,7 @@ enum class ReplayGainMode { OFF, TRACK, ALBUM }
 data class AppSettings(
     val theme: ThemeMode = ThemeMode.DARK,
     val accentColor: AccentColor = AccentColor.YELLOW,
-    val crossfadeDurationMs: Int = 5000,
-    val fadeInDurationMs: Int = 300,
-    val fadeOutDurationMs: Int = 300,
-    val gaplessPlayback: Boolean = true,
+    val fadeDurationMs: Int = 300,
     val replayGainMode: ReplayGainMode = ReplayGainMode.TRACK,
     val autoRescan: Boolean = true,
     val eqEnabled: Boolean = false,

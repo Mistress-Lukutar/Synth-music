@@ -35,10 +35,7 @@ class SettingsDataStore(
     companion object {
         private val THEME = stringPreferencesKey("theme")
         private val ACCENT_COLOR = stringPreferencesKey("accent_color")
-        private val CROSSFADE_DURATION = intPreferencesKey("crossfade_duration_ms")
-        private val FADE_IN_DURATION = intPreferencesKey("fade_in_duration_ms")
-        private val FADE_OUT_DURATION = intPreferencesKey("fade_out_duration_ms")
-        private val GAPLESS_PLAYBACK = booleanPreferencesKey("gapless_playback")
+        private val FADE_DURATION = intPreferencesKey("fade_duration_ms")
         private val REPLAY_GAIN_MODE = stringPreferencesKey("replay_gain_mode")
         private val AUTO_RESCAN = booleanPreferencesKey("auto_rescan")
         private val EQ_ENABLED = booleanPreferencesKey("eq_enabled")
@@ -54,10 +51,7 @@ class SettingsDataStore(
         AppSettings(
             theme = prefs[THEME]?.let { ThemeMode.valueOf(it) } ?: ThemeMode.DARK,
             accentColor = prefs[ACCENT_COLOR]?.let { AccentColor.valueOf(it) } ?: AccentColor.YELLOW,
-            crossfadeDurationMs = prefs[CROSSFADE_DURATION] ?: 5000,
-            fadeInDurationMs = prefs[FADE_IN_DURATION] ?: 300,
-            fadeOutDurationMs = prefs[FADE_OUT_DURATION] ?: 300,
-            gaplessPlayback = prefs[GAPLESS_PLAYBACK] ?: true,
+            fadeDurationMs = prefs[FADE_DURATION] ?: 300,
             replayGainMode = prefs[REPLAY_GAIN_MODE]?.let { ReplayGainMode.valueOf(it) } ?: ReplayGainMode.TRACK,
             autoRescan = prefs[AUTO_RESCAN] ?: true,
             eqEnabled = prefs[EQ_ENABLED] ?: false,
@@ -78,20 +72,8 @@ class SettingsDataStore(
         dataStore.edit { it[ACCENT_COLOR] = color.name }
     }
 
-    suspend fun updateCrossfade(durationMs: Int) {
-        dataStore.edit { it[CROSSFADE_DURATION] = durationMs }
-    }
-
-    suspend fun updateFadeInDuration(durationMs: Int) {
-        dataStore.edit { it[FADE_IN_DURATION] = durationMs }
-    }
-
-    suspend fun updateFadeOutDuration(durationMs: Int) {
-        dataStore.edit { it[FADE_OUT_DURATION] = durationMs }
-    }
-
-    suspend fun updateGapless(enabled: Boolean) {
-        dataStore.edit { it[GAPLESS_PLAYBACK] = enabled }
+    suspend fun updateFadeDuration(durationMs: Int) {
+        dataStore.edit { it[FADE_DURATION] = durationMs }
     }
 
     suspend fun updateReplayGain(mode: ReplayGainMode) {

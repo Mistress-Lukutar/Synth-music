@@ -19,10 +19,7 @@ class SettingsRepositoryImpl(
 
     override suspend fun updateTheme(theme: ThemeMode) = dataStore.updateTheme(theme)
     override suspend fun updateAccentColor(color: AccentColor) = dataStore.updateAccentColor(color)
-    override suspend fun updateCrossfade(durationMs: Int) = dataStore.updateCrossfade(durationMs)
-    override suspend fun updateFadeInDuration(durationMs: Int) = dataStore.updateFadeInDuration(durationMs)
-    override suspend fun updateFadeOutDuration(durationMs: Int) = dataStore.updateFadeOutDuration(durationMs)
-    override suspend fun updateGapless(enabled: Boolean) = dataStore.updateGapless(enabled)
+    override suspend fun updateFadeDuration(durationMs: Int) = dataStore.updateFadeDuration(durationMs)
     override suspend fun updateReplayGain(mode: ReplayGainMode) = dataStore.updateReplayGain(mode)
     override suspend fun updateAutoRescan(enabled: Boolean) = dataStore.updateAutoRescan(enabled)
     override suspend fun updateEqEnabled(enabled: Boolean) = dataStore.updateEqEnabled(enabled)

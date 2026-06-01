@@ -97,9 +97,7 @@ class MediaPlaybackManager(
         .build()
 
     private val fadeManager = AudioFadeManager(player, scope)
-    private var crossfadeDurationMs: Int = 0
-    private var fadeInDurationMs: Int = 300
-    private var fadeOutDurationMs: Int = 300
+    private var fadeDurationMs: Int = 300
     private var currentTargetVolume: Float = 1f
     private var endOfTrackJob: Job? = null
 
@@ -125,7 +123,7 @@ class MediaPlaybackManager(
                 )
             }
             if (isPlaying) {
-                fadeManager.fadeIn(fadeInDurationMs.toLong(), currentTargetVolume)
+                fadeManager.fadeIn(fadeDurationMs.toLong(), currentTargetVolume)
                 startEndOfTrackMonitor()
             } else {
                 stopEndOfTrackMonitor()
@@ -146,7 +144,7 @@ class MediaPlaybackManager(
                 scope.launch { songRepository.incrementPlayCount(songId) }
             }
             if (player.isPlaying) {
-                fadeManager.fadeIn(crossfadeDurationMs.toLong(), currentTargetVolume)
+                fadeManager.fadeIn(fadeDurationMs.toLong(), currentTargetVolume)
             }
             stopEndOfTrackMonitor()
             startEndOfTrackMonitor()
@@ -186,9 +184,7 @@ class MediaPlaybackManager(
                     )
                     player.setSkipSilenceEnabled(settings.skipSilence)
                 }
-                crossfadeDurationMs = settings.crossfadeDurationMs.coerceIn(0, 5000)
-                fadeInDurationMs = settings.fadeInDurationMs.coerceIn(0, 2000)
-                fadeOutDurationMs = settings.fadeOutDurationMs.coerceIn(0, 2000)
+                fadeDurationMs = settings.fadeDurationMs.coerceIn(0, 2000)
             }
         }
     }
@@ -196,8 +192,8 @@ class MediaPlaybackManager(
     fun playSongs(songs: List<Song>, startIndex: Int = 0) {
         _currentQueue.value = songs
         val mediaItems = songs.map { songToMediaItem(it) }
-        if (player.isPlaying && crossfadeDurationMs > 0) {
-            fadeManager.fadeOut(crossfadeDurationMs.toLong()) {
+        if (player.isPlaying && fadeDurationMs > 0) {
+            fadeManager.fadeOut(fadeDurationMs.toLong()) {
                 player.setMediaItems(mediaItems, startIndex, 0)
                 player.prepare()
                 player.play()
@@ -211,8 +207,8 @@ class MediaPlaybackManager(
     }
 
     fun playQueueItem(index: Int) {
-        if (player.isPlaying && crossfadeDurationMs > 0) {
-            fadeManager.fadeOut(crossfadeDurationMs.toLong()) {
+        if (player.isPlaying && fadeDurationMs > 0) {
+            fadeManager.fadeOut(fadeDurationMs.toLong()) {
                 player.seekTo(index, 0)
                 player.play()
             }
@@ -239,8 +235,8 @@ class MediaPlaybackManager(
     }
 
     fun clearQueue() {
-        if (player.isPlaying && fadeOutDurationMs > 0) {
-            fadeManager.fadeOut(fadeOutDurationMs.toLong()) {
+        if (player.isPlaying && fadeDurationMs > 0) {
+            fadeManager.fadeOut(fadeDurationMs.toLong()) {
                 _currentQueue.value = emptyList()
                 player.clearMediaItems()
             }
@@ -274,18 +270,18 @@ class MediaPlaybackManager(
 
     fun playPause() {
         if (player.isPlaying) {
-            fadeManager.fadeOut(fadeOutDurationMs.toLong()) {
+            fadeManager.fadeOut(fadeDurationMs.toLong()) {
                 player.pause()
             }
         } else {
             player.play()
-            fadeManager.fadeIn(fadeInDurationMs.toLong(), currentTargetVolume)
+            fadeManager.fadeIn(fadeDurationMs.toLong(), currentTargetVolume)
         }
     }
 
     fun next() {
-        if (crossfadeDurationMs > 0) {
-            fadeManager.fadeOut(crossfadeDurationMs.toLong()) {
+        if (fadeDurationMs > 0) {
+            fadeManager.fadeOut(fadeDurationMs.toLong()) {
                 player.seekToNext()
             }
         } else {
@@ -294,8 +290,8 @@ class MediaPlaybackManager(
     }
 
     fun previous() {
-        if (crossfadeDurationMs > 0) {
-            fadeManager.fadeOut(crossfadeDurationMs.toLong()) {
+        if (fadeDurationMs > 0) {
+            fadeManager.fadeOut(fadeDurationMs.toLong()) {
                 player.seekToPrevious()
             }
         } else {
@@ -304,10 +300,10 @@ class MediaPlaybackManager(
     }
 
     fun seekTo(positionMs: Long) {
-        if (fadeOutDurationMs > 0) {
-            fadeManager.fadeOut(fadeOutDurationMs.toLong()) {
+        if (fadeDurationMs > 0) {
+            fadeManager.fadeOut(fadeDurationMs.toLong()) {
                 player.seekTo(positionMs)
-                fadeManager.fadeIn(fadeInDurationMs.toLong(), currentTargetVolume)
+                fadeManager.fadeIn(fadeDurationMs.toLong(), currentTargetVolume)
             }
         } else {
             player.seekTo(positionMs)
@@ -345,13 +341,13 @@ class MediaPlaybackManager(
 
     private fun startEndOfTrackMonitor() {
         stopEndOfTrackMonitor()
-        if (crossfadeDurationMs <= 0) return
+        if (fadeDurationMs <= 0) return
         endOfTrackJob = scope.launch(Dispatchers.Main) {
             while (isActive) {
                 if (player.isPlaying && player.duration > 0) {
                     val remaining = player.duration - player.currentPosition
-                    if (remaining <= crossfadeDurationMs && !fadeManager.isFading && player.volume > 0f) {
-                        fadeManager.fadeOut(crossfadeDurationMs.toLong())
+                    if (remaining <= fadeDurationMs && !fadeManager.isFading && player.volume > 0f) {
+                        fadeManager.fadeOut(fadeDurationMs.toLong())
                     }
                 }
                 delay(100)
