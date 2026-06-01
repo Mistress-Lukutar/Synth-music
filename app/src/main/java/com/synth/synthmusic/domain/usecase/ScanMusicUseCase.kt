@@ -10,6 +10,8 @@ import org.jaudiotagger.tag.id3.AbstractID3v2Frame
 import com.synth.synthmusic.domain.model.Album
 import com.synth.synthmusic.domain.model.Artist
 import com.synth.synthmusic.domain.model.Song
+import com.synth.synthmusic.data.local.database.WaveformDataDao
+import com.synth.synthmusic.data.media.waveform.WaveformPreloader
 import com.synth.synthmusic.domain.repository.AlbumRepository
 import com.synth.synthmusic.domain.repository.ArtistRepository
 import com.synth.synthmusic.domain.repository.SongRepository
@@ -23,13 +25,18 @@ class ScanMusicUseCase(
     private val context: Context,
     private val songRepository: SongRepository,
     private val albumRepository: AlbumRepository,
-    private val artistRepository: ArtistRepository
+    private val artistRepository: ArtistRepository,
+    private val waveformPreloader: WaveformPreloader,
+    private val waveformDataDao: WaveformDataDao
 ) {
 
     suspend operator fun invoke(): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {
             val songs = scanSongs()
             songRepository.saveSongs(songs)
+
+            waveformPreloader.preload(songs)
+            waveformDataDao.deleteOrphaned()
 
             val albums = deriveAlbums(songs)
             albumRepository.saveAlbums(albums)

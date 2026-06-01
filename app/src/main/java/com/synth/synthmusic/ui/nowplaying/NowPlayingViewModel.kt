@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
@@ -27,7 +28,10 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel for the now playing screen managing playback controls and state.
  */
-@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+@OptIn(
+    kotlinx.coroutines.ExperimentalCoroutinesApi::class,
+    kotlinx.coroutines.FlowPreview::class
+)
 class NowPlayingViewModel(
     private val playbackManager: MediaPlaybackManager,
     private val songRepository: SongRepository,
@@ -43,6 +47,7 @@ class NowPlayingViewModel(
         playbackManager.playbackState
             .map { it.currentSongId }
             .filterNotNull()
+            .debounce(300)
             .flatMapLatest { songId ->
                 combine(
                     playbackManager.playbackState,

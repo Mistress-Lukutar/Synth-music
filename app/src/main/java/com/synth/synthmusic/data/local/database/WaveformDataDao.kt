@@ -18,4 +18,7 @@ interface WaveformDataDao {
 
     @Query("DELETE FROM waveform_data WHERE song_id = :songId")
     suspend fun deleteBySongId(songId: String)
+
+    @Query("DELETE FROM waveform_data WHERE song_id NOT IN (SELECT id FROM songs)")
+    suspend fun deleteOrphaned()
 }
