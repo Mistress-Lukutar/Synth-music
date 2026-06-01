@@ -67,10 +67,6 @@ class LibraryViewModel(
             .onEach { list -> _uiState.update { it.copy(historySongs = list) } }
             .launchIn(viewModelScope)
 
-        songRepository.observeFolders()
-            .onEach { list -> _uiState.update { it.copy(folders = list) } }
-            .launchIn(viewModelScope)
-
         playlistRepository.observeAllPlaylists()
             .onEach { list -> _playlists.value = list }
             .launchIn(viewModelScope)
@@ -87,6 +83,7 @@ class LibraryViewModel(
             }
             is LibraryEvent.ScanLibrary -> scanLibrary()
             is LibraryEvent.PlaySong -> playSong(event.songId)
+            is LibraryEvent.ClearQueue -> playbackManager.clearQueue()
         }
     }
 

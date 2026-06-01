@@ -47,7 +47,6 @@ fun MainScreen(
     onNavigateToEditMetadata: (String) -> Unit,
     onNavigateToAlbumDetail: (String, String) -> Unit,
     onNavigateToArtistDetail: (String) -> Unit,
-    onNavigateToFolderDetail: (String) -> Unit,
     modifier: Modifier = Modifier,
     libraryViewModel: LibraryViewModel = koinViewModel()
 ) {
@@ -92,8 +91,7 @@ fun MainScreen(
                     onNavigateToSongInfo = onNavigateToSongInfo,
                     onNavigateToEditMetadata = onNavigateToEditMetadata,
                     onNavigateToAlbumDetail = onNavigateToAlbumDetail,
-                    onNavigateToArtistDetail = onNavigateToArtistDetail,
-                    onNavigateToFolderDetail = onNavigateToFolderDetail
+                    onNavigateToArtistDetail = onNavigateToArtistDetail
                 )
 
                 1 -> PlaylistsScreen(

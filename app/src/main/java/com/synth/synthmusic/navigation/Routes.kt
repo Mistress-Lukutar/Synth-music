@@ -39,9 +39,6 @@ data class BatchEditRoute(val songIds: List<String>)
 data class PlaylistDetailRoute(val playlistId: Long)
 
 @Serializable
-data class FolderDetailRoute(val folderPath: String)
-
-@Serializable
 data class AlbumDetailRoute(val albumTitle: String, val albumArtist: String)
 
 @Serializable

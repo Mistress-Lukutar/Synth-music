@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface ArtistDao {
-    @Query("SELECT * FROM artists ORDER BY name COLLATE NOCASE ASC")
+    @Query("SELECT * FROM artists ORDER BY song_count DESC, name COLLATE NOCASE ASC")
     fun observeAll(): Flow<List<ArtistEntity>>
 
     @Query("SELECT * FROM artists WHERE id = :artistId")

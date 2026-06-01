@@ -1,23 +1,32 @@
 package com.synth.synthmusic.ui.playlists
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -99,34 +108,95 @@ fun PlaylistsScreen(
 
     if (showDialog) {
         CreatePlaylistDialog(
+            folders = viewModel.folders.collectAsState().value,
             onDismiss = { viewModel.dismissCreateDialog() },
-            onCreate = { viewModel.createPlaylist(it) }
+            onCreateEmpty = { viewModel.createPlaylist(it) },
+            onCreateFromFolder = { viewModel.createPlaylistFromFolder(it) }
         )
     }
 }
 
+private enum class CreateDialogStep {
+    ChooseMode,
+    EmptyName,
+    FolderList
+}
+
 @Composable
 private fun CreatePlaylistDialog(
+    folders: List<String>,
     onDismiss: () -> Unit,
-    onCreate: (String) -> Unit
+    onCreateEmpty: (String) -> Unit,
+    onCreateFromFolder: (String) -> Unit
 ) {
+    var step by remember { mutableStateOf(CreateDialogStep.ChooseMode) }
     var name by remember { mutableStateOf("") }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("New Playlist") },
         text = {
-            TextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Playlist name") }
-            )
+            when (step) {
+                CreateDialogStep.ChooseMode -> {
+                    Column {
+                        DialogOption(
+                            icon = Icons.Default.Create,
+                            label = "Empty playlist",
+                            onClick = { step = CreateDialogStep.EmptyName }
+                        )
+                        DialogOption(
+                            icon = Icons.Default.Folder,
+                            label = "From folder",
+                            onClick = { step = CreateDialogStep.FolderList }
+                        )
+                    }
+                }
+                CreateDialogStep.EmptyName -> {
+                    TextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Playlist name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                CreateDialogStep.FolderList -> {
+                    LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                        items(folders, key = { it }) { path ->
+                            val folderName = java.io.File(path).name.ifBlank { path }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onCreateFromFolder(path) }
+                                    .padding(vertical = 12.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Folder,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = folderName,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         },
         confirmButton = {
-            TextButton(
-                onClick = { onCreate(name) },
-                enabled = name.isNotBlank()
-            ) {
-                Text("Create")
+            when (step) {
+                CreateDialogStep.EmptyName -> {
+                    TextButton(
+                        onClick = { onCreateEmpty(name) },
+                        enabled = name.isNotBlank()
+                    ) {
+                        Text("Create")
+                    }
+                }
+                else -> { /* no confirm button for ChooseMode or FolderList */ }
             }
         },
         dismissButton = {
@@ -135,4 +205,24 @@ private fun CreatePlaylistDialog(
             }
         }
     )
+}
+
+@Composable
+private fun DialogOption(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 12.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(24.dp))
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+    }
 }

@@ -1,6 +1,7 @@
 package com.synth.synthmusic.ui.playlists
 
 import com.synth.synthmusic.data.repository.FakePlaylistRepository
+import com.synth.synthmusic.data.repository.FakeSongRepository
 import com.synth.synthmusic.domain.model.Playlist
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -27,7 +28,7 @@ class PlaylistViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         repository = FakePlaylistRepository()
-        viewModel = PlaylistViewModel(repository)
+        viewModel = PlaylistViewModel(repository, FakeSongRepository())
     }
 
     @After
