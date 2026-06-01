@@ -99,13 +99,17 @@ fun SongListItem(
             if (isCurrent) {
                 TinyEqualizer(modifier = Modifier.padding(end = 8.dp))
             }
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
+            val context = LocalContext.current
+            val imageRequest = remember(song.artworkUri) {
+                ImageRequest.Builder(context)
                     .data(song.artworkUri)
-                    .crossfade(true)
+                    .size(48)
                     .placeholder(R.drawable.ic_placeholder_artwork)
                     .error(R.drawable.ic_placeholder_artwork)
-                    .build(),
+                    .build()
+            }
+            AsyncImage(
+                model = imageRequest,
                 contentDescription = "Album art",
                 modifier = Modifier
                     .size(48.dp)

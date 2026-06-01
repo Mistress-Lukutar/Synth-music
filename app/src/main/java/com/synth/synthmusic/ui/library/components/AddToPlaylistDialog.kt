@@ -87,13 +87,17 @@ fun AddToPlaylistDialog(
                             .padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(null)
-                                .crossfade(true)
+                        val context = LocalContext.current
+                        val imageRequest = remember(playlist.artworkUri) {
+                            ImageRequest.Builder(context)
+                                .data(playlist.artworkUri)
+                                .size(48)
                                 .placeholder(R.drawable.ic_placeholder_artwork)
                                 .error(R.drawable.ic_placeholder_artwork)
-                                .build(),
+                                .build()
+                        }
+                        AsyncImage(
+                            model = imageRequest,
                             contentDescription = playlist.name,
                             modifier = Modifier
                                 .size(48.dp)

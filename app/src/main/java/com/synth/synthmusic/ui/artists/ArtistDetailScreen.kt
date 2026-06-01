@@ -30,6 +30,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -184,13 +185,17 @@ private fun ArtistAlbumCard(
             .padding(end = 12.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
+        val context = LocalContext.current
+        val imageRequest = remember(album.artworkUri) {
+            ImageRequest.Builder(context)
                 .data(album.artworkUri)
-                .crossfade(true)
+                .size(120)
                 .placeholder(R.drawable.ic_placeholder_artwork)
                 .error(R.drawable.ic_placeholder_artwork)
-                .build(),
+                .build()
+        }
+        AsyncImage(
+            model = imageRequest,
             contentDescription = album.title,
             modifier = Modifier
                 .size(120.dp)

@@ -21,6 +21,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.synth.synthmusic.R
 import com.synth.synthmusic.domain.model.Song
 
 /**
@@ -78,11 +80,17 @@ fun MiniPlayer(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
+            val context = LocalContext.current
+            val imageRequest = remember(song.artworkUri) {
+                ImageRequest.Builder(context)
                     .data(song.artworkUri)
-                    .crossfade(true)
-                    .build(),
+                    .size(48)
+                    .placeholder(R.drawable.ic_placeholder_artwork)
+                    .error(R.drawable.ic_placeholder_artwork)
+                    .build()
+            }
+            AsyncImage(
+                model = imageRequest,
                 contentDescription = "Album art",
                 modifier = Modifier
                     .size(48.dp)
