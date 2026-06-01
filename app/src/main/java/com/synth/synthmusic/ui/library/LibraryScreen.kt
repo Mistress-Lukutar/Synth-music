@@ -54,6 +54,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.synth.synthmusic.R
 import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
+import com.synth.synthmusic.ui.components.SongList
 import com.synth.synthmusic.ui.library.components.ArtistListItem
 import com.synth.synthmusic.ui.library.components.RecentlyPlayedCard
 import com.synth.synthmusic.ui.library.components.SongListItem
@@ -246,28 +247,30 @@ fun LibraryScreen(
                         onArtistClick = { onNavigateToArtistDetail(it.name) }
                     )
 
-                    LibraryTab.Top -> SongsTab(
+                    LibraryTab.Top -> SongList(
                         songs = uiState.topSongs,
-                        onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
+                        currentSongId = playback.currentSongId,
+                        onSongClick = { index -> viewModel.onEvent(LibraryEvent.PlaySong(uiState.topSongs[index].id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
                         onAddToPlaylist = { selectedSongForPlaylist = it },
                         onPlayNext = { viewModel.playNext(it) },
                         onAddToQueue = { viewModel.addToQueue(it) },
                         onShare = { selectedSongForShare = it },
-                        currentSongId = playback.currentSongId
+                        modifier = Modifier.fillMaxSize()
                     )
 
-                    LibraryTab.History -> SongsTab(
+                    LibraryTab.History -> SongList(
                         songs = uiState.historySongs,
-                        onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
+                        currentSongId = playback.currentSongId,
+                        onSongClick = { index -> viewModel.onEvent(LibraryEvent.PlaySong(uiState.historySongs[index].id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
                         onAddToPlaylist = { selectedSongForPlaylist = it },
                         onPlayNext = { viewModel.playNext(it) },
                         onAddToQueue = { viewModel.addToQueue(it) },
                         onShare = { selectedSongForShare = it },
-                        currentSongId = playback.currentSongId
+                        modifier = Modifier.fillMaxSize()
                     )
 
 
@@ -294,43 +297,7 @@ fun LibraryScreen(
     }
 }
 
-@Composable
-private fun SongsTab(
-    songs: List<com.synth.synthmusic.domain.model.Song>,
-    onSongClick: (com.synth.synthmusic.domain.model.Song) -> Unit,
-    onNavigateToSongInfo: (String) -> Unit,
-    onNavigateToEditMetadata: (String) -> Unit,
-    onAddToPlaylist: (String) -> Unit,
-    onPlayNext: (String) -> Unit,
-    onAddToQueue: (String) -> Unit,
-    onShare: (String) -> Unit,
-    currentSongId: String? = null,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = 8.dp)
-    ) {
-        if (songs.isNotEmpty()) {
-            item {
-                SectionHeader(title = "Songs")
-            }
-            items(songs, key = { it.id }) { song ->
-                SongListItem(
-                    song = song,
-                    onClick = { onSongClick(song) },
-                    onNavigateToSongInfo = onNavigateToSongInfo,
-                    onNavigateToEditMetadata = onNavigateToEditMetadata,
-                    onAddToPlaylist = onAddToPlaylist,
-                    onPlayNext = onPlayNext,
-                    onAddToQueue = onAddToQueue,
-                    onShare = onShare,
-                    isCurrent = song.id == currentSongId
-                )
-            }
-        }
-    }
-}
+
 
 @Composable
 private fun SectionHeader(

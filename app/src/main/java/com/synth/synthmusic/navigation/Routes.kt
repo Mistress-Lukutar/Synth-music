@@ -53,5 +53,4 @@ object VisualizerRoute
 @Serializable
 object SettingsRoute
 
-@Serializable
-object DownloadsRoute
+

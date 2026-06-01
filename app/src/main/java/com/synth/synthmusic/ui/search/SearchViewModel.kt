@@ -26,6 +26,8 @@ class SearchViewModel(
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
 
+    val playbackState = playbackManager.playbackState
+
     private val _results = MutableStateFlow<List<Song>>(emptyList())
     val results: StateFlow<List<Song>> = _results.asStateFlow()
 

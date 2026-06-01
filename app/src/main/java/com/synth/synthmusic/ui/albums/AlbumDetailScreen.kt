@@ -59,6 +59,7 @@ fun AlbumDetailScreen(
 ) {
     val album by viewModel.album.collectAsState()
     val songs by viewModel.songs.collectAsState()
+    val playback by viewModel.playbackState.collectAsState()
     var selectedSongForPlaylist by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
@@ -104,7 +105,8 @@ fun AlbumDetailScreen(
                     onNavigateToEditMetadata = onNavigateToEditMetadata,
                     onAddToPlaylist = { selectedSongForPlaylist = it },
                     onPlayNext = { viewModel.playNext(it) },
-                    onAddToQueue = { viewModel.addToQueue(it) }
+                    onAddToQueue = { viewModel.addToQueue(it) },
+                    isCurrent = song.id == playback.currentSongId
                 )
             }
         }

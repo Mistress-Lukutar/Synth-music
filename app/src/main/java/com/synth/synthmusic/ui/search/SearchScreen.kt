@@ -7,8 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import com.synth.synthmusic.ui.components.SongList
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
@@ -110,22 +109,18 @@ fun SearchScreen(
                     }
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 8.dp)
-                ) {
-                    itemsIndexed(results, key = { _, song -> song.id }) { index, song ->
-                        SongListItem(
-                            song = song,
-                            onClick = { viewModel.playSearchResultAt(index) },
-                            onNavigateToSongInfo = onNavigateToSongInfo,
-                            onNavigateToEditMetadata = onNavigateToEditMetadata,
-                            onAddToPlaylist = { selectedSongForPlaylist = it },
-                            onPlayNext = { viewModel.playNext(it) },
-                            onAddToQueue = { viewModel.addToQueue(it) }
-                        )
-                    }
-                }
+                val playback by viewModel.playbackState.collectAsState()
+                SongList(
+                    songs = results,
+                    currentSongId = playback.currentSongId,
+                    onSongClick = { viewModel.playSearchResultAt(it) },
+                    onNavigateToSongInfo = onNavigateToSongInfo,
+                    onNavigateToEditMetadata = onNavigateToEditMetadata,
+                    onAddToPlaylist = { selectedSongForPlaylist = it },
+                    onPlayNext = { viewModel.playNext(it) },
+                    onAddToQueue = { viewModel.addToQueue(it) },
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }

@@ -10,7 +10,7 @@ import com.synth.synthmusic.ui.home.MainScreen
 import com.synth.synthmusic.ui.library.LibraryScreen
 import com.synth.synthmusic.ui.nowplaying.NowPlayingScreen
 import com.synth.synthmusic.ui.bookmarks.BookmarksScreen
-import com.synth.synthmusic.ui.downloads.DownloadsScreen
+
 import com.synth.synthmusic.ui.equalizer.EqualizerScreen
 
 import com.synth.synthmusic.ui.metadata.BatchEditScreen
@@ -173,11 +173,7 @@ fun AppNavigation(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-        composable<DownloadsRoute> {
-            DownloadsScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
+
         composable<PlaylistDetailRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<PlaylistDetailRoute>()
             PlaylistDetailScreen(
