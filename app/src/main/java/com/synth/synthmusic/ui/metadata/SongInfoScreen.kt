@@ -18,7 +18,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -41,7 +41,7 @@ fun SongInfoScreen(
     modifier: Modifier = Modifier,
     viewModel: SongInfoViewModel = koinViewModel { parametersOf(songId) }
 ) {
-    val song by viewModel.song.collectAsState()
+    val song by viewModel.song.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),

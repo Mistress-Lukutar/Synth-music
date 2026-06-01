@@ -20,7 +20,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -47,7 +47,7 @@ fun EditMetadataScreen(
     modifier: Modifier = Modifier,
     viewModel: EditMetadataViewModel = koinViewModel { parametersOf(songId) }
 ) {
-    val song by viewModel.song.collectAsState()
+    val song by viewModel.song.collectAsStateWithLifecycle()
     val s = song
 
     var title by remember(s?.id) { mutableStateOf(s?.title ?: "") }

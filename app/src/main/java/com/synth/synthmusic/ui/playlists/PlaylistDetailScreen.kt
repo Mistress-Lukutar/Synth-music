@@ -22,7 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,9 +49,9 @@ fun PlaylistDetailScreen(
     modifier: Modifier = Modifier,
     viewModel: PlaylistDetailViewModel = koinViewModel { parametersOf(playlistId) }
 ) {
-    val songs by viewModel.songs.collectAsState()
-    val playlist by viewModel.playlist.collectAsState()
-    val playback by viewModel.playbackState.collectAsState()
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
+    val playlist by viewModel.playlist.collectAsStateWithLifecycle()
+    val playback by viewModel.playbackState.collectAsStateWithLifecycle()
     var selectedSongForPlaylist by remember { mutableStateOf<String?>(null) }
 
     Scaffold(

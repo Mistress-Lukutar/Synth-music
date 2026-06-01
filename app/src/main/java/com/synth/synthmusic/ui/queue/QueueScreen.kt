@@ -22,7 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.painterResource
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -49,8 +49,8 @@ fun QueueScreen(
     modifier: Modifier = Modifier,
     viewModel: QueueViewModel = koinViewModel()
 ) {
-    val queue by viewModel.queue.collectAsState()
-    val playback by viewModel.playbackState.collectAsState()
+    val queue by viewModel.queue.collectAsStateWithLifecycle()
+    val playback by viewModel.playbackState.collectAsStateWithLifecycle()
 
     var draggingItemIndex by remember { mutableIntStateOf(-1) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
