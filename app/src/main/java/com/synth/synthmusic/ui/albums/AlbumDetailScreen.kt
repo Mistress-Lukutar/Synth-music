@@ -26,6 +26,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import com.synth.synthmusic.R
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -134,11 +136,18 @@ private fun AlbumHeader(
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            val context = LocalContext.current
+            val artworkUri = album?.artworkUri
+            val imageRequest = remember(artworkUri) {
+                ImageRequest.Builder(context)
+                    .data(artworkUri)
+                    .size(120)
+                    .placeholder(R.drawable.ic_placeholder_artwork)
+                    .error(R.drawable.ic_placeholder_artwork)
+                    .build()
+            }
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(album?.artworkUri)
-                    .crossfade(true)
-                    .build(),
+                model = imageRequest,
                 contentDescription = "Album art",
                 modifier = Modifier
                     .size(120.dp)

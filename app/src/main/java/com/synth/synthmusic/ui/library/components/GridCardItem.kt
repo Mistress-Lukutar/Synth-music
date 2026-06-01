@@ -59,13 +59,17 @@ fun GridCardItem(
             .padding(8.dp)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
+            val context = LocalContext.current
+            val imageRequest = remember(imageUri) {
+                ImageRequest.Builder(context)
                     .data(imageUri)
-                    .crossfade(true)
+                    .size(256)
                     .placeholder(R.drawable.ic_placeholder_artwork)
                     .error(R.drawable.ic_placeholder_artwork)
-                    .build(),
+                    .build()
+            }
+            AsyncImage(
+                model = imageRequest,
                 contentDescription = title,
                 modifier = Modifier
                     .fillMaxWidth()

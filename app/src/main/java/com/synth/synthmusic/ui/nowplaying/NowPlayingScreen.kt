@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.synth.synthmusic.R
 import com.synth.synthmusic.ui.nowplaying.components.LyricsBottomSheet
 import com.synth.synthmusic.ui.nowplaying.components.PlaybackSpeedBottomSheet
 import com.synth.synthmusic.ui.nowplaying.components.RatingStars
@@ -106,11 +107,18 @@ fun NowPlayingScreen(
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
             // Artwork
+            val context = LocalContext.current
+            val artworkUri = uiState.song?.artworkUri
+            val imageRequest = remember(artworkUri) {
+                ImageRequest.Builder(context)
+                    .data(artworkUri)
+                    .size(512)
+                    .placeholder(R.drawable.ic_placeholder_artwork)
+                    .error(R.drawable.ic_placeholder_artwork)
+                    .build()
+            }
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(uiState.song?.artworkUri)
-                    .crossfade(true)
-                    .build(),
+                model = imageRequest,
                 contentDescription = "Album art",
                 modifier = Modifier
                     .fillMaxWidth(0.7f)

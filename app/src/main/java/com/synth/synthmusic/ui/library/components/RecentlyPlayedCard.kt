@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,13 +40,17 @@ fun RecentlyPlayedCard(
             .padding(end = 12.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
+        val context = LocalContext.current
+        val imageRequest = remember(collection.artworkUri) {
+            ImageRequest.Builder(context)
                 .data(collection.artworkUri)
-                .crossfade(true)
+                .size(120)
                 .placeholder(R.drawable.ic_placeholder_artwork)
                 .error(R.drawable.ic_placeholder_artwork)
-                .build(),
+                .build()
+        }
+        AsyncImage(
+            model = imageRequest,
             contentDescription = collection.name,
             modifier = Modifier
                 .size(120.dp)
