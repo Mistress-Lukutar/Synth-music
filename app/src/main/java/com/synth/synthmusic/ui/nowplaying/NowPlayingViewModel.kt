@@ -14,7 +14,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -23,6 +25,7 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel for the now playing screen managing playback controls and state.
  */
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class NowPlayingViewModel(
     private val playbackManager: MediaPlaybackManager,
     private val songRepository: SongRepository,
@@ -35,37 +38,42 @@ class NowPlayingViewModel(
     val uiState: StateFlow<NowPlayingUiState> = _uiState.asStateFlow()
 
     init {
-        combine(
-            playbackManager.playbackState,
-            songRepository.observeSongById(
-                playbackManager.playbackState.value.currentSongId ?: ""
-            ),
-            settingsRepository.settings
-        ) { playback, song, settings ->
-            Triple(playback, song, settings)
-        }.onEach { (playback, song, settings) ->
-            _uiState.update {
-                it.copy(
-                    song = song,
-                    isPlaying = playback.isPlaying,
-                    positionMs = playback.positionMs,
-                    durationMs = playback.durationMs,
-                    repeatMode = playback.repeatMode,
-                    shuffleEnabled = playback.shuffleEnabled,
-                    rating = song?.rating ?: 0f,
-                    isFavorite = song?.isFavorite ?: false,
-                    playbackSpeed = settings.playbackSpeed,
-                    playbackPitch = settings.playbackPitch
-                )
+        playbackManager.playbackState
+            .map { it.currentSongId }
+            .filterNotNull()
+            .flatMapLatest { songId ->
+                combine(
+                    playbackManager.playbackState,
+                    songRepository.observeSongById(songId),
+                    settingsRepository.settings
+                ) { playback, song, settings ->
+                    Triple(playback, song, settings)
+                }
             }
-        }.launchIn(viewModelScope)
+            .onEach { (playback, song, settings) ->
+                _uiState.update {
+                    it.copy(
+                        song = song,
+                        isPlaying = playback.isPlaying,
+                        positionMs = playback.positionMs,
+                        durationMs = playback.durationMs,
+                        repeatMode = playback.repeatMode,
+                        shuffleEnabled = playback.shuffleEnabled,
+                        rating = song?.rating ?: 0f,
+                        isFavorite = song?.isFavorite ?: false,
+                        playbackSpeed = settings.playbackSpeed,
+                        playbackPitch = settings.playbackPitch
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
 
         // Load waveform when song changes
         playbackManager.playbackState
-            .onEach { state ->
-                state.currentSongId?.let { songId ->
-                    loadWaveform(songId)
-                }
+            .map { it.currentSongId }
+            .filterNotNull()
+            .onEach { songId ->
+                loadWaveform(songId)
             }
             .launchIn(viewModelScope)
 
