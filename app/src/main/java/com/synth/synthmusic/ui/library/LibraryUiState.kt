@@ -18,10 +18,9 @@ data class LibraryUiState(
     val topSongs: List<Song> = emptyList(),
     val recentCollections: List<RecentlyPlayedCollection> = emptyList(),
     val historySongs: List<Song> = emptyList(),
-    val folders: List<String> = emptyList(),
     val songCount: Int = 0
 )
 
 enum class LibraryTab {
-    Queue, Artists, Folders, Top, History
+    Queue, Artists, Top, History
 }

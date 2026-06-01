@@ -55,7 +55,6 @@ import androidx.compose.ui.unit.dp
 import com.synth.synthmusic.R
 import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
 import com.synth.synthmusic.ui.library.components.ArtistListItem
-import com.synth.synthmusic.ui.library.components.FoldersTab
 import com.synth.synthmusic.ui.library.components.RecentlyPlayedCard
 import com.synth.synthmusic.ui.library.components.SongListItem
 import com.synth.synthmusic.ui.share.ShareSongSheet
@@ -75,7 +74,6 @@ fun LibraryScreen(
     onNavigateToEditMetadata: (String) -> Unit,
     onNavigateToAlbumDetail: (String, String) -> Unit,
     onNavigateToArtistDetail: (String) -> Unit,
-    onNavigateToFolderDetail: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = koinViewModel()
 ) {
@@ -186,7 +184,7 @@ fun LibraryScreen(
                         ) {
                             if (uiState.recentCollections.isNotEmpty()) {
                                 item {
-                                    SectionHeader(title = "Recently Played", onViewAll = {})
+                                    SectionHeader(title = "Recently Played")
                                 }
                                 item {
                                     LazyRow(
@@ -217,7 +215,11 @@ fun LibraryScreen(
 
                             if (uiState.queueSongs.isNotEmpty()) {
                                 item {
-                                    SectionHeader(title = "Queue", onViewAll = {})
+                                    SectionHeader(
+                                        title = "Queue",
+                                        actionLabel = "Clear",
+                                        onAction = { viewModel.onEvent(LibraryEvent.ClearQueue) }
+                                    )
                                 }
                                 itemsIndexed(
                                     items = uiState.queueSongs,
@@ -242,11 +244,6 @@ fun LibraryScreen(
                     LibraryTab.Artists -> ArtistsTab(
                         artists = uiState.artists,
                         onArtistClick = { onNavigateToArtistDetail(it.name) }
-                    )
-
-                    LibraryTab.Folders -> FoldersTab(
-                        folders = uiState.folders,
-                        onFolderClick = { onNavigateToFolderDetail(it) }
                     )
 
                     LibraryTab.Top -> SongsTab(
@@ -316,7 +313,7 @@ private fun SongsTab(
     ) {
         if (songs.isNotEmpty()) {
             item {
-                SectionHeader(title = "Songs", onViewAll = {})
+                SectionHeader(title = "Songs")
             }
             items(songs, key = { it.id }) { song ->
                 SongListItem(
@@ -338,7 +335,8 @@ private fun SongsTab(
 @Composable
 private fun SectionHeader(
     title: String,
-    onViewAll: () -> Unit,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -352,11 +350,13 @@ private fun SectionHeader(
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.weight(1f)
         )
-        TextButton(onClick = onViewAll) {
-            Text(
-                text = "View all",
-                color = MaterialTheme.colorScheme.primary
-            )
+        if (actionLabel != null && onAction != null) {
+            TextButton(onClick = onAction) {
+                Text(
+                    text = actionLabel,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

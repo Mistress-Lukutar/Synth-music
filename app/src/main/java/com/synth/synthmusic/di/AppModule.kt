@@ -28,7 +28,6 @@ import com.synth.synthmusic.domain.usecase.UpdateMetadataUseCase
 import com.synth.synthmusic.ui.bookmarks.BookmarkViewModel
 import com.synth.synthmusic.ui.downloads.DownloadsViewModel
 import com.synth.synthmusic.ui.equalizer.EqualizerViewModel
-import com.synth.synthmusic.ui.folders.FoldersViewModel
 import com.synth.synthmusic.ui.library.LibraryViewModel
 import com.synth.synthmusic.ui.metadata.SongInfoViewModel
 import com.synth.synthmusic.ui.nowplaying.NowPlayingViewModel
@@ -126,7 +125,10 @@ val appModule = module {
     }
 
     viewModel {
-        PlaylistViewModel(playlistRepository = get())
+        PlaylistViewModel(
+            playlistRepository = get(),
+            songRepository = get()
+        )
     }
 
     viewModel { (playlistId: Long) ->
@@ -175,14 +177,6 @@ val appModule = module {
         )
     }
 
-    viewModel { (folderPath: String) ->
-        com.synth.synthmusic.ui.folders.FolderDetailViewModel(
-            folderPath = folderPath,
-            songRepository = get(),
-            playbackManager = get()
-        )
-    }
-
     viewModel {
         DownloadsViewModel(songRepository = get())
     }
@@ -200,10 +194,6 @@ val appModule = module {
             songRepository = get(),
             playbackManager = get()
         )
-    }
-
-    viewModel {
-        FoldersViewModel(songRepository = get())
     }
 
     viewModel {
