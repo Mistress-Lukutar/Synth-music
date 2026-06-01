@@ -19,6 +19,7 @@ import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.data.media.waveform.WaveformGenerator
+import com.synth.synthmusic.data.media.waveform.WaveformPreloader
 import com.synth.synthmusic.domain.usecase.BatchUpdateMetadataUseCase
 import com.synth.synthmusic.domain.usecase.ExportPlaylistUseCase
 import com.synth.synthmusic.domain.usecase.ImportPlaylistUseCase
@@ -76,13 +77,16 @@ val appModule = module {
     single { MediaPlaybackManager(androidContext(), get(), get(), get(), get()) }
     single { AudioEffectsManager(get()) }
     single { WaveformGenerator(androidContext()) }
+    single { WaveformPreloader(get(), get()) }
 
     single {
         ScanMusicUseCase(
             context = androidContext(),
             songRepository = get(),
             albumRepository = get(),
-            artistRepository = get()
+            artistRepository = get(),
+            waveformPreloader = get(),
+            waveformDataDao = get()
         )
     }
 
