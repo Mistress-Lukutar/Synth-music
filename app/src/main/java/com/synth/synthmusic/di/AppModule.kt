@@ -26,7 +26,6 @@ import com.synth.synthmusic.domain.usecase.PlaySongUseCase
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
 import com.synth.synthmusic.domain.usecase.UpdateMetadataUseCase
 import com.synth.synthmusic.ui.bookmarks.BookmarkViewModel
-import com.synth.synthmusic.ui.downloads.DownloadsViewModel
 import com.synth.synthmusic.ui.equalizer.EqualizerViewModel
 import com.synth.synthmusic.ui.library.LibraryViewModel
 import com.synth.synthmusic.ui.metadata.SongInfoViewModel
@@ -175,10 +174,6 @@ val appModule = module {
             songRepository = get(),
             batchUpdateMetadataUseCase = get()
         )
-    }
-
-    viewModel {
-        DownloadsViewModel(songRepository = get())
     }
 
     viewModel {

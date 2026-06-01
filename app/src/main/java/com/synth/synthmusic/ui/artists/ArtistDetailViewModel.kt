@@ -34,6 +34,8 @@ class ArtistDetailViewModel(
     private val _artist = MutableStateFlow<Artist?>(null)
     val artist: StateFlow<Artist?> = _artist.asStateFlow()
 
+    val playbackState = playbackManager.playbackState
+
     private val _albums = MutableStateFlow<List<Album>>(emptyList())
     val albums: StateFlow<List<Album>> = _albums.asStateFlow()
 

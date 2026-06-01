@@ -51,6 +51,7 @@ fun PlaylistDetailScreen(
 ) {
     val songs by viewModel.songs.collectAsState()
     val playlist by viewModel.playlist.collectAsState()
+    val playback by viewModel.playbackState.collectAsState()
     var selectedSongForPlaylist by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
@@ -109,7 +110,8 @@ fun PlaylistDetailScreen(
                     onAddToPlaylist = { selectedSongForPlaylist = it },
                     onPlayNext = { viewModel.playNext(it) },
                     onAddToQueue = { viewModel.addToQueue(it) },
-                    onRemoveFromPlaylist = { viewModel.removeSong(it) }
+                    onRemoveFromPlaylist = { viewModel.removeSong(it) },
+                    isCurrent = song.id == playback.currentSongId
                 )
             }
         }

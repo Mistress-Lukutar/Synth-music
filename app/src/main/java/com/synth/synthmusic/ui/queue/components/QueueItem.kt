@@ -1,5 +1,7 @@
 package com.synth.synthmusic.ui.queue.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -7,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
@@ -18,15 +21,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.synth.synthmusic.R
 import com.synth.synthmusic.domain.model.Song
+import com.synth.synthmusic.ui.components.formatDuration
 
 /**
  * Represents a single item in the playback queue.
@@ -52,7 +56,7 @@ fun QueueItem(
             .padding(horizontal = 8.dp, vertical = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isCurrent)
-                MaterialTheme.colorScheme.primaryContainer
+                MaterialTheme.colorScheme.tertiaryContainer
             else
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         )
@@ -63,6 +67,9 @@ fun QueueItem(
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (isCurrent) {
+                TinyEqualizer(modifier = Modifier.padding(end = 8.dp))
+            }
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(song.artworkUri)
@@ -71,14 +78,17 @@ fun QueueItem(
                     .error(R.drawable.ic_placeholder_artwork)
                     .build(),
                 contentDescription = "Album art",
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = song.title,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -103,9 +113,22 @@ fun QueueItem(
     }
 }
 
-private fun formatDuration(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return String.format("%d:%02d", minutes, seconds)
+@Composable
+private fun TinyEqualizer(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.size(width = 12.dp, height = 16.dp),
+        verticalAlignment = Alignment.Bottom
+    ) {
+        val barColor = MaterialTheme.colorScheme.primary
+        listOf(4.dp, 8.dp, 6.dp).forEach { height ->
+            Box(
+                modifier = Modifier
+                    .width(2.dp)
+                    .padding(end = 2.dp)
+                    .size(width = 2.dp, height = height)
+                    .clip(RoundedCornerShape(1.dp))
+                    .background(barColor)
+            )
+        }
+    }
 }

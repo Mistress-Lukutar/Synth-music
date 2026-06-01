@@ -32,6 +32,8 @@ class AlbumDetailViewModel(
     private val _album = MutableStateFlow<Album?>(null)
     val album: StateFlow<Album?> = _album.asStateFlow()
 
+    val playbackState = playbackManager.playbackState
+
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     val songs: StateFlow<List<Song>> = _songs.asStateFlow()
 
