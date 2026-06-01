@@ -74,4 +74,7 @@ interface SongDao {
 
     @Query("SELECT * FROM songs WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%'")
     fun search(query: String): Flow<List<SongEntity>>
+
+    @Query("SELECT * FROM songs")
+    suspend fun getAll(): List<SongEntity>
 }

@@ -8,14 +8,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 
 /**
  * Background batch generator for song waveform data.
  *
  * Launches fire-and-forget coroutines that pre-generate waveforms after
- * library scans, keeping the scan itself fast.
+ * library scans, keeping the scan itself fast. Also supports resuming
+ * incomplete generation on app startup.
  */
 class WaveformPreloader(
     private val waveformGenerator: WaveformGenerator,
@@ -30,43 +30,67 @@ class WaveformPreloader(
      */
     fun preload(songs: List<Song>) {
         scope.launch {
-            var generated = 0
-            var skipped = 0
-            var errors = 0
-            Log.d(TAG, "Starting waveform preload for ${songs.size} songs")
-
-            for ((index, song) in songs.withIndex()) {
-                ensureActive()
-                try {
-                    val cached = waveformDataDao.getBySongId(song.id)
-                    if (cached != null) {
-                        skipped++
-                        continue
-                    }
-
-                    val amplitudes = waveformGenerator.generate(song.uri, bars = 200)
-                    if (amplitudes.isNotEmpty()) {
-                        waveformDataDao.insert(
-                            WaveformDataEntity(
-                                songId = song.id,
-                                amplitudes = amplitudes.toList()
-                            )
-                        )
-                        generated++
-                        Log.d(TAG, "Preloaded ${index + 1}/${songs.size}: ${song.title}")
-                    }
-                } catch (e: Exception) {
-                    errors++
-                    Log.w(TAG, "Failed to generate waveform for ${song.id} (${song.title})", e)
-                }
-                delay(50) // yield CPU between tracks
+            val existingIds = waveformDataDao.getAllSongIds().toSet()
+            val pending = songs.filter { it.id !in existingIds }
+            if (pending.isEmpty()) {
+                Log.d(TAG, "All ${songs.size} waveforms already cached, skipping preload")
+                return@launch
             }
 
-            Log.d(
-                TAG,
-                "Waveform preload complete. Generated: $generated, Skipped: $skipped, Errors: $errors"
-            )
+            Log.d(TAG, "Starting waveform preload for ${pending.size} songs (${songs.size - pending.size} cached)")
+            processBatch(pending, "Preloaded")
         }
+    }
+
+    /**
+     * Resume generation for songs that don't have a cached waveform.
+     *
+     * Typically called once on application startup to catch up after
+     * process death or skipped background work.
+     */
+    fun resumeIncomplete(allSongs: List<Song>) {
+        scope.launch {
+            val existingIds = waveformDataDao.getAllSongIds().toSet()
+            val pending = allSongs.filter { it.id !in existingIds }
+            if (pending.isEmpty()) {
+                Log.d(TAG, "No incomplete waveforms to resume (${allSongs.size} total)")
+                return@launch
+            }
+
+            Log.d(TAG, "Resuming incomplete waveform generation for ${pending.size} songs")
+            processBatch(pending, "Resumed", delayMs = 100)
+        }
+    }
+
+    private suspend fun processBatch(
+        pending: List<Song>,
+        actionLabel: String,
+        delayMs: Long = 50
+    ) {
+        var generated = 0
+        var errors = 0
+
+        for ((index, song) in pending.withIndex()) {
+            try {
+                val amplitudes = waveformGenerator.generate(song.uri, bars = 200)
+                if (amplitudes.isNotEmpty()) {
+                    waveformDataDao.insert(
+                        WaveformDataEntity(
+                            songId = song.id,
+                            amplitudes = amplitudes.toList()
+                        )
+                    )
+                    generated++
+                    Log.d(TAG, "$actionLabel ${index + 1}/${pending.size}: ${song.title}")
+                }
+            } catch (e: Exception) {
+                errors++
+                Log.w(TAG, "Failed for ${song.id} (${song.title})", e)
+            }
+            delay(delayMs)
+        }
+
+        Log.d(TAG, "Batch complete. Generated: $generated, Errors: $errors")
     }
 
     companion object {

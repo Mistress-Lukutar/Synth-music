@@ -38,6 +38,9 @@ class SongRepositoryImpl(
     override suspend fun getSongsByIds(songIds: List<String>): List<Song> =
         songDao.getByIds(songIds).map { it.toDomain() }
 
+    override suspend fun getAllSongs(): List<Song> =
+        songDao.getAll().map { it.toDomain() }
+
     override suspend fun saveSongs(songs: List<Song>) {
         songDao.insertAll(songs.map { it.toEntity() })
     }
