@@ -61,8 +61,11 @@ fun QueueScreen(
         topBar = {
             TopAppBar(
                 title = {
+                    val totalDuration = remember(queue) {
+                        queue.sumOf { it.durationMs }
+                    }
                     Text(
-                        "${queue.size} tracks · ${formatTotalDuration(queue.sumOf { it.durationMs })}"
+                        "${queue.size} tracks · ${formatTotalDuration(totalDuration)}"
                     )
                 },
                 navigationIcon = {
@@ -108,7 +111,7 @@ fun QueueScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                itemsIndexed(queue, key = { index, song -> "${song.id}_$index" }) { index, song ->
+                itemsIndexed(queue, key = { _, song -> song.id }) { index, song ->
                 val isDragging = index == draggingItemIndex
                 val targetIndex = if (isDragging) {
                     val offsetItems = (dragOffset / itemHeightPx).roundToInt()

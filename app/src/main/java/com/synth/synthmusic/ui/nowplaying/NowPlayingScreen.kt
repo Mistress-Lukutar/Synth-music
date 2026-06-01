@@ -158,7 +158,7 @@ fun NowPlayingScreen(
             Column(modifier = Modifier.fillMaxWidth()) {
                 WaveformSlider(
                     amplitudes = uiState.waveformAmplitudes.takeIf { it.isNotEmpty() }
-                        ?: List(200) { 0.05f },
+                        ?: EmptyWaveform,
                     progress = if (uiState.durationMs > 0) uiState.positionMs.toFloat() / uiState.durationMs else 0f,
                     onSeek = { fraction ->
                         val pos = (fraction * uiState.durationMs).toLong()
@@ -297,6 +297,8 @@ fun NowPlayingScreen(
         )
     }
 }
+
+private val EmptyWaveform = List(200) { 0.05f }
 
 private fun formatDuration(ms: Long): String {
     val totalSeconds = ms / 1000

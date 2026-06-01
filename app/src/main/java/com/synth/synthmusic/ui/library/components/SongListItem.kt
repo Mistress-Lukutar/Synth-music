@@ -139,14 +139,23 @@ fun SongListItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(end = 4.dp)
             )
-            val hasMenu = listOf(
+            val hasMenu = remember(
                 onNavigateToSongInfo,
                 onNavigateToEditMetadata,
                 onPlayNext,
                 onAddToQueue,
                 onShare,
                 onAddToPlaylist
-            ).any { it != null }
+            ) {
+                listOf(
+                    onNavigateToSongInfo,
+                    onNavigateToEditMetadata,
+                    onPlayNext,
+                    onAddToQueue,
+                    onShare,
+                    onAddToPlaylist
+                ).any { it != null }
+            }
 
             if (hasMenu) {
                 Box {
@@ -210,6 +219,8 @@ fun SongListItem(
     }
 }
 
+private val EqualizerBarHeights = listOf(4.dp, 8.dp, 6.dp)
+
 @Composable
 private fun TinyEqualizer(modifier: Modifier = Modifier) {
     Row(
@@ -217,7 +228,7 @@ private fun TinyEqualizer(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.Bottom
     ) {
         val barColor = MaterialTheme.colorScheme.primary
-        listOf(4.dp, 8.dp, 6.dp).forEach { height ->
+        EqualizerBarHeights.forEach { height ->
             Box(
                 modifier = Modifier
                     .width(2.dp)
