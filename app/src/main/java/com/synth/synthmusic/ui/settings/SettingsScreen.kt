@@ -88,43 +88,14 @@ fun SettingsScreen(
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
             SettingSectionHeader("Playback")
-            SettingSwitch(
-                title = "Gapless Playback",
-                checked = settings.gaplessPlayback,
-                onCheckedChange = { viewModel.updateGapless(it) }
-            )
             Text(
-                text = "Crossfade: ${settings.crossfadeDurationMs}ms",
+                text = "Fade: ${settings.fadeDurationMs}ms",
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(top = 8.dp)
             )
             Slider(
-                value = settings.crossfadeDurationMs.toFloat(),
-                onValueChange = { viewModel.updateCrossfade(it.toInt()) },
-                valueRange = 0f..5000f,
-                steps = 9,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(
-                text = "Fade In: ${settings.fadeInDurationMs}ms",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-            Slider(
-                value = settings.fadeInDurationMs.toFloat(),
-                onValueChange = { viewModel.updateFadeInDuration(it.toInt()) },
-                valueRange = 0f..2000f,
-                steps = 19,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(
-                text = "Fade Out: ${settings.fadeOutDurationMs}ms",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-            Slider(
-                value = settings.fadeOutDurationMs.toFloat(),
-                onValueChange = { viewModel.updateFadeOutDuration(it.toInt()) },
+                value = settings.fadeDurationMs.toFloat(),
+                onValueChange = { viewModel.updateFadeDuration(it.toInt()) },
                 valueRange = 0f..2000f,
                 steps = 19,
                 modifier = Modifier.fillMaxWidth()
