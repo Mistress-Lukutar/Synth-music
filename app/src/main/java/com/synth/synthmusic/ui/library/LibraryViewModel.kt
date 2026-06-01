@@ -12,7 +12,6 @@ import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -40,20 +39,17 @@ class LibraryViewModel(
     val playlists: StateFlow<List<Playlist>> = _playlists.asStateFlow()
 
     init {
-        combine(
-            songRepository.observeAllSongs(),
-            artistRepository.observeAllArtists()
-        ) { songs, artists ->
-            Pair(songs, artists)
-        }.onEach { (songs, artists) ->
-            _uiState.update {
-                it.copy(
-                    songs = songs,
-                    artists = artists,
-                    songCount = songs.size
-                )
+        artistRepository.observeAllArtists()
+            .onEach { artists ->
+                _uiState.update { it.copy(artists = artists) }
             }
-        }.launchIn(viewModelScope)
+            .launchIn(viewModelScope)
+
+        songRepository.observeAllSongs()
+            .onEach { songs ->
+                _uiState.update { it.copy(songCount = songs.size) }
+            }
+            .launchIn(viewModelScope)
 
         songRepository.observeTopSongs()
             .onEach { list -> _uiState.update { it.copy(topSongs = list) } }

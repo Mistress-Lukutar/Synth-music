@@ -58,10 +58,8 @@ fun AppNavigation(
     val libraryViewModel: LibraryViewModel = koinViewModel()
 
     val playback by playbackViewModel.playbackState.collectAsState()
+    val currentSong by playbackViewModel.currentSong.collectAsState()
     val libraryUiState by libraryViewModel.uiState.collectAsState()
-    val currentSong = libraryUiState.songs.find { it.id == playback.currentSongId }
-        ?: libraryUiState.topSongs.find { it.id == playback.currentSongId }
-        ?: libraryUiState.historySongs.find { it.id == playback.currentSongId }
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = currentBackStackEntry?.destination
