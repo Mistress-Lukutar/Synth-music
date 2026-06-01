@@ -34,7 +34,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,8 +59,8 @@ fun PlaylistsScreen(
     modifier: Modifier = Modifier,
     viewModel: PlaylistViewModel = koinViewModel()
 ) {
-    val playlists by viewModel.playlists.collectAsState()
-    val showDialog by viewModel.showCreateDialog.collectAsState()
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val showDialog by viewModel.showCreateDialog.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -109,7 +109,7 @@ fun PlaylistsScreen(
 
     if (showDialog) {
         CreatePlaylistDialog(
-            folders = viewModel.folders.collectAsState().value,
+            folders = viewModel.folders.collectAsStateWithLifecycle().value,
             onDismiss = { viewModel.dismissCreateDialog() },
             onCreateEmpty = { viewModel.createPlaylist(it) },
             onCreateFromFolder = { viewModel.createPlaylistFromFolder(it) }

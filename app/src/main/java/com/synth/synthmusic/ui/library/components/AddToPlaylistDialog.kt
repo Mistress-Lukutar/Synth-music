@@ -19,7 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
@@ -55,7 +55,7 @@ fun AddToPlaylistDialog(
     onDismiss: () -> Unit,
     playlistRepository: PlaylistRepository = koinInject()
 ) {
-    val playlists by playlistRepository.observeAllPlaylists().collectAsState(initial = emptyList())
+    val playlists by playlistRepository.observeAllPlaylists().collectAsStateWithLifecycle(initialValue = emptyList())
     val scope = rememberCoroutineScope()
     val containmentMap = remember { mutableStateMapOf<Long, Boolean>() }
 

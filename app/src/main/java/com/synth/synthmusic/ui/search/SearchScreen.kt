@@ -20,7 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,8 +47,8 @@ fun SearchScreen(
     modifier: Modifier = Modifier,
     viewModel: SearchViewModel = koinViewModel()
 ) {
-    val query by viewModel.query.collectAsState()
-    val results by viewModel.results.collectAsState()
+    val query by viewModel.query.collectAsStateWithLifecycle()
+    val results by viewModel.results.collectAsStateWithLifecycle()
     var selectedSongForPlaylist by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
@@ -109,7 +109,7 @@ fun SearchScreen(
                     }
                 }
             } else {
-                val playback by viewModel.playbackState.collectAsState()
+                val playback by viewModel.playbackState.collectAsStateWithLifecycle()
                 SongList(
                     songs = results,
                     currentSongId = playback.currentSongId,

@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
         startService(Intent(this, com.synth.synthmusic.service.PlaybackService::class.java))
         enableEdgeToEdge()
         setContent {
-            val settings by settingsDataStore.settings.collectAsState(initial = AppSettings())
+            val settings by settingsDataStore.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
             val darkTheme = when (settings.theme) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true

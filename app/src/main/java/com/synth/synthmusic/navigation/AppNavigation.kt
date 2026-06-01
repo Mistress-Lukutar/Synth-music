@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -57,9 +57,9 @@ fun AppNavigation(
     val playbackViewModel: PlaybackViewModel = koinViewModel()
     val libraryViewModel: LibraryViewModel = koinViewModel()
 
-    val playback by playbackViewModel.playbackState.collectAsState()
-    val currentSong by playbackViewModel.currentSong.collectAsState()
-    val libraryUiState by libraryViewModel.uiState.collectAsState()
+    val playback by playbackViewModel.playbackState.collectAsStateWithLifecycle()
+    val currentSong by playbackViewModel.currentSong.collectAsStateWithLifecycle()
+    val libraryUiState by libraryViewModel.uiState.collectAsStateWithLifecycle()
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = currentBackStackEntry?.destination

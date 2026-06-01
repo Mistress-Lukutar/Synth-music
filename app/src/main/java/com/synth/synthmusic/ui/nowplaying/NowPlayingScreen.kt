@@ -38,7 +38,7 @@ import androidx.compose.material3.TextButton
 import com.synth.synthmusic.ui.nowplaying.components.WaveformSlider
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,7 +75,7 @@ fun NowPlayingScreen(
     viewModel: NowPlayingViewModel = koinViewModel(),
     playbackViewModel: PlaybackViewModel = koinViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showSleepTimer by remember { mutableStateOf(false) }
     var showShareSheet by remember { mutableStateOf(false) }
     var showVolumeSheet by remember { mutableStateOf(false) }

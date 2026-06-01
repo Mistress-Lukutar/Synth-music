@@ -42,7 +42,7 @@ import androidx.compose.material3.TopAppBar
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,8 +78,8 @@ fun LibraryScreen(
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = koinViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val playback by viewModel.currentPlayback.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val playback by viewModel.currentPlayback.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     var selectedSongForPlaylist by remember { mutableStateOf<String?>(null) }
