@@ -45,10 +45,8 @@ class PlaylistRepositoryImpl(
     }
 
     override fun observePlaylistSongs(playlistId: Long): Flow<List<Song>> {
-        return playlistDao.observeSongs(playlistId).map { playlistSongs ->
-            playlistSongs.mapNotNull { ps ->
-                songDao.getById(ps.songId)?.toDomain()
-            }
+        return playlistDao.observePlaylistSongEntities(playlistId).map { entities ->
+            entities.map { it.toDomain() }
         }
     }
 

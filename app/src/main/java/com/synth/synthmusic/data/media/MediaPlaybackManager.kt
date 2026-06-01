@@ -100,6 +100,7 @@ class MediaPlaybackManager(
     private var fadeDurationMs: Int = 300
     private var currentTargetVolume: Float = 1f
     private var endOfTrackJob: Job? = null
+    private var persistJob: Job? = null
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
@@ -400,7 +401,9 @@ class MediaPlaybackManager(
     private fun persistState() {
         val state = _playbackState.value
         val queue = _currentQueue.value
-        scope.launch {
+        persistJob?.cancel()
+        persistJob = scope.launch {
+            delay(500)
             playbackStateDao.insert(
                 PlaybackStateEntity(
                     currentSongId = state.currentSongId,
