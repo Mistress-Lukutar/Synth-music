@@ -1,7 +1,9 @@
 package com.synth.synthmusic.ui.search
 
+import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.data.repository.FakeSongRepository
 import com.synth.synthmusic.domain.model.Song
+import org.mockito.Mockito.mock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -30,7 +32,7 @@ class SearchViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         repository = FakeSongRepository()
-        viewModel = SearchViewModel(repository)
+        viewModel = SearchViewModel(repository, mock(MediaPlaybackManager::class.java))
     }
 
     @After

@@ -18,6 +18,9 @@ class AlbumRepositoryImpl(
         list.map { it.toDomain() }
     }
 
+    override fun observeAlbumsByArtist(artist: String): Flow<List<Album>> =
+        albumDao.observeByArtist(artist).map { list -> list.map { it.toDomain() } }
+
     override suspend fun saveAlbums(albums: List<Album>) {
         albumDao.insertAll(albums.map { it.toEntity() })
     }

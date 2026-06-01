@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.flowOf
 
 class FakeAlbumRepository : AlbumRepository {
     override fun observeAllAlbums(): Flow<List<Album>> = flowOf(emptyList())
+    override fun observeAlbumsByArtist(artist: String): Flow<List<Album>> = flowOf(emptyList())
     override suspend fun saveAlbums(albums: List<Album>) {}
     override suspend fun deleteAllAlbums() {}
 }

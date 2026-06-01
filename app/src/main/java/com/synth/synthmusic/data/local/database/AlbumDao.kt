@@ -14,6 +14,9 @@ interface AlbumDao {
     @Query("SELECT * FROM albums ORDER BY title COLLATE NOCASE ASC")
     fun observeAll(): Flow<List<AlbumEntity>>
 
+    @Query("SELECT * FROM albums WHERE artist = :artist ORDER BY title COLLATE NOCASE ASC")
+    fun observeByArtist(artist: String): Flow<List<AlbumEntity>>
+
     @Query("SELECT * FROM albums WHERE id = :albumId")
     suspend fun getById(albumId: String): AlbumEntity?
 

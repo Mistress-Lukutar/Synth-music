@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.domain.model.Playlist
-import com.synth.synthmusic.domain.repository.AlbumRepository
 import com.synth.synthmusic.domain.repository.ArtistRepository
 import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository
@@ -25,7 +24,6 @@ import kotlinx.coroutines.launch
  */
 class LibraryViewModel(
     private val songRepository: SongRepository,
-    private val albumRepository: AlbumRepository,
     private val artistRepository: ArtistRepository,
     private val playlistRepository: PlaylistRepository,
     private val scanMusicUseCase: ScanMusicUseCase,
@@ -44,31 +42,21 @@ class LibraryViewModel(
     init {
         combine(
             songRepository.observeAllSongs(),
-            albumRepository.observeAllAlbums(),
             artistRepository.observeAllArtists()
-        ) { songs, albums, artists ->
-            Triple(songs, albums, artists)
-        }.onEach { (songs, albums, artists) ->
+        ) { songs, artists ->
+            Pair(songs, artists)
+        }.onEach { (songs, artists) ->
             _uiState.update {
                 it.copy(
                     songs = songs,
-                    albums = albums,
                     artists = artists,
                     songCount = songs.size
                 )
             }
         }.launchIn(viewModelScope)
 
-        songRepository.observeFavoriteSongs()
-            .onEach { list -> _uiState.update { it.copy(favoriteSongs = list) } }
-            .launchIn(viewModelScope)
-
         songRepository.observeTopSongs()
             .onEach { list -> _uiState.update { it.copy(topSongs = list) } }
-            .launchIn(viewModelScope)
-
-        songRepository.observeRecentSongs()
-            .onEach { list -> _uiState.update { it.copy(recentSongs = list) } }
             .launchIn(viewModelScope)
 
         recentlyPlayedRepository.observeRecent()
