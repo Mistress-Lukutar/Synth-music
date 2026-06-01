@@ -463,7 +463,7 @@ class MediaPlaybackManager(
                 .setTitle(song.title)
                 .setArtist(song.artist)
                 .setAlbumTitle(song.album)
-                .setArtworkUri(android.net.Uri.parse(song.artworkUri ?: ""))
+                .setArtworkUri(song.artworkUri?.let { android.net.Uri.parse(it) })
                 .build()
         )
         .build()
