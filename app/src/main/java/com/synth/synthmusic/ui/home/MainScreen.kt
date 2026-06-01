@@ -1,5 +1,7 @@
 package com.synth.synthmusic.ui.home
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -39,10 +41,13 @@ fun MainScreen(
     onNavigateToArtistDetail: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier.fillMaxSize()
-    ) {
-        when (selectedTab) {
+    Crossfade(
+        targetState = selectedTab,
+        animationSpec = tween(durationMillis = 150),
+        modifier = modifier.fillMaxSize(),
+        label = "MainScreenTabCrossfade"
+    ) { tab ->
+        when (tab) {
             0 -> LibraryScreen(
                 onNavigateToNowPlaying = onNavigateToNowPlaying,
                 onNavigateToSearch = onNavigateToSearch,

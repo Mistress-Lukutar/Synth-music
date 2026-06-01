@@ -1,5 +1,15 @@
 package com.synth.synthmusic.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -10,6 +20,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -97,7 +108,11 @@ fun AppNavigation(
         NavHost(
             navController = navController,
             startDestination = SplashRoute,
-            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
+            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
+            enterTransition = { enterTransition() },
+            exitTransition = { exitTransition() },
+            popEnterTransition = { popEnterTransition() },
+            popExitTransition = { popExitTransition() }
         ) {
             composable<SplashRoute> {
                 SplashScreen(
@@ -226,6 +241,98 @@ fun AppNavigation(
             }
         }
     }
+}
+
+// --- Transition Constants (milliseconds) ---
+private const val PUSH_DURATION = 250
+private const val POP_DURATION = 200
+private const val MODAL_DURATION = 300
+private const val SPLASH_FADE_DURATION = 400
+
+/**
+ * Default enter transition for push navigation.
+ *
+ * - Modal screens ([NowPlayingRoute], [VisualizerRoute]) slide up from the bottom.
+ * - After [SplashRoute] performs a simple fade.
+ * - Everything else slides in horizontally from the right with a fade.
+ */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.enterTransition() = when {
+    targetState.destination.hasRoute<NowPlayingRoute>()
+            || targetState.destination.hasRoute<VisualizerRoute>() ->
+        slideInVertically(
+            animationSpec = tween(MODAL_DURATION, easing = FastOutSlowInEasing),
+            initialOffsetY = { it }
+        ) + fadeIn(tween(MODAL_DURATION, easing = FastOutSlowInEasing))
+
+    initialState.destination.hasRoute<SplashRoute>() ->
+        fadeIn(tween(SPLASH_FADE_DURATION, easing = LinearOutSlowInEasing))
+
+    else ->
+        slideInHorizontally(
+            animationSpec = tween(PUSH_DURATION, easing = FastOutSlowInEasing),
+            initialOffsetX = { it }
+        ) + fadeIn(tween(PUSH_DURATION, easing = FastOutSlowInEasing))
+}
+
+/**
+ * Default exit transition for push navigation.
+ *
+ * - When the target is modal, the current screen fades out.
+ * - When leaving [SplashRoute], fades out.
+ * - Otherwise the current screen slides out slightly to the left while fading.
+ */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.exitTransition() = when {
+    targetState.destination.hasRoute<NowPlayingRoute>()
+            || targetState.destination.hasRoute<VisualizerRoute>() ->
+        fadeOut(tween(MODAL_DURATION, easing = FastOutSlowInEasing))
+
+    targetState.destination.hasRoute<SplashRoute>() ->
+        fadeOut(tween(SPLASH_FADE_DURATION, easing = LinearOutSlowInEasing))
+
+    else ->
+        slideOutHorizontally(
+            animationSpec = tween(PUSH_DURATION, easing = FastOutSlowInEasing),
+            targetOffsetX = { -it / 3 }
+        ) + fadeOut(tween(PUSH_DURATION, easing = FastOutSlowInEasing))
+}
+
+/**
+ * Enter transition when popping back from the back-stack.
+ *
+ * - Returning from a modal screen performs a simple fade.
+ * - Otherwise the previous screen slides in slightly from the left with a fade.
+ */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterTransition() = when {
+    initialState.destination.hasRoute<NowPlayingRoute>()
+            || initialState.destination.hasRoute<VisualizerRoute>() ->
+        fadeIn(tween(POP_DURATION, easing = FastOutSlowInEasing))
+
+    else ->
+        slideInHorizontally(
+            animationSpec = tween(POP_DURATION, easing = FastOutSlowInEasing),
+            initialOffsetX = { -it / 3 }
+        ) + fadeIn(tween(POP_DURATION, easing = FastOutSlowInEasing))
+}
+
+/**
+ * Exit transition when popping back from the back-stack.
+ *
+ * - Modal screens slide down while fading.
+ * - Everything else slides out horizontally to the right while fading.
+ */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitTransition() = when {
+    initialState.destination.hasRoute<NowPlayingRoute>()
+            || initialState.destination.hasRoute<VisualizerRoute>() ->
+        slideOutVertically(
+            animationSpec = tween(POP_DURATION, easing = FastOutSlowInEasing),
+            targetOffsetY = { it }
+        ) + fadeOut(tween(POP_DURATION, easing = FastOutSlowInEasing))
+
+    else ->
+        slideOutHorizontally(
+            animationSpec = tween(POP_DURATION, easing = FastOutSlowInEasing),
+            targetOffsetX = { it }
+        ) + fadeOut(tween(POP_DURATION, easing = FastOutSlowInEasing))
 }
 
 /**
