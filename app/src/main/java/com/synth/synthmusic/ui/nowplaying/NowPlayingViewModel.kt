@@ -84,10 +84,6 @@ class NowPlayingViewModel(
 
     fun onEvent(event: NowPlayingEvent) {
         when (event) {
-            is NowPlayingEvent.PlayPause -> playbackManager.playPause()
-            is NowPlayingEvent.Next -> playbackManager.next()
-            is NowPlayingEvent.Previous -> playbackManager.previous()
-            is NowPlayingEvent.Seek -> playbackManager.seekTo(event.positionMs)
             is NowPlayingEvent.ToggleShuffle -> {
                 playbackManager.setShuffleEnabled(!_uiState.value.shuffleEnabled)
             }

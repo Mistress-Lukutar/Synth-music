@@ -123,7 +123,11 @@ class MediaPlaybackManager(
                 )
             }
             if (isPlaying) {
-                fadeManager.fadeIn(fadeDurationMs.toLong(), currentTargetVolume)
+                if (fadeDurationMs > 0) {
+                    fadeManager.fadeIn(fadeDurationMs.toLong(), currentTargetVolume)
+                } else {
+                    player.volume = currentTargetVolume
+                }
                 startEndOfTrackMonitor()
             } else {
                 stopEndOfTrackMonitor()
@@ -143,8 +147,11 @@ class MediaPlaybackManager(
                 updateTargetVolume(songId)
                 scope.launch { songRepository.incrementPlayCount(songId) }
             }
-            if (player.isPlaying) {
+            if (player.isPlaying && fadeDurationMs > 0) {
+                player.volume = 0f
                 fadeManager.fadeIn(fadeDurationMs.toLong(), currentTargetVolume)
+            } else {
+                player.volume = currentTargetVolume
             }
             stopEndOfTrackMonitor()
             startEndOfTrackMonitor()
@@ -268,14 +275,34 @@ class MediaPlaybackManager(
         persistState()
     }
 
-    fun playPause() {
+    fun play() {
+        if (!player.isPlaying) {
+            player.play()
+            if (fadeDurationMs > 0) {
+                fadeManager.fadeIn(fadeDurationMs.toLong(), currentTargetVolume)
+            } else {
+                player.volume = currentTargetVolume
+            }
+        }
+    }
+
+    fun pause() {
         if (player.isPlaying) {
-            fadeManager.fadeOut(fadeDurationMs.toLong()) {
+            if (fadeDurationMs > 0) {
+                fadeManager.fadeOut(fadeDurationMs.toLong()) {
+                    player.pause()
+                }
+            } else {
                 player.pause()
             }
+        }
+    }
+
+    fun playPause() {
+        if (player.isPlaying) {
+            pause()
         } else {
-            player.play()
-            fadeManager.fadeIn(fadeDurationMs.toLong(), currentTargetVolume)
+            play()
         }
     }
 
@@ -361,18 +388,12 @@ class MediaPlaybackManager(
     }
 
     private fun updateTargetVolume(songId: String) {
-        scope.launch {
-            val song = songRepository.getSongById(songId)
-            val gainDb = song?.replayGainTrackDb
-            val volume = if (gainDb != null) {
-                10.0.pow(gainDb / 20.0).toFloat().coerceIn(0f, 1f)
-            } else {
-                1f
-            }
-            currentTargetVolume = volume
-            withContext(Dispatchers.Main) {
-                player.volume = volume
-            }
+        val song = _currentQueue.value.find { it.id == songId }
+        val gainDb = song?.replayGainTrackDb
+        currentTargetVolume = if (gainDb != null) {
+            10.0.pow(gainDb / 20.0).toFloat().coerceIn(0f, 1f)
+        } else {
+            1f
         }
     }
 

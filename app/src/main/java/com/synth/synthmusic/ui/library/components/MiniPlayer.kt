@@ -40,6 +40,7 @@ import com.synth.synthmusic.domain.model.Song
  * @param positionMs Current playback position in milliseconds.
  * @param durationMs Total track duration in milliseconds.
  * @param onTogglePlayPause Callback to play or pause.
+ * @param onPrevious Callback to skip to the previous track.
  * @param onNext Callback to skip to the next track.
  * @param onExpand Callback to open the full Now Playing screen.
  * @param modifier Modifier for styling.
@@ -51,6 +52,7 @@ fun MiniPlayer(
     positionMs: Long,
     durationMs: Long,
     onTogglePlayPause: () -> Unit,
+    onPrevious: () -> Unit,
     onNext: () -> Unit,
     onExpand: () -> Unit,
     modifier: Modifier = Modifier
@@ -107,7 +109,7 @@ fun MiniPlayer(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            IconButton(onClick = { /* previous not wired in original */ }, modifier = Modifier.size(36.dp)) {
+            IconButton(onClick = onPrevious, modifier = Modifier.size(36.dp)) {
                 Icon(
                     imageVector = Icons.Default.SkipPrevious,
                     contentDescription = "Previous",
