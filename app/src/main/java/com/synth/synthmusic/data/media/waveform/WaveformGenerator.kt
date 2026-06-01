@@ -6,6 +6,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 /**
@@ -58,6 +59,7 @@ class WaveformGenerator(
 
         try {
             while (!sawOutputEOS) {
+                ensureActive()
                 if (!sawInputEOS) {
                     val inputBufferId = codec.dequeueInputBuffer(10_000)
                     if (inputBufferId >= 0) {
