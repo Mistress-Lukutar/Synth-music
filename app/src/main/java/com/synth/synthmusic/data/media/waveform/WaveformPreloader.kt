@@ -1,5 +1,6 @@
 package com.synth.synthmusic.data.media.waveform
 
+import android.util.Log
 import com.synth.synthmusic.data.local.database.WaveformDataDao
 import com.synth.synthmusic.data.local.database.WaveformDataEntity
 import com.synth.synthmusic.domain.model.Song
@@ -29,11 +30,19 @@ class WaveformPreloader(
      */
     fun preload(songs: List<Song>) {
         scope.launch {
-            for (song in songs) {
+            var generated = 0
+            var skipped = 0
+            var errors = 0
+            Log.d(TAG, "Starting waveform preload for ${songs.size} songs")
+
+            for ((index, song) in songs.withIndex()) {
                 ensureActive()
                 try {
                     val cached = waveformDataDao.getBySongId(song.id)
-                    if (cached != null) continue
+                    if (cached != null) {
+                        skipped++
+                        continue
+                    }
 
                     val amplitudes = waveformGenerator.generate(song.uri, bars = 200)
                     if (amplitudes.isNotEmpty()) {
@@ -43,12 +52,24 @@ class WaveformPreloader(
                                 amplitudes = amplitudes.toList()
                             )
                         )
+                        generated++
+                        Log.d(TAG, "Preloaded ${index + 1}/${songs.size}: ${song.title}")
                     }
-                } catch (_: Exception) {
-                    // Ignore per-track failures so the batch continues
+                } catch (e: Exception) {
+                    errors++
+                    Log.w(TAG, "Failed to generate waveform for ${song.id} (${song.title})", e)
                 }
                 delay(50) // yield CPU between tracks
             }
+
+            Log.d(
+                TAG,
+                "Waveform preload complete. Generated: $generated, Skipped: $skipped, Errors: $errors"
+            )
         }
+    }
+
+    companion object {
+        private const val TAG = "WaveformPreloader"
     }
 }

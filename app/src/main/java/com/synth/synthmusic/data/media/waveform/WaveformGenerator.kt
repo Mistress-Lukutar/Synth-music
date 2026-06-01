@@ -5,6 +5,8 @@ import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
+import android.os.SystemClock
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -29,6 +31,9 @@ class WaveformGenerator(
      * [bars] elements representing the track's loudness envelope.
      */
     suspend fun generate(uri: String, bars: Int = 200): FloatArray = withContext(Dispatchers.IO) {
+        val startTime = SystemClock.elapsedRealtime()
+        Log.d(TAG, "Generating waveform for $uri ($bars bars)")
+
         val extractor = MediaExtractor()
         try {
             extractor.setDataSource(context, Uri.parse(uri), null)
@@ -158,6 +163,12 @@ class WaveformGenerator(
             extractor.release()
         }
 
+        val elapsed = SystemClock.elapsedRealtime() - startTime
+        Log.d(TAG, "Waveform generated in ${elapsed}ms for $uri")
         result
+    }
+
+    companion object {
+        private const val TAG = "WaveformGenerator"
     }
 }
