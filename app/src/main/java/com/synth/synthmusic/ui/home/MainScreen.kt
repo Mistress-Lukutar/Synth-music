@@ -55,9 +55,7 @@ fun MainScreen(
     val playback by libraryViewModel.currentPlayback.collectAsState()
     val uiState by libraryViewModel.uiState.collectAsState()
     val currentSong = uiState.songs.find { it.id == playback.currentSongId }
-        ?: uiState.favoriteSongs.find { it.id == playback.currentSongId }
         ?: uiState.topSongs.find { it.id == playback.currentSongId }
-        ?: uiState.recentSongs.find { it.id == playback.currentSongId }
         ?: uiState.historySongs.find { it.id == playback.currentSongId }
 
     Scaffold(

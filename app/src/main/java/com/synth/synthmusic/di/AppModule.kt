@@ -96,7 +96,6 @@ val appModule = module {
     viewModel {
         LibraryViewModel(
             songRepository = get(),
-            albumRepository = get(),
             artistRepository = get(),
             playlistRepository = get(),
             scanMusicUseCase = get(),
@@ -154,6 +153,7 @@ val appModule = module {
         com.synth.synthmusic.ui.artists.ArtistDetailViewModel(
             artistName = artistName,
             artistRepository = get(),
+            albumRepository = get(),
             songRepository = get(),
             playbackManager = get(),
             recentlyPlayedRepository = get()

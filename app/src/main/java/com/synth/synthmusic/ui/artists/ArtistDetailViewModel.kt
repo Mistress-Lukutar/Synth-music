@@ -2,10 +2,12 @@ package com.synth.synthmusic.ui.artists
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.synth.synthmusic.domain.model.Album
 import com.synth.synthmusic.domain.model.Artist
 import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.domain.model.CollectionType
 import com.synth.synthmusic.domain.model.RecentlyPlayedCollection
+import com.synth.synthmusic.domain.repository.AlbumRepository
 import com.synth.synthmusic.domain.repository.ArtistRepository
 import com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository
 import com.synth.synthmusic.domain.repository.SongRepository
@@ -23,6 +25,7 @@ import kotlinx.coroutines.launch
 class ArtistDetailViewModel(
     private val artistName: String,
     private val artistRepository: ArtistRepository,
+    private val albumRepository: AlbumRepository,
     private val songRepository: SongRepository,
     private val playbackManager: com.synth.synthmusic.data.media.MediaPlaybackManager,
     private val recentlyPlayedRepository: RecentlyPlayedCollectionRepository
@@ -30,6 +33,9 @@ class ArtistDetailViewModel(
 
     private val _artist = MutableStateFlow<Artist?>(null)
     val artist: StateFlow<Artist?> = _artist.asStateFlow()
+
+    private val _albums = MutableStateFlow<List<Album>>(emptyList())
+    val albums: StateFlow<List<Album>> = _albums.asStateFlow()
 
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     val songs: StateFlow<List<Song>> = _songs.asStateFlow()
@@ -93,6 +99,10 @@ class ArtistDetailViewModel(
             .onEach { artists ->
                 _artist.value = artists.find { it.name == artistName }
             }
+            .launchIn(viewModelScope)
+
+        albumRepository.observeAlbumsByArtist(artistName)
+            .onEach { _albums.value = it }
             .launchIn(viewModelScope)
 
         songRepository.observeSongsByArtist(artistName)

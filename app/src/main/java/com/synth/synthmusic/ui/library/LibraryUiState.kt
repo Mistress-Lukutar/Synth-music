@@ -9,16 +9,13 @@ import com.synth.synthmusic.domain.model.Song
  * UI state for the library screen.
  */
 data class LibraryUiState(
-    val selectedTab: LibraryTab = LibraryTab.Songs,
+    val selectedTab: LibraryTab = LibraryTab.Queue,
     val songs: List<Song> = emptyList(),
     val queueSongs: List<Song> = emptyList(),
-    val albums: List<Album> = emptyList(),
     val artists: List<Artist> = emptyList(),
     val isScanning: Boolean = false,
     val scanError: String? = null,
-    val favoriteSongs: List<Song> = emptyList(),
     val topSongs: List<Song> = emptyList(),
-    val recentSongs: List<Song> = emptyList(),
     val recentCollections: List<RecentlyPlayedCollection> = emptyList(),
     val historySongs: List<Song> = emptyList(),
     val folders: List<String> = emptyList(),
@@ -26,5 +23,5 @@ data class LibraryUiState(
 )
 
 enum class LibraryTab {
-    Songs, Albums, Artists, Folders, Favorites, Top, Recent, History
+    Queue, Artists, Folders, Top, History
 }

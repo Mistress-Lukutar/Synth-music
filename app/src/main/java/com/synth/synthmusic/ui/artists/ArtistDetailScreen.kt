@@ -1,15 +1,20 @@
 package com.synth.synthmusic.ui.artists
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
@@ -28,9 +33,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.synth.synthmusic.R
 import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
 import com.synth.synthmusic.ui.library.components.SongListItem
 import org.koin.androidx.compose.koinViewModel
@@ -47,10 +59,12 @@ fun ArtistDetailScreen(
     onNavigateToNowPlaying: () -> Unit,
     onNavigateToSongInfo: (String) -> Unit,
     onNavigateToEditMetadata: (String) -> Unit,
+    onNavigateToAlbumDetail: (String, String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ArtistDetailViewModel = koinViewModel { parametersOf(artistName) }
 ) {
     val artist by viewModel.artist.collectAsState()
+    val albums by viewModel.albums.collectAsState()
     val songs by viewModel.songs.collectAsState()
     var selectedSongForPlaylist by remember { mutableStateOf<String?>(null) }
 
@@ -110,6 +124,30 @@ fun ArtistDetailScreen(
                     }
                 }
             }
+
+            if (albums.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Albums",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+                item {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    ) {
+                        items(albums, key = { it.id }) { album ->
+                            ArtistAlbumCard(
+                                album = album,
+                                onClick = { onNavigateToAlbumDetail(album.title, album.artist) }
+                            )
+                        }
+                    }
+                }
+            }
+
             itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
                 SongListItem(
                     song = song,
@@ -128,6 +166,41 @@ fun ArtistDetailScreen(
         AddToPlaylistDialog(
             songId = songId,
             onDismiss = { selectedSongForPlaylist = null }
+        )
+    }
+}
+
+@Composable
+private fun ArtistAlbumCard(
+    album: com.synth.synthmusic.domain.model.Album,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clickable { onClick() }
+            .padding(end = 12.dp),
+        horizontalAlignment = Alignment.Start
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(album.artworkUri)
+                .crossfade(true)
+                .placeholder(R.drawable.ic_placeholder_artwork)
+                .error(R.drawable.ic_placeholder_artwork)
+                .build(),
+            contentDescription = album.title,
+            modifier = Modifier
+                .size(120.dp)
+                .clip(RoundedCornerShape(12.dp)),
+            contentScale = ContentScale.Crop
+        )
+        Text(
+            text = album.title,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 6.dp)
         )
     }
 }

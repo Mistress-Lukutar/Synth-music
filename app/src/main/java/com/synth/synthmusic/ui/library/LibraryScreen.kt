@@ -17,9 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
@@ -57,7 +54,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.synth.synthmusic.R
 import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
-import com.synth.synthmusic.ui.library.components.AlbumGridItem
 import com.synth.synthmusic.ui.library.components.ArtistListItem
 import com.synth.synthmusic.ui.library.components.FoldersTab
 import com.synth.synthmusic.ui.library.components.RecentlyPlayedCard
@@ -183,7 +179,7 @@ fun LibraryScreen(
             }
             Box(modifier = Modifier.fillMaxSize()) {
                 when (uiState.selectedTab) {
-                    LibraryTab.Songs -> {
+                    LibraryTab.Queue -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(vertical = 8.dp)
@@ -243,11 +239,6 @@ fun LibraryScreen(
                         }
                     }
 
-                    LibraryTab.Albums -> AlbumsTab(
-                        albums = uiState.albums,
-                        onAlbumClick = { onNavigateToAlbumDetail(it.title, it.artist) }
-                    )
-
                     LibraryTab.Artists -> ArtistsTab(
                         artists = uiState.artists,
                         onArtistClick = { onNavigateToArtistDetail(it.name) }
@@ -258,32 +249,8 @@ fun LibraryScreen(
                         onFolderClick = { onNavigateToFolderDetail(it) }
                     )
 
-                    LibraryTab.Favorites -> SongsTab(
-                        songs = uiState.favoriteSongs,
-                        onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
-                        onNavigateToSongInfo = onNavigateToSongInfo,
-                        onNavigateToEditMetadata = onNavigateToEditMetadata,
-                        onAddToPlaylist = { selectedSongForPlaylist = it },
-                        onPlayNext = { viewModel.playNext(it) },
-                        onAddToQueue = { viewModel.addToQueue(it) },
-                        onShare = { selectedSongForShare = it },
-                        currentSongId = playback.currentSongId
-                    )
-
                     LibraryTab.Top -> SongsTab(
                         songs = uiState.topSongs,
-                        onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
-                        onNavigateToSongInfo = onNavigateToSongInfo,
-                        onNavigateToEditMetadata = onNavigateToEditMetadata,
-                        onAddToPlaylist = { selectedSongForPlaylist = it },
-                        onPlayNext = { viewModel.playNext(it) },
-                        onAddToQueue = { viewModel.addToQueue(it) },
-                        onShare = { selectedSongForShare = it },
-                        currentSongId = playback.currentSongId
-                    )
-
-                    LibraryTab.Recent -> SongsTab(
-                        songs = uiState.recentSongs,
                         onSongClick = { viewModel.onEvent(LibraryEvent.PlaySong(it.id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
@@ -321,7 +288,6 @@ fun LibraryScreen(
 
     selectedSongForShare?.let { songId ->
         val song = uiState.songs.find { it.id == songId }
-            ?: uiState.favoriteSongs.find { it.id == songId }
             ?: uiState.topSongs.find { it.id == songId }
             ?: uiState.historySongs.find { it.id == songId }
         ShareSongSheet(
@@ -390,26 +356,6 @@ private fun SectionHeader(
             Text(
                 text = "View all",
                 color = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
-}
-
-@Composable
-private fun AlbumsTab(
-    albums: List<com.synth.synthmusic.domain.model.Album>,
-    onAlbumClick: (com.synth.synthmusic.domain.model.Album) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(8.dp)
-    ) {
-        items(albums, key = { it.id }) { album ->
-            AlbumGridItem(
-                album = album,
-                onClick = { onAlbumClick(album) }
             )
         }
     }

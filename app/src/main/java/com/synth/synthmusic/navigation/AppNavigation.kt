@@ -157,7 +157,10 @@ fun AppNavigation(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
                 onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
-                onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) }
+                onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) },
+                onNavigateToAlbumDetail = { title, artist ->
+                    navController.navigate(AlbumDetailRoute(title, artist))
+                }
             )
         }
         composable<SongInfoRoute> { backStackEntry ->
