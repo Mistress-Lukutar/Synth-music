@@ -38,13 +38,13 @@ fun WaveformSlider(
         modifier = modifier
             .fillMaxWidth()
             .height(48.dp)
-            .pointerInput(Unit) {
+            .pointerInput(amplitudes, onSeek) {
                 detectTapGestures { offset ->
                     val p = if (size.width > 0f) (offset.x / size.width).coerceIn(0f, 1f) else 0f
                     onSeek(p)
                 }
             }
-            .pointerInput(Unit) {
+            .pointerInput(amplitudes, onSeek) {
                 detectDragGestures { change, _ ->
                     val p = if (size.width > 0f) (change.position.x / size.width).coerceIn(0f, 1f) else 0f
                     onSeek(p)
