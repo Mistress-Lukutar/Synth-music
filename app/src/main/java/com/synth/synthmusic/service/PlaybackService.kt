@@ -3,7 +3,10 @@ package com.synth.synthmusic.service
 import android.app.PendingIntent
 import android.content.Intent
 import android.util.Log
+import androidx.media3.common.ForwardingPlayer
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -42,7 +45,8 @@ class PlaybackService : MediaSessionService() {
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE
         )
-        mediaSession = MediaSession.Builder(this, playbackManager.player)
+        val sessionPlayer = FadingSessionPlayer(playbackManager, playbackManager.player)
+        mediaSession = MediaSession.Builder(this, sessionPlayer)
             .setSessionActivity(sessionActivityPendingIntent)
             .build()
 
@@ -73,8 +77,46 @@ class PlaybackService : MediaSessionService() {
             stopSelf()
             return
         }
-        if (!player.playWhenReady || player.playbackState == androidx.media3.common.Player.STATE_ENDED) {
+        if (!player.playWhenReady || player.playbackState == Player.STATE_ENDED) {
             stopSelf()
+        }
+    }
+
+    /**
+     * A [ForwardingPlayer] that routes playback control operations through
+     * [MediaPlaybackManager] so that volume fade is applied when skipping tracks
+     * or toggling play/pause from the media notification or other external controllers.
+     *
+     * Seek operations (seek bar, rewind, fast-forward) are delegated directly to the
+     * player without fade to keep seeking responsive.
+     */
+    private inner class FadingSessionPlayer(
+        private val playbackManager: MediaPlaybackManager,
+        player: ExoPlayer
+    ) : ForwardingPlayer(player) {
+
+        override fun play() {
+            playbackManager.play()
+        }
+
+        override fun pause() {
+            playbackManager.pause()
+        }
+
+        override fun seekToNext() {
+            playbackManager.next()
+        }
+
+        override fun seekToPrevious() {
+            playbackManager.previous()
+        }
+
+        override fun seekToNextMediaItem() {
+            playbackManager.next()
+        }
+
+        override fun seekToPreviousMediaItem() {
+            playbackManager.previous()
         }
     }
 

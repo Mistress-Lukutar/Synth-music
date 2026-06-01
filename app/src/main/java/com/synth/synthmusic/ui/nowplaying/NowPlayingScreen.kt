@@ -56,6 +56,7 @@ import com.synth.synthmusic.ui.nowplaying.components.PlaybackSpeedBottomSheet
 import com.synth.synthmusic.ui.nowplaying.components.RatingStars
 import com.synth.synthmusic.ui.share.ShareSongSheet
 import com.synth.synthmusic.ui.share.VolumeOutputSheet
+import com.synth.synthmusic.ui.playback.PlaybackViewModel
 import com.synth.synthmusic.ui.sleeptimer.SleepTimerDialog
 import org.koin.androidx.compose.koinViewModel
 
@@ -70,7 +71,8 @@ fun NowPlayingScreen(
     onNavigateToEqualizer: () -> Unit,
     onNavigateToVisualizer: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: NowPlayingViewModel = koinViewModel()
+    viewModel: NowPlayingViewModel = koinViewModel(),
+    playbackViewModel: PlaybackViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showSleepTimer by remember { mutableStateOf(false) }
@@ -152,7 +154,7 @@ fun NowPlayingScreen(
                     progress = if (uiState.durationMs > 0) uiState.positionMs.toFloat() / uiState.durationMs else 0f,
                     onSeek = { fraction ->
                         val pos = (fraction * uiState.durationMs).toLong()
-                        viewModel.onEvent(NowPlayingEvent.Seek(pos))
+                        playbackViewModel.seekTo(pos)
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -201,11 +203,11 @@ fun NowPlayingScreen(
                         else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.Previous) }) {
+                IconButton(onClick = { playbackViewModel.previous() }) {
                     Icon(Icons.Default.SkipPrevious, contentDescription = "Previous")
                 }
                 IconButton(
-                    onClick = { viewModel.onEvent(NowPlayingEvent.PlayPause) },
+                    onClick = { playbackViewModel.playPause() },
                     modifier = Modifier.size(64.dp)
                 ) {
                     Icon(
@@ -215,7 +217,7 @@ fun NowPlayingScreen(
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
-                IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.Next) }) {
+                IconButton(onClick = { playbackViewModel.next() }) {
                     Icon(Icons.Default.SkipNext, contentDescription = "Next")
                 }
                 IconButton(onClick = { showSleepTimer = true }) {

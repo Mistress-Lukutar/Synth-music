@@ -30,6 +30,7 @@ import com.synth.synthmusic.ui.equalizer.EqualizerViewModel
 import com.synth.synthmusic.ui.library.LibraryViewModel
 import com.synth.synthmusic.ui.metadata.SongInfoViewModel
 import com.synth.synthmusic.ui.nowplaying.NowPlayingViewModel
+import com.synth.synthmusic.ui.playback.PlaybackViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistDetailViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistViewModel
 import com.synth.synthmusic.ui.queue.QueueViewModel
@@ -110,6 +111,10 @@ val appModule = module {
             waveformGenerator = get(),
             waveformDataDao = get()
         )
+    }
+
+    viewModel {
+        PlaybackViewModel(playbackManager = get())
     }
 
     viewModel {

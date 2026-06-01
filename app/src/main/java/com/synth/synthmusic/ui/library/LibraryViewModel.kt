@@ -87,14 +87,6 @@ class LibraryViewModel(
         }
     }
 
-    fun togglePlayPause() {
-        playbackManager.playPause()
-    }
-
-    fun skipNext() {
-        playbackManager.next()
-    }
-
     fun playNext(songId: String) {
         viewModelScope.launch {
             val song = songRepository.getSongById(songId) ?: return@launch
