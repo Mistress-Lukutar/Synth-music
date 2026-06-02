@@ -39,9 +39,6 @@ data class AlbumDetailRoute(val albumTitle: String, val albumArtist: String)
 data class ArtistDetailRoute(val artistName: String)
 
 @Serializable
-object BookmarksRoute
-
-@Serializable
 object VisualizerRoute
 
 @Serializable

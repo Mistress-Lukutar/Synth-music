@@ -16,7 +16,6 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ArtistEntity::class,
         PlaylistEntity::class,
         PlaylistSongEntity::class,
-        BookmarkEntity::class,
         EqPresetEntity::class,
         PlaybackStateEntity::class,
         WaveformDataEntity::class,
@@ -39,7 +38,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun albumDao(): AlbumDao
     abstract fun artistDao(): ArtistDao
     abstract fun playlistDao(): PlaylistDao
-    abstract fun bookmarkDao(): BookmarkDao
     abstract fun eqPresetDao(): EqPresetDao
     abstract fun playbackStateDao(): PlaybackStateDao
     abstract fun waveformDataDao(): WaveformDataDao
