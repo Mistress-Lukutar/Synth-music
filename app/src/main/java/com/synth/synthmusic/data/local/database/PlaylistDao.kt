@@ -22,6 +22,12 @@ interface PlaylistDao {
     @Query("SELECT * FROM playlists WHERE id = :playlistId")
     fun observeById(playlistId: Long): Flow<PlaylistEntity?>
 
+    @Query("SELECT * FROM playlists WHERE is_fixed = 1 LIMIT 1")
+    suspend fun getFixedPlaylist(): PlaylistEntity?
+
+    @Query("SELECT * FROM playlists WHERE is_fixed = 1 LIMIT 1")
+    fun observeFixedPlaylist(): Flow<PlaylistEntity?>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(playlist: PlaylistEntity): Long
 

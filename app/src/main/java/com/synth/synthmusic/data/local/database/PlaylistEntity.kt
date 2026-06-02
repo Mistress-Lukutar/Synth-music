@@ -19,5 +19,7 @@ data class PlaylistEntity(
     @ColumnInfo(name = "song_count")
     val songCount: Int,
     @ColumnInfo(name = "artwork_uri")
-    val artworkUri: String?
+    val artworkUri: String?,
+    @ColumnInfo(name = "is_fixed")
+    val isFixed: Boolean = false
 )
