@@ -68,12 +68,16 @@ class PlaylistViewModel(
     }
 
     fun deletePlaylist(playlistId: Long) {
+        val playlist = _playlists.value.find { it.id == playlistId } ?: return
+        if (playlist.isFixed) return
         viewModelScope.launch {
             playlistRepository.deletePlaylist(playlistId)
         }
     }
 
     fun renamePlaylist(playlistId: Long, name: String) {
+        val playlist = _playlists.value.find { it.id == playlistId } ?: return
+        if (playlist.isFixed) return
         viewModelScope.launch {
             playlistRepository.renamePlaylist(playlistId, name)
         }
