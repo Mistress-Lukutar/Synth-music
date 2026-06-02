@@ -24,9 +24,6 @@ data class SongInfoRoute(val songId: String)
 data class EditMetadataRoute(val songId: String)
 
 @Serializable
-data class BatchEditRoute(val songIds: List<String>)
-
-@Serializable
 data class PlaylistDetailRoute(val playlistId: Long)
 
 @Serializable

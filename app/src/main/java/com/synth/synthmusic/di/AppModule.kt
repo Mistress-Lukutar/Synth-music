@@ -17,7 +17,6 @@ import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.data.media.waveform.WaveformGenerator
 import com.synth.synthmusic.data.media.waveform.WaveformPreloader
-import com.synth.synthmusic.domain.usecase.BatchUpdateMetadataUseCase
 import com.synth.synthmusic.domain.usecase.CheckWritePermissionUseCase
 import com.synth.synthmusic.domain.usecase.ExportPlaylistUseCase
 import com.synth.synthmusic.domain.usecase.ImportPlaylistUseCase
@@ -91,7 +90,6 @@ val appModule = module {
     single { CheckWritePermissionUseCase(androidContext()) }
     single { WriteArtworkToMp3UseCase(get(), get()) }
     single { UpdateMetadataUseCase(get(), get()) }
-    single { BatchUpdateMetadataUseCase(get(), get()) }
     single { ExportPlaylistUseCase(androidContext(), get()) }
     single { ImportPlaylistUseCase(androidContext(), get(), get()) }
 
@@ -175,13 +173,6 @@ val appModule = module {
         )
     }
 
-    viewModel { (songIds: List<String>) ->
-        com.synth.synthmusic.ui.metadata.BatchEditViewModel(
-            songIds = songIds,
-            songRepository = get(),
-            batchUpdateMetadataUseCase = get()
-        )
-    }
 
     viewModel {
         SettingsViewModel(settingsRepository = get())
