@@ -41,7 +41,6 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SearchScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToNowPlaying: () -> Unit,
     onNavigateToSongInfo: (String) -> Unit,
     onNavigateToEditMetadata: (String) -> Unit,
     modifier: Modifier = Modifier,
