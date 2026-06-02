@@ -38,10 +38,6 @@ class SettingsDataStore(
         private val FADE_DURATION = intPreferencesKey("fade_duration_ms")
         private val REPLAY_GAIN_MODE = stringPreferencesKey("replay_gain_mode")
         private val AUTO_RESCAN = booleanPreferencesKey("auto_rescan")
-        private val EQ_ENABLED = booleanPreferencesKey("eq_enabled")
-        private val EQ_PRESET_ID = intPreferencesKey("eq_preset_id")
-        private val BASS_BOOST = intPreferencesKey("bass_boost_strength")
-        private val LOUDNESS_ENABLED = booleanPreferencesKey("loudness_enabled")
         private val PLAYBACK_SPEED = floatPreferencesKey("playback_speed")
         private val PLAYBACK_PITCH = floatPreferencesKey("playback_pitch")
         private val SKIP_SILENCE = booleanPreferencesKey("skip_silence")
@@ -54,10 +50,6 @@ class SettingsDataStore(
             fadeDurationMs = prefs[FADE_DURATION] ?: 300,
             replayGainMode = prefs[REPLAY_GAIN_MODE]?.let { ReplayGainMode.valueOf(it) } ?: ReplayGainMode.TRACK,
             autoRescan = prefs[AUTO_RESCAN] ?: true,
-            eqEnabled = prefs[EQ_ENABLED] ?: false,
-            eqPresetId = prefs[EQ_PRESET_ID]?.toLong(),
-            bassBoostStrength = prefs[BASS_BOOST] ?: 0,
-            loudnessEnabled = prefs[LOUDNESS_ENABLED] ?: false,
             playbackSpeed = prefs[PLAYBACK_SPEED] ?: 1.0f,
             playbackPitch = prefs[PLAYBACK_PITCH] ?: 1.0f,
             skipSilence = prefs[SKIP_SILENCE] ?: false
@@ -82,22 +74,6 @@ class SettingsDataStore(
 
     suspend fun updateAutoRescan(enabled: Boolean) {
         dataStore.edit { it[AUTO_RESCAN] = enabled }
-    }
-
-    suspend fun updateEqEnabled(enabled: Boolean) {
-        dataStore.edit { it[EQ_ENABLED] = enabled }
-    }
-
-    suspend fun updateEqPresetId(id: Long?) {
-        dataStore.edit { id?.let { v -> it[EQ_PRESET_ID] = v.toInt() } ?: run { it.remove(EQ_PRESET_ID) } }
-    }
-
-    suspend fun updateBassBoost(strength: Int) {
-        dataStore.edit { it[BASS_BOOST] = strength }
-    }
-
-    suspend fun updateLoudness(enabled: Boolean) {
-        dataStore.edit { it[LOUDNESS_ENABLED] = enabled }
     }
 
     suspend fun updatePlaybackSpeed(speed: Float) {

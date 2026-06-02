@@ -355,10 +355,6 @@ class MediaPlaybackManager(
         persistState()
     }
 
-    fun initAudioEffects(manager: AudioEffectsManager) {
-        manager.initWithSession(player.audioSessionId)
-    }
-
     fun release() {
         stopEndOfTrackMonitor()
         fadeManager.cancel()

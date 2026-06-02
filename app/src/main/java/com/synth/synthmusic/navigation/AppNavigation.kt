@@ -30,7 +30,6 @@ import androidx.navigation.toRoute
 import com.synth.synthmusic.ui.albums.AlbumDetailScreen
 import com.synth.synthmusic.ui.artists.ArtistDetailScreen
 import com.synth.synthmusic.ui.components.SynthBottomNav
-import com.synth.synthmusic.ui.equalizer.EqualizerScreen
 import com.synth.synthmusic.ui.home.MainScreen
 import com.synth.synthmusic.ui.library.components.MiniPlayer
 import com.synth.synthmusic.ui.metadata.BatchEditScreen
@@ -138,7 +137,6 @@ fun AppNavigation(
             composable<NowPlayingRoute> {
                 NowPlayingScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToEqualizer = { navController.navigate(EqualizerRoute) },
                     onNavigateToVisualizer = { navController.navigate(VisualizerRoute) }
                 )
             }
@@ -152,11 +150,6 @@ fun AppNavigation(
             }
             composable<SettingsRoute> {
                 SettingsScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable<EqualizerRoute> {
-                EqualizerScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }

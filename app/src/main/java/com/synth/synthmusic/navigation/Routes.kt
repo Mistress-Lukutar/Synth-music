@@ -18,9 +18,6 @@ object NowPlayingRoute
 object SearchRoute
 
 @Serializable
-object EqualizerRoute
-
-@Serializable
 data class SongInfoRoute(val songId: String)
 
 @Serializable

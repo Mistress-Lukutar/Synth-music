@@ -106,16 +106,6 @@ fun SettingsScreen(
                 onCheckedChange = { viewModel.updateAutoRescan(it) }
             )
             SettingSwitch(
-                title = "Equalizer",
-                checked = settings.eqEnabled,
-                onCheckedChange = { viewModel.updateEqEnabled(it) }
-            )
-            SettingSwitch(
-                title = "Loudness Enhancer",
-                checked = settings.loudnessEnabled,
-                onCheckedChange = { viewModel.updateLoudness(it) }
-            )
-            SettingSwitch(
                 title = "Skip Silence",
                 checked = settings.skipSilence,
                 onCheckedChange = { viewModel.updateSkipSilence(it) }
