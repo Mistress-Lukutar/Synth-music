@@ -15,8 +15,10 @@ import com.synth.synthmusic.data.media.waveform.WaveformPreloader
 import com.synth.synthmusic.domain.repository.AlbumRepository
 import com.synth.synthmusic.domain.repository.ArtistRepository
 import com.synth.synthmusic.domain.repository.SongRepository
+import com.synth.synthmusic.data.local.cover.CoverCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * Use case for scanning device storage and indexing MP3 files into the local database.
@@ -27,7 +29,8 @@ class ScanMusicUseCase(
     private val albumRepository: AlbumRepository,
     private val artistRepository: ArtistRepository,
     private val waveformPreloader: WaveformPreloader,
-    private val waveformDataDao: WaveformDataDao
+    private val waveformDataDao: WaveformDataDao,
+    private val coverCache: CoverCache
 ) {
 
     suspend operator fun invoke(): Result<Int> = withContext(Dispatchers.IO) {
@@ -101,6 +104,7 @@ class ScanMusicUseCase(
                 var sampleRate = 0
                 var genre = ""
                 var lyrics: String? = null
+                var artworkBytes: ByteArray? = null
                 try {
                     retriever.setDataSource(context, Uri.parse(uri))
                     bitrate = retriever.extractMetadata(
@@ -113,6 +117,7 @@ class ScanMusicUseCase(
                         MediaMetadataRetriever.METADATA_KEY_GENRE
                     ) ?: ""
                     lyrics = null
+                    artworkBytes = retriever.embeddedPicture
                 } catch (_: Exception) {
                     // ignore corrupted files
                 } finally {
@@ -148,7 +153,22 @@ class ScanMusicUseCase(
                     // ignore tag read errors
                 }
 
-                val artworkUri = "content://media/external/audio/media/$id/albumart"
+                val artworkUri = artworkBytes?.let {
+                    val file = coverCache.saveSongArtwork(id.toString(), it)
+                    Uri.fromFile(file).toString()
+                } ?: run {
+                    // Fallback to MediaStore album art thumbnail
+                    try {
+                        val mediaStoreUri = Uri.parse("content://media/external/audio/media/$id/albumart")
+                        resolver.openInputStream(mediaStoreUri)?.use { input ->
+                            val bytes = input.readBytes()
+                            val file = coverCache.saveSongArtwork(id.toString(), bytes)
+                            Uri.fromFile(file).toString()
+                        }
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
 
                 songs.add(
                     Song(
@@ -207,7 +227,8 @@ class ScanMusicUseCase(
                     id = name.hashCode().toString(),
                     name = name,
                     songCount = tracks.size,
-                    albumCount = albums.count { it.artist == name }
+                    albumCount = albums.count { it.artist == name },
+                    artworkUri = tracks.firstNotNullOfOrNull { it.artworkUri }
                 )
             }
     }

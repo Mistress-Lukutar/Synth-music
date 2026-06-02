@@ -25,4 +25,7 @@ interface AlbumDao {
 
     @Query("DELETE FROM albums")
     suspend fun deleteAll()
+
+    @Query("UPDATE albums SET artwork_uri = :artworkUri WHERE id = :albumId")
+    suspend fun updateArtworkUri(albumId: String, artworkUri: String?)
 }

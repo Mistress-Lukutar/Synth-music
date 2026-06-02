@@ -93,6 +93,10 @@ class PlaylistRepositoryImpl(
     override suspend fun isSongInPlaylist(playlistId: Long, songId: String): Boolean {
         return playlistDao.hasSong(playlistId, songId)
     }
+
+    override suspend fun updatePlaylistArtwork(playlistId: Long, artworkUri: String?) {
+        playlistDao.updateArtworkUri(playlistId, artworkUri)
+    }
 }
 
 private fun PlaylistEntity.toDomain(): Playlist = Playlist(

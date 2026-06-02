@@ -10,4 +10,5 @@ interface ArtistRepository {
     fun observeAllArtists(): Flow<List<Artist>>
     suspend fun saveArtists(artists: List<Artist>)
     suspend fun deleteAllArtists()
+    suspend fun updateArtistArtwork(artistId: String, artworkUri: String?)
 }

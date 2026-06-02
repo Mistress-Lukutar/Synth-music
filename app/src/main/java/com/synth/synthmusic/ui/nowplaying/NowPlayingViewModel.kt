@@ -8,6 +8,8 @@ import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.data.media.waveform.WaveformGenerator
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
+import com.synth.synthmusic.domain.usecase.CheckWritePermissionUseCase
+import com.synth.synthmusic.domain.usecase.WriteArtworkToMp3UseCase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,11 +39,16 @@ class NowPlayingViewModel(
     private val songRepository: SongRepository,
     private val settingsRepository: SettingsRepository,
     private val waveformGenerator: WaveformGenerator,
-    private val waveformDataDao: WaveformDataDao
+    private val waveformDataDao: WaveformDataDao,
+    private val writeArtworkUseCase: WriteArtworkToMp3UseCase,
+    private val checkWritePermission: CheckWritePermissionUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NowPlayingUiState())
     val uiState: StateFlow<NowPlayingUiState> = _uiState.asStateFlow()
+
+    private val _hasWritePermission = MutableStateFlow(checkWritePermission())
+    val hasWritePermission: StateFlow<Boolean> = _hasWritePermission.asStateFlow()
 
     init {
         playbackManager.playbackState
@@ -140,6 +147,26 @@ class NowPlayingViewModel(
                 }
                 _uiState.update { it.copy(playbackPitch = event.pitch) }
             }
+        }
+    }
+
+    fun refreshPermission() {
+        _hasWritePermission.value = checkWritePermission()
+    }
+
+    fun updateArtwork(bytes: ByteArray?) {
+        viewModelScope.launch {
+            val song = _uiState.value.song ?: return@launch
+            if (bytes != null) {
+                writeArtworkUseCase(song, bytes)
+            }
+        }
+    }
+
+    fun removeArtwork() {
+        viewModelScope.launch {
+            val song = _uiState.value.song ?: return@launch
+            writeArtworkUseCase.removeArtwork(song)
         }
     }
 

@@ -95,6 +95,7 @@ app/src/main/java/com/synth/synthmusic/
 ├── data/
 │   ├── local/
 │   │   ├── database/               # Room entities, DAOs, converters, mappers
+│   │   ├── cover/                  # Local file-system artwork cache (CoverCache)
 │   │   └── datastore/              # DataStore-backed settings
 │   ├── repository/                 # Repository implementations
 │   └── media/                      # ExoPlayer wrapper, audio effects, waveform generator
@@ -174,10 +175,10 @@ Type-safe routes are defined in `navigation/Routes.kt` using Kotlin Serializatio
 
 ### Room Database (`AppDatabase`)
 
-- **Version**: 5
-- **Entities**: `SongEntity`, `AlbumEntity`, `ArtistEntity`, `PlaylistEntity`, `PlaylistSongEntity`, `BookmarkEntity`, `EqPresetEntity`, `PlaybackStateEntity`, `WaveformDataEntity`
+- **Version**: 8
+- **Entities**: `SongEntity`, `AlbumEntity`, `ArtistEntity`, `PlaylistEntity`, `PlaylistSongEntity`, `BookmarkEntity`, `EqPresetEntity`, `PlaybackStateEntity`, `WaveformDataEntity`, `RecentlyPlayedCollectionEntity`
 - **Schema export**: disabled (`exportSchema = false`)
-- **Migration strategy**: `fallbackToDestructiveMigration(dropAllTables = true)` in `AppModule.kt`
+- **Migration strategy**: `Migration(7, 8)` adds `artwork_uri` to `ArtistEntity`; `fallbackToDestructiveMigration(dropAllTables = true)` remains as a fallback in `AppModule.kt`
 - **KSP** is used for compile-time code generation (`ksp(libs.androidx.room.compiler)`).
 
 ### DataStore (`SettingsDataStore`)
@@ -211,6 +212,8 @@ Type-safe routes are defined in `navigation/Routes.kt` using Kotlin Serializatio
 |------------|---------|
 | `READ_MEDIA_AUDIO` | Read MP3 files (API 33+) |
 | `READ_EXTERNAL_STORAGE` | Fallback for older Android (maxSdk 32) |
+| `WRITE_EXTERNAL_STORAGE` | Write MP3 metadata on API 28 and below (maxSdk 28) |
+| `MANAGE_EXTERNAL_STORAGE` | Required on API 29+ for editing MP3 metadata / artwork |
 | `POST_NOTIFICATIONS` | Playback notification (API 33+) |
 | `RECORD_AUDIO` | Visualizer audio capture |
 | `FOREGROUND_SERVICE` | Background playback service |

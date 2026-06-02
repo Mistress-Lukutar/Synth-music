@@ -23,18 +23,24 @@ class ArtistRepositoryImpl(
     }
 
     override suspend fun deleteAllArtists() = artistDao.deleteAll()
+
+    override suspend fun updateArtistArtwork(artistId: String, artworkUri: String?) {
+        artistDao.updateArtworkUri(artistId, artworkUri)
+    }
 }
 
 private fun ArtistEntity.toDomain(): Artist = Artist(
     id = id,
     name = name,
     songCount = songCount,
-    albumCount = albumCount
+    albumCount = albumCount,
+    artworkUri = artworkUri
 )
 
 private fun Artist.toEntity(): ArtistEntity = ArtistEntity(
     id = id,
     name = name,
     songCount = songCount,
-    albumCount = albumCount
+    albumCount = albumCount,
+    artworkUri = artworkUri
 )

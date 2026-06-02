@@ -60,4 +60,7 @@ interface PlaylistDao {
         deleteAllSongs(playlistId)
         songs.forEach { insertSong(it) }
     }
+
+    @Query("UPDATE playlists SET artwork_uri = :artworkUri WHERE id = :playlistId")
+    suspend fun updateArtworkUri(playlistId: Long, artworkUri: String?)
 }

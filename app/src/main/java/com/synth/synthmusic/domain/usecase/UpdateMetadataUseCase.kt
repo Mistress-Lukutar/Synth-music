@@ -17,7 +17,8 @@ import java.io.File
  * @param songRepository the repository for persisting song data.
  */
 class UpdateMetadataUseCase(
-    private val songRepository: SongRepository
+    private val songRepository: SongRepository,
+    private val writeArtworkUseCase: WriteArtworkToMp3UseCase
 ) {
 
     /**
@@ -35,6 +36,7 @@ class UpdateMetadataUseCase(
      * @param trackNumber optional new track number.
      * @param comment optional new comment.
      * @param lyrics optional new lyrics.
+     * @param artworkBytes optional new artwork image bytes to write into the MP3 file.
      */
     suspend operator fun invoke(
         song: Song,
@@ -46,7 +48,8 @@ class UpdateMetadataUseCase(
         year: String? = null,
         trackNumber: String? = null,
         comment: String? = null,
-        lyrics: String? = null
+        lyrics: String? = null,
+        artworkBytes: ByteArray? = null
     ) = withContext(Dispatchers.IO) {
         runCatching {
             val file = File(song.path)
@@ -65,6 +68,13 @@ class UpdateMetadataUseCase(
             }
         }
 
+        if (artworkBytes != null) {
+            writeArtworkUseCase(song, artworkBytes).onFailure {
+                return@withContext Result.failure<Unit>(it)
+            }
+        }
+
+        val currentArtworkUri = songRepository.getSongById(song.id)?.artworkUri
         val updated = song.copy(
             title = title ?: song.title,
             artist = artist ?: song.artist,
@@ -74,8 +84,10 @@ class UpdateMetadataUseCase(
             year = year?.toIntOrNull() ?: song.year,
             trackNumber = trackNumber?.toIntOrNull() ?: song.trackNumber,
             comment = comment ?: song.comment,
-            lyrics = lyrics ?: song.lyrics
+            lyrics = lyrics ?: song.lyrics,
+            artworkUri = currentArtworkUri ?: song.artworkUri
         )
         songRepository.saveSongs(listOf(updated))
+        Result.success(Unit)
     }
 }

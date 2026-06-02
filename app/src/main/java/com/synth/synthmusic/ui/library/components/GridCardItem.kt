@@ -63,7 +63,6 @@ fun GridCardItem(
             val imageRequest = remember(imageUri) {
                 ImageRequest.Builder(context)
                     .data(imageUri)
-                    .size(256)
                     .placeholder(R.drawable.ic_placeholder_artwork)
                     .error(R.drawable.ic_placeholder_artwork)
                     .build()

@@ -8,7 +8,9 @@ import com.synth.synthmusic.domain.model.Playlist
 import com.synth.synthmusic.domain.model.RecentlyPlayedCollection
 import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.domain.repository.PlaylistRepository
+import com.synth.synthmusic.data.local.cover.CoverCache
 import com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository
+import android.net.Uri
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +25,8 @@ class PlaylistDetailViewModel(
     private val playlistId: Long,
     private val playlistRepository: PlaylistRepository,
     private val playbackManager: MediaPlaybackManager,
-    private val recentlyPlayedRepository: RecentlyPlayedCollectionRepository
+    private val recentlyPlayedRepository: RecentlyPlayedCollectionRepository,
+    private val coverCache: CoverCache
 ) : ViewModel() {
 
     private val _playlist = MutableStateFlow<Playlist?>(null)
@@ -99,6 +102,19 @@ class PlaylistDetailViewModel(
     fun removeSong(songId: String) {
         viewModelScope.launch {
             playlistRepository.removeSongFromPlaylist(playlistId, songId)
+        }
+    }
+
+    fun updateArtwork(bytes: ByteArray?) {
+        viewModelScope.launch {
+            val playlist = _playlist.value ?: return@launch
+            if (bytes != null) {
+                val file = coverCache.saveCustomCover(CoverCache.Type.PLAYLIST, playlist.id.toString(), bytes)
+                playlistRepository.updatePlaylistArtwork(playlist.id, Uri.fromFile(file).toString())
+            } else {
+                coverCache.deleteCover(CoverCache.Type.PLAYLIST, playlist.id.toString())
+                playlistRepository.updatePlaylistArtwork(playlist.id, null)
+            }
         }
     }
 }

@@ -21,6 +21,7 @@ interface SongRepository {
     suspend fun updateSongFavorite(songId: String, isFavorite: Boolean)
     suspend fun incrementPlayCount(songId: String)
     suspend fun updateSongLyrics(songId: String, lyrics: String?)
+    suspend fun updateSongArtwork(songId: String, artworkUri: String?)
     suspend fun deleteAllSongs()
     fun observeFavoriteSongs(): Flow<List<Song>>
     fun observeTopSongs(): Flow<List<Song>>

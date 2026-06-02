@@ -77,4 +77,7 @@ interface SongDao {
 
     @Query("SELECT * FROM songs")
     suspend fun getAll(): List<SongEntity>
+
+    @Query("UPDATE songs SET artwork_uri = :artworkUri WHERE id = :songId")
+    suspend fun updateArtworkUri(songId: String, artworkUri: String?)
 }

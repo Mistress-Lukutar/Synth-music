@@ -26,6 +26,10 @@ class AlbumRepositoryImpl(
     }
 
     override suspend fun deleteAllAlbums() = albumDao.deleteAll()
+
+    override suspend fun updateAlbumArtwork(albumId: String, artworkUri: String?) {
+        albumDao.updateArtworkUri(albumId, artworkUri)
+    }
 }
 
 private fun AlbumEntity.toDomain(): Album = Album(
