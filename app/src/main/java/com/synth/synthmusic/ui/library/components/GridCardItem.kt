@@ -1,6 +1,6 @@
 package com.synth.synthmusic.ui.library.components
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
@@ -30,8 +30,7 @@ import com.synth.synthmusic.R
  * @param subtitle Secondary text (e.g. artist name). May be null.
  * @param meta Tertiary text (e.g. track count). May be null.
  * @param onClick Callback invoked when the card is clicked.
- * @param overflowActions Optional composable rendered as a dropdown anchored
- *        to the top-end of the cover image (e.g. rename / delete menu).
+ * @param onLongClick Optional callback invoked on a long-press of the card.
  * @param modifier Modifier for styling.
  */
 @Composable
@@ -42,12 +41,15 @@ fun GridCardItem(
     meta: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    overflowActions: @Composable (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .padding(8.dp)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -68,14 +70,6 @@ fun GridCardItem(
                     .clip(RoundedCornerShape(12.dp)),
                 contentScale = ContentScale.Crop
             )
-
-            if (overflowActions != null) {
-                Box(
-                    modifier = Modifier.align(Alignment.TopEnd)
-                ) {
-                    overflowActions()
-                }
-            }
         }
 
         Column(modifier = Modifier.padding(top = 8.dp)) {

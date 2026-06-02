@@ -1,7 +1,9 @@
 package com.synth.synthmusic.ui.playlists
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.synth.synthmusic.data.local.cover.CoverCache
 import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +20,8 @@ import java.io.File
  */
 class PlaylistViewModel(
     private val playlistRepository: PlaylistRepository,
-    private val songRepository: SongRepository
+    private val songRepository: SongRepository,
+    private val coverCache: CoverCache
 ) : ViewModel() {
 
     private val _playlists = MutableStateFlow<List<com.synth.synthmusic.domain.model.Playlist>>(emptyList())
@@ -80,6 +83,19 @@ class PlaylistViewModel(
         if (playlist.isFixed) return
         viewModelScope.launch {
             playlistRepository.renamePlaylist(playlistId, name)
+        }
+    }
+
+    fun updateArtwork(playlistId: Long, bytes: ByteArray?) {
+        val playlist = _playlists.value.find { it.id == playlistId } ?: return
+        viewModelScope.launch {
+            if (bytes != null) {
+                val file = coverCache.saveCustomCover(CoverCache.Type.PLAYLIST, playlist.id.toString(), bytes)
+                playlistRepository.updatePlaylistArtwork(playlist.id, Uri.fromFile(file).toString())
+            } else {
+                coverCache.deleteCover(CoverCache.Type.PLAYLIST, playlist.id.toString())
+                playlistRepository.updatePlaylistArtwork(playlist.id, null)
+            }
         }
     }
 }

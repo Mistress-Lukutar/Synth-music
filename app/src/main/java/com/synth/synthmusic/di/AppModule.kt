@@ -126,7 +126,8 @@ val appModule = module {
     viewModel {
         PlaylistViewModel(
             playlistRepository = get(),
-            songRepository = get()
+            songRepository = get(),
+            coverCache = get()
         )
     }
 

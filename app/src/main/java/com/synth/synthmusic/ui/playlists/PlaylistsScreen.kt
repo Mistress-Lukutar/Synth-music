@@ -98,7 +98,8 @@ fun PlaylistsScreen(
                         playlist = playlist,
                         onClick = { onNavigateToPlaylistDetail(playlist.id) },
                         onRename = { viewModel.renamePlaylist(playlist.id, it) },
-                        onDelete = { viewModel.deletePlaylist(playlist.id) }
+                        onDelete = { viewModel.deletePlaylist(playlist.id) },
+                        onChangeArtwork = { bytes -> viewModel.updateArtwork(playlist.id, bytes) }
                     )
                 }
             }
