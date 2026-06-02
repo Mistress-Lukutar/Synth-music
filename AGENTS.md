@@ -18,18 +18,18 @@ The app follows a **single-activity, feature-first** architecture with Jetpack C
 
 | Layer | Technology |
 |-------|------------|
-| Language | Kotlin 2.2.10 |
+| Language | Kotlin 2.3.21 |
 | Build System | Gradle (Kotlin DSL) |
 | Android Gradle Plugin | 9.2.1 |
 | UI Toolkit | Jetpack Compose (Material 3) |
 | Navigation | Jetpack Navigation Compose with Kotlin Serialization |
-| Dependency Injection | **Koin** (`koin-android`, `koin-androidx-compose`) |
-| Local Database | Room 2.7.1 with KSP |
-| Preferences | DataStore Preferences |
-| Audio Playback | Media3 ExoPlayer 1.6.1 + MediaSession |
-| Image Loading | Coil |
-| Metadata | JAudioTagger (read/write ID3), `MediaMetadataRetriever` (fallback) |
-| Serialization | Kotlinx Serialization |
+| Dependency Injection | **Koin** 4.2.1 (`koin-android`, `koin-androidx-compose`) |
+| Local Database | Room 2.8.4 with KSP 2.3.7 |
+| Preferences | DataStore Preferences 1.2.1 |
+| Audio Playback | Media3 ExoPlayer 1.10.1 + MediaSession |
+| Image Loading | Coil 2.7.0 |
+| Metadata | JAudioTagger 3.0.1 (read/write ID3), `MediaMetadataRetriever` (fallback) |
+| Serialization | Kotlinx Serialization 1.11.0 |
 | Coroutines | Kotlin Coroutines + Flow |
 
 ---
@@ -40,7 +40,7 @@ The app follows a **single-activity, feature-first** architecture with Jetpack C
 - **Target SDK**: 36
 - **Min SDK**: 24 (Android 7.0)
 - **Java Compatibility**: VERSION_17
-- **Compose BOM**: 2026.02.01
+- **Compose BOM**: 2026.05.01
 
 ### Key Build Files
 
