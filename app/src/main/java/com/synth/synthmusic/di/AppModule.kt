@@ -36,7 +36,6 @@ import com.synth.synthmusic.ui.nowplaying.NowPlayingViewModel
 import com.synth.synthmusic.ui.playback.PlaybackViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistDetailViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistViewModel
-import com.synth.synthmusic.ui.queue.QueueViewModel
 import com.synth.synthmusic.ui.search.SearchViewModel
 import com.synth.synthmusic.ui.settings.SettingsViewModel
 import com.synth.synthmusic.ui.sleeptimer.SleepTimerViewModel
@@ -132,9 +131,6 @@ val appModule = module {
         PlaybackViewModel(playbackManager = get())
     }
 
-    viewModel {
-        QueueViewModel(playbackManager = get())
-    }
 
     viewModel {
         EqualizerViewModel(
