@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "com.synth.synthmusic"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.synth.synthmusic"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "0.1.0-alpha"
 
