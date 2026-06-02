@@ -117,4 +117,20 @@ class PlaylistDetailViewModel(
             }
         }
     }
+
+    fun renamePlaylist(name: String) {
+        val playlist = _playlist.value ?: return
+        if (playlist.isFixed) return
+        viewModelScope.launch {
+            playlistRepository.renamePlaylist(playlist.id, name)
+        }
+    }
+
+    fun deletePlaylist() {
+        val playlist = _playlist.value ?: return
+        if (playlist.isFixed) return
+        viewModelScope.launch {
+            playlistRepository.deletePlaylist(playlist.id)
+        }
+    }
 }

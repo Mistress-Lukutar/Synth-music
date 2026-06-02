@@ -1,6 +1,10 @@
 package com.synth.synthmusic.ui.library.components
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -79,7 +83,6 @@ fun SongListItem(
     var expanded by remember { mutableStateOf(false) }
 
     Card(
-        onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp),
@@ -90,16 +93,24 @@ fun SongListItem(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         )
     ) {
+        val context = LocalContext.current
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("Song Info", "${song.title} - ${song.artist}")
+                        clipboard.setPrimaryClip(clip)
+                    }
+                )
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (isCurrent) {
                 TinyEqualizer(modifier = Modifier.padding(end = 8.dp))
             }
-            val context = LocalContext.current
             val imageRequest = remember(song.artworkUri) {
                 ImageRequest.Builder(context)
                     .data(song.artworkUri)
