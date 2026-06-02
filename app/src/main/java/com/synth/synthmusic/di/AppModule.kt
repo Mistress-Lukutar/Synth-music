@@ -108,6 +108,7 @@ val appModule = module {
         NowPlayingViewModel(
             playbackManager = get(),
             songRepository = get(),
+            playlistRepository = get(),
             settingsRepository = get(),
             waveformGenerator = get(),
             waveformDataDao = get(),

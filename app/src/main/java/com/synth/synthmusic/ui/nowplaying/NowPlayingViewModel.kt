@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.synth.synthmusic.data.local.database.WaveformDataDao
 import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.data.media.waveform.WaveformGenerator
+import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.domain.usecase.CheckWritePermissionUseCase
@@ -37,6 +38,7 @@ import kotlinx.coroutines.launch
 class NowPlayingViewModel(
     private val playbackManager: MediaPlaybackManager,
     private val songRepository: SongRepository,
+    private val playlistRepository: PlaylistRepository,
     private val settingsRepository: SettingsRepository,
     private val waveformGenerator: WaveformGenerator,
     private val waveformDataDao: WaveformDataDao,
@@ -124,6 +126,14 @@ class NowPlayingViewModel(
                 val songId = _uiState.value.song?.id ?: return
                 val newValue = !_uiState.value.isFavorite
                 viewModelScope.launch {
+                    val favoritesId = playlistRepository.getFavoritesPlaylistId()
+                    if (favoritesId != null) {
+                        if (newValue) {
+                            playlistRepository.addSongToPlaylist(favoritesId, songId)
+                        } else {
+                            playlistRepository.removeSongFromPlaylist(favoritesId, songId)
+                        }
+                    }
                     songRepository.updateSongFavorite(songId, newValue)
                 }
                 _uiState.update { it.copy(isFavorite = newValue) }
