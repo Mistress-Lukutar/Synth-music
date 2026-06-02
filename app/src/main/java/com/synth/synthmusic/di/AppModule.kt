@@ -79,6 +79,7 @@ val appModule = module {
             songRepository = get(),
             albumRepository = get(),
             artistRepository = get(),
+            playlistRepository = get(),
             waveformPreloader = get(),
             waveformDataDao = get(),
             coverCache = get()
