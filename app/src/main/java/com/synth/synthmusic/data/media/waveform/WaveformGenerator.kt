@@ -4,9 +4,12 @@ import android.content.Context
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
+import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Build
 import android.os.SystemClock
 import android.util.Log
+import androidx.core.net.toUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -36,7 +39,7 @@ class WaveformGenerator(
 
         val extractor = MediaExtractor()
         try {
-            extractor.setDataSource(context, Uri.parse(uri), null)
+            extractor.setDataSource(context, uri.toUri(), null)
         } catch (e: Exception) {
             return@withContext FloatArray(bars) { 0.05f }
         }
@@ -48,7 +51,20 @@ class WaveformGenerator(
         extractor.selectTrack(trackIndex)
         val format = extractor.getTrackFormat(trackIndex)
         val mime = format.getString(MediaFormat.KEY_MIME) ?: return@withContext FloatArray(bars) { 0.05f }
-        val durationUs = format.getLong(MediaFormat.KEY_DURATION, -1)
+        val durationUs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            format.getLong(MediaFormat.KEY_DURATION, -1)
+        } else {
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(context, uri.toUri())
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    ?.toLongOrNull()?.times(1000L) ?: -1
+            } catch (_: Exception) {
+                -1
+            } finally {
+                retriever.release()
+            }
+        }
         if (durationUs <= 0) return@withContext FloatArray(bars) { 0.05f }
 
         val codec = try {

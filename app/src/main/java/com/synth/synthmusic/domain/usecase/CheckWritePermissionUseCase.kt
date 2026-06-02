@@ -10,7 +10,8 @@ import android.content.pm.PackageManager
 /**
  * Checks whether the app has the necessary permission to write to external MP3 files.
  *
- * On API 29+ this requires [MANAGE_EXTERNAL_STORAGE].
+ * On API 30+ this requires [MANAGE_EXTERNAL_STORAGE].
+ * On API 29 legacy external storage is enabled, so [WRITE_EXTERNAL_STORAGE] is sufficient.
  * On API 28 and below [WRITE_EXTERNAL_STORAGE] is sufficient.
  */
 class CheckWritePermissionUseCase(

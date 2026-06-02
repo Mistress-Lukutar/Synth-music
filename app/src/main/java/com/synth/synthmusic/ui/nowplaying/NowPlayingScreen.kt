@@ -4,34 +4,31 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.automirrored.filled.Article
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import java.util.Locale
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,10 +38,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import com.synth.synthmusic.ui.nowplaying.components.WaveformSlider
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,16 +51,18 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.synth.synthmusic.R
+import com.synth.synthmusic.ui.library.components.ChangeArtworkDialog
 import com.synth.synthmusic.ui.nowplaying.components.LyricsBottomSheet
 import com.synth.synthmusic.ui.nowplaying.components.PlaybackSpeedBottomSheet
 import com.synth.synthmusic.ui.nowplaying.components.RatingStars
-import com.synth.synthmusic.ui.library.components.ChangeArtworkDialog
+import com.synth.synthmusic.ui.nowplaying.components.WaveformSlider
+import com.synth.synthmusic.ui.playback.PlaybackViewModel
 import com.synth.synthmusic.ui.share.ShareSongSheet
 import com.synth.synthmusic.ui.share.VolumeOutputSheet
-import com.synth.synthmusic.ui.playback.PlaybackViewModel
 import com.synth.synthmusic.ui.sleeptimer.SleepTimerDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -214,11 +211,11 @@ fun NowPlayingScreen(
                         style = MaterialTheme.typography.labelSmall
                     )
                     val speedText = buildString {
-                        append(String.format("%.2f", uiState.playbackSpeed))
+                        append(String.format(Locale.US, "%.2f", uiState.playbackSpeed))
                         append("x")
                         if (uiState.playbackPitch != 1.0f) {
                             append(" / P")
-                            append(String.format("%.2f", uiState.playbackPitch))
+                            append(String.format(Locale.US, "%.2f", uiState.playbackPitch))
                             append("x")
                         }
                     }
@@ -351,5 +348,5 @@ private fun formatDuration(ms: Long): String {
     val totalSeconds = ms / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    return String.format("%d:%02d", minutes, seconds)
+    return String.format(Locale.US, "%d:%02d", minutes, seconds)
 }

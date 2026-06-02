@@ -1,5 +1,6 @@
 package com.synth.synthmusic.ui.nowplaying.components
 
+import java.util.Locale
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -158,7 +159,7 @@ fun PlaybackKnob(
                     color = textColor.copy(alpha = 0.7f)
                 )
                 Text(
-                    text = String.format("%.2fx", value),
+                    text = String.format(Locale.US, "%.2fx", value),
                     style = MaterialTheme.typography.titleMedium,
                     color = textColor,
                     fontWeight = FontWeight.Bold

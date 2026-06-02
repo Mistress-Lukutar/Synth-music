@@ -146,10 +146,12 @@ fun EditMetadataScreen(
                         )
                         TextButton(
                             onClick = {
-                                val intent = android.content.Intent(
-                                    android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
-                                )
-                                context.startActivity(intent)
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                                    val intent = android.content.Intent(
+                                        android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+                                    )
+                                    context.startActivity(intent)
+                                }
                             },
                             modifier = Modifier.padding(top = 8.dp)
                         ) {
