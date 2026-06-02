@@ -189,68 +189,80 @@ fun NowPlayingScreen(
             }
 
             // Controls
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.ToggleShuffle) }) {
-                    Icon(
-                        Icons.Default.Shuffle,
-                        contentDescription = "Shuffle",
-                        tint = if (uiState.shuffleEnabled) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(onClick = { playbackViewModel.previous() }) {
-                    Icon(Icons.Default.SkipPrevious, contentDescription = "Previous")
-                }
-                IconButton(
-                    onClick = { playbackViewModel.playPause() },
-                    modifier = Modifier.size(64.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = if (uiState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (uiState.isPlaying) "Pause" else "Play",
-                        modifier = Modifier.size(48.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                IconButton(onClick = { playbackViewModel.next() }) {
-                    Icon(Icons.Default.SkipNext, contentDescription = "Next")
-                }
-                IconButton(onClick = { showSleepTimer = true }) {
-                    Icon(Icons.Default.Timer, contentDescription = "Sleep Timer")
-                }
-                IconButton(onClick = { showShareSheet = true }) {
-                    Icon(Icons.Default.Share, contentDescription = "Share")
-                }
-                IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.ToggleFavorite) }) {
-                    Icon(
-                        imageVector = if (uiState.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = "Favorite",
-                        tint = if (uiState.isFavorite) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(onClick = { showLyrics = true }) {
-                    Icon(Icons.AutoMirrored.Filled.Article, contentDescription = "Lyrics")
-                }
-                IconButton(onClick = onNavigateToVisualizer) {
-                    Icon(Icons.Default.GraphicEq, contentDescription = "Visualizer")
-                }
-                IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.CycleRepeat) }) {
-                    val icon = when (uiState.repeatMode) {
-                        androidx.media3.common.Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne
-                        else -> Icons.Default.Repeat
+                    IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.ToggleShuffle) }) {
+                        Icon(
+                            Icons.Default.Shuffle,
+                            contentDescription = "Shuffle",
+                            tint = if (uiState.shuffleEnabled) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = "Repeat",
-                        tint = if (uiState.repeatMode != androidx.media3.common.Player.REPEAT_MODE_OFF)
-                            MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    IconButton(onClick = { playbackViewModel.previous() }) {
+                        Icon(Icons.Default.SkipPrevious, contentDescription = "Previous")
+                    }
+                    IconButton(
+                        onClick = { playbackViewModel.playPause() },
+                        modifier = Modifier.size(64.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (uiState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (uiState.isPlaying) "Pause" else "Play",
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    IconButton(onClick = { playbackViewModel.next() }) {
+                        Icon(Icons.Default.SkipNext, contentDescription = "Next")
+                    }
+                    IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.CycleRepeat) }) {
+                        val icon = when (uiState.repeatMode) {
+                            androidx.media3.common.Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne
+                            else -> Icons.Default.Repeat
+                        }
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = "Repeat",
+                            tint = if (uiState.repeatMode != androidx.media3.common.Player.REPEAT_MODE_OFF)
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { showSleepTimer = true }) {
+                        Icon(Icons.Default.Timer, contentDescription = "Sleep Timer")
+                    }
+                    IconButton(onClick = { showShareSheet = true }) {
+                        Icon(Icons.Default.Share, contentDescription = "Share")
+                    }
+                    IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.ToggleFavorite) }) {
+                        Icon(
+                            imageVector = if (uiState.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                            contentDescription = "Favorite",
+                            tint = if (uiState.isFavorite) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = { showLyrics = true }) {
+                        Icon(Icons.AutoMirrored.Filled.Article, contentDescription = "Lyrics")
+                    }
+                    IconButton(onClick = onNavigateToVisualizer) {
+                        Icon(Icons.Default.GraphicEq, contentDescription = "Visualizer")
+                    }
                 }
             }
         }
