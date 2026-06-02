@@ -78,7 +78,9 @@ class NowPlayingViewModel(
                         rating = song?.rating ?: 0f,
                         isFavorite = song?.isFavorite ?: false,
                         playbackSpeed = settings.playbackSpeed,
-                        playbackPitch = settings.playbackPitch
+                        playbackPitch = settings.playbackPitch,
+                        audioSessionId = playbackManager.player.audioSessionId,
+                        audioQualityLabel = buildAudioQualityLabel(song)
                     )
                 }
             }
@@ -178,6 +180,18 @@ class NowPlayingViewModel(
             val song = _uiState.value.song ?: return@launch
             writeArtworkUseCase.removeArtwork(song)
         }
+    }
+
+    private fun buildAudioQualityLabel(song: com.synth.synthmusic.domain.model.Song?): String {
+        if (song == null) return ""
+        val sampleRateKhz = song.sampleRate / 1000f
+        val sampleRateText = if (sampleRateKhz == sampleRateKhz.toInt().toFloat()) {
+            "${sampleRateKhz.toInt()} kHz"
+        } else {
+            String.format(java.util.Locale.US, "%.1f kHz", sampleRateKhz)
+        }
+        val format = song.path.substringAfterLast('.', "Unknown").uppercase()
+        return "$sampleRateText • ${song.bitrate} kbps • $format"
     }
 
     private suspend fun loadWaveform(songId: String): List<Float> {

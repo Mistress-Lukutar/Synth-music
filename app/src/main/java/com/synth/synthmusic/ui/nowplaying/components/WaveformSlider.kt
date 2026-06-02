@@ -56,13 +56,13 @@ fun WaveformSlider(
 
         val barCount = amplitudes.size
         val barWidth = size.width / barCount
-        val gap = barWidth * 0.25f
-        val drawWidth = (barWidth - gap).coerceAtLeast(1f)
+        val gap = barWidth * 0.45f
+        val drawWidth = (barWidth - gap).coerceAtLeast(1.5f)
         val maxBarHeight = size.height
 
         for (i in 0 until barCount) {
             val amp = amplitudes[i].coerceIn(0f, 1f)
-            val barHeight = amp * maxBarHeight
+            val barHeight = (0.1f + amp * 0.9f) * maxBarHeight
             val x = i * barWidth + gap / 2
             val y = (size.height - barHeight) / 2
             val barProgress = i.toFloat() / barCount

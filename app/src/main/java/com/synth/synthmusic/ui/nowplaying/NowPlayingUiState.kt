@@ -16,5 +16,7 @@ data class NowPlayingUiState(
     val isFavorite: Boolean = false,
     val waveformAmplitudes: List<Float> = emptyList(),
     val playbackSpeed: Float = 1.0f,
-    val playbackPitch: Float = 1.0f
+    val playbackPitch: Float = 1.0f,
+    val audioSessionId: Int = 0,
+    val audioQualityLabel: String = ""
 )
