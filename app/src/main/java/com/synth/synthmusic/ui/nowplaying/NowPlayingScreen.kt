@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Article
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.GraphicEq
@@ -62,7 +61,6 @@ import com.synth.synthmusic.ui.nowplaying.components.RatingStars
 import com.synth.synthmusic.ui.nowplaying.components.WaveformSlider
 import com.synth.synthmusic.ui.playback.PlaybackViewModel
 import com.synth.synthmusic.ui.share.ShareSongSheet
-import com.synth.synthmusic.ui.share.VolumeOutputSheet
 import com.synth.synthmusic.ui.sleeptimer.SleepTimerDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -84,7 +82,6 @@ fun NowPlayingScreen(
     val hasWritePermission by viewModel.hasWritePermission.collectAsStateWithLifecycle()
     var showSleepTimer by remember { mutableStateOf(false) }
     var showShareSheet by remember { mutableStateOf(false) }
-    var showVolumeSheet by remember { mutableStateOf(false) }
     var showLyrics by remember { mutableStateOf(false) }
     var showSpeedSheet by remember { mutableStateOf(false) }
     var showArtworkDialog by remember { mutableStateOf(false) }
@@ -270,9 +267,6 @@ fun NowPlayingScreen(
                 IconButton(onClick = { showShareSheet = true }) {
                     Icon(Icons.Default.Share, contentDescription = "Share")
                 }
-                IconButton(onClick = { showVolumeSheet = true }) {
-                    Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Volume")
-                }
                 IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.ToggleFavorite) }) {
                     Icon(
                         imageVector = if (uiState.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
@@ -312,9 +306,6 @@ fun NowPlayingScreen(
             song = uiState.song,
             onDismiss = { showShareSheet = false }
         )
-    }
-    if (showVolumeSheet) {
-        VolumeOutputSheet(onDismiss = { showVolumeSheet = false })
     }
     if (showLyrics) {
         LyricsBottomSheet(
