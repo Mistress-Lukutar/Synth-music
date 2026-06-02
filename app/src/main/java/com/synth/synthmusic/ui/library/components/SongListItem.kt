@@ -65,6 +65,7 @@ import com.synth.synthmusic.ui.components.formatDuration
 fun SongListItem(
     song: Song,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     onNavigateToSongInfo: ((String) -> Unit)? = null,
     onNavigateToEditMetadata: ((String) -> Unit)? = null,
     onAddToPlaylist: ((String) -> Unit)? = null,
@@ -74,7 +75,6 @@ fun SongListItem(
     onRemoveFromPlaylist: ((String) -> Unit)? = null,
     isCurrent: Boolean = false,
     trailingContent: @Composable ((Song) -> Unit)? = null,
-    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
 

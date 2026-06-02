@@ -23,9 +23,9 @@ import androidx.compose.material3.MaterialTheme
 @Composable
 fun AudioVisualizer(
     audioSessionId: Int,
+    modifier: Modifier = Modifier,
     barCount: Int = 48,
     color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
-    modifier: Modifier = Modifier
 ) {
     if (audioSessionId == 0) {
         return

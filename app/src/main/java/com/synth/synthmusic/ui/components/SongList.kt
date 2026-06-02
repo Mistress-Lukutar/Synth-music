@@ -28,6 +28,7 @@ fun SongList(
     songs: List<Song>,
     currentSongId: String?,
     onSongClick: (Song) -> Unit,
+    modifier: Modifier = Modifier,
     onNavigateToSongInfo: ((String) -> Unit)? = null,
     onNavigateToEditMetadata: ((String) -> Unit)? = null,
     onAddToPlaylist: ((String) -> Unit)? = null,
@@ -36,7 +37,6 @@ fun SongList(
     onShare: ((String) -> Unit)? = null,
     onRemoveFromPlaylist: ((String) -> Unit)? = null,
     trailingContent: @Composable ((Song) -> Unit)? = null,
-    modifier: Modifier = Modifier
 ) {
     LazyColumn(modifier = modifier) {
         itemsIndexed(

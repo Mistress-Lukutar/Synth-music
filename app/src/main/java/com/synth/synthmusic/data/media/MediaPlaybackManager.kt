@@ -2,6 +2,7 @@ package com.synth.synthmusic.data.media
 
 import android.content.Context
 import android.os.Handler
+import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -457,7 +458,7 @@ class MediaPlaybackManager(
                 .setTitle(song.title)
                 .setArtist(song.artist)
                 .setAlbumTitle(song.album)
-                .setArtworkUri(song.artworkUri?.let { android.net.Uri.parse(it) })
+                .setArtworkUri(song.artworkUri?.let { it.toUri() })
                 .build()
         )
         .build()

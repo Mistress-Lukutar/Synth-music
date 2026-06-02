@@ -35,12 +35,12 @@ import com.synth.synthmusic.R
 @Composable
 fun ArtworkPicker(
     artworkUri: String?,
+    modifier: Modifier = Modifier,
     artworkBytes: ByteArray? = null,
     editable: Boolean,
     onPick: () -> Unit,
     onReset: () -> Unit,
     onRemove: () -> Unit,
-    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier

@@ -28,9 +28,9 @@ fun WaveformSlider(
     amplitudes: List<Float>,
     progress: Float,
     onSeek: (Float) -> Unit,
+    modifier: Modifier = Modifier,
     playedColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
     remainingColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-    modifier: Modifier = Modifier
 ) {
     val safeProgress = progress.coerceIn(0f, 1f)
 

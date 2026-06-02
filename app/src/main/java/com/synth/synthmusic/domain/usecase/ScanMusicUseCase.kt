@@ -5,6 +5,7 @@ import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.MediaStore
+import androidx.core.net.toUri
 import com.synth.synthmusic.data.local.cover.CoverCache
 import com.synth.synthmusic.data.local.database.WaveformDataDao
 import com.synth.synthmusic.data.media.waveform.WaveformPreloader
@@ -106,7 +107,7 @@ class ScanMusicUseCase(
                 var lyrics: String? = null
                 var artworkBytes: ByteArray? = null
                 try {
-                    retriever.setDataSource(context, Uri.parse(uri))
+                    retriever.setDataSource(context, uri.toUri())
                     bitrate = retriever.extractMetadata(
                         MediaMetadataRetriever.METADATA_KEY_BITRATE
                     )?.toIntOrNull()?.div(1000) ?: 0
@@ -159,7 +160,7 @@ class ScanMusicUseCase(
                 } ?: run {
                     // Fallback to MediaStore album art thumbnail
                     try {
-                        val mediaStoreUri = Uri.parse("content://media/external/audio/media/$id/albumart")
+                        val mediaStoreUri = "content://media/external/audio/media/$id/albumart".toUri()
                         resolver.openInputStream(mediaStoreUri)?.use { input ->
                             val bytes = input.readBytes()
                             val file = coverCache.saveSongArtwork(id.toString(), bytes)
