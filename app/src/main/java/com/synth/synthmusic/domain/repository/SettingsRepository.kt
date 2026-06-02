@@ -2,7 +2,6 @@ package com.synth.synthmusic.domain.repository
 
 import com.synth.synthmusic.domain.model.AccentColor
 import com.synth.synthmusic.domain.model.AppSettings
-import com.synth.synthmusic.domain.model.ReplayGainMode
 import com.synth.synthmusic.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 
@@ -14,7 +13,6 @@ interface SettingsRepository {
     suspend fun updateTheme(theme: ThemeMode)
     suspend fun updateAccentColor(color: AccentColor)
     suspend fun updateFadeDuration(durationMs: Int)
-    suspend fun updateReplayGain(mode: ReplayGainMode)
     suspend fun updateAutoRescan(enabled: Boolean)
     suspend fun updatePlaybackSpeed(speed: Float)
     suspend fun updatePlaybackPitch(pitch: Float)

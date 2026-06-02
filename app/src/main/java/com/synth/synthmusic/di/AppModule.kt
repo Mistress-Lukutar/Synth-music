@@ -198,9 +198,4 @@ val appModule = module {
     }
 }
 
-/**
- * Koin module for data layer bindings.
- */
-val dataModule = module {
-    // additional data bindings if needed
-}
+
