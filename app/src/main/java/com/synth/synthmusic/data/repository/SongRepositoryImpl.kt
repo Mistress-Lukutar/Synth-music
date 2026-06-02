@@ -59,6 +59,9 @@ class SongRepositoryImpl(
     override suspend fun updateSongLyrics(songId: String, lyrics: String?) =
         songDao.updateLyrics(songId, lyrics)
 
+    override suspend fun updateSongArtwork(songId: String, artworkUri: String?) =
+        songDao.updateArtworkUri(songId, artworkUri)
+
     override suspend fun deleteAllSongs() = songDao.deleteAll()
 
     override fun observeFavoriteSongs(): Flow<List<Song>> =

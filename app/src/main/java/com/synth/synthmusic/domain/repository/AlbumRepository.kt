@@ -10,5 +10,6 @@ interface AlbumRepository {
     fun observeAllAlbums(): Flow<List<Album>>
     fun observeAlbumsByArtist(artist: String): Flow<List<Album>>
     suspend fun saveAlbums(albums: List<Album>)
+    suspend fun updateAlbumArtwork(albumId: String, artworkUri: String?)
     suspend fun deleteAllAlbums()
 }

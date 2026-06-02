@@ -103,7 +103,6 @@ fun SongListItem(
             val imageRequest = remember(song.artworkUri) {
                 ImageRequest.Builder(context)
                     .data(song.artworkUri)
-                    .size(48)
                     .placeholder(R.drawable.ic_placeholder_artwork)
                     .error(R.drawable.ic_placeholder_artwork)
                     .build()

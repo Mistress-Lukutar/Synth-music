@@ -21,11 +21,13 @@ import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.data.media.waveform.WaveformGenerator
 import com.synth.synthmusic.data.media.waveform.WaveformPreloader
 import com.synth.synthmusic.domain.usecase.BatchUpdateMetadataUseCase
+import com.synth.synthmusic.domain.usecase.CheckWritePermissionUseCase
 import com.synth.synthmusic.domain.usecase.ExportPlaylistUseCase
 import com.synth.synthmusic.domain.usecase.ImportPlaylistUseCase
 import com.synth.synthmusic.domain.usecase.PlaySongUseCase
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
 import com.synth.synthmusic.domain.usecase.UpdateMetadataUseCase
+import com.synth.synthmusic.domain.usecase.WriteArtworkToMp3UseCase
 import com.synth.synthmusic.ui.bookmarks.BookmarkViewModel
 import com.synth.synthmusic.ui.equalizer.EqualizerViewModel
 import com.synth.synthmusic.ui.library.LibraryViewModel
@@ -51,7 +53,10 @@ val appModule = module {
             androidContext(),
             AppDatabase::class.java,
             "synth_music.db"
-        ).fallbackToDestructiveMigration(dropAllTables = true).build()
+        )
+            .addMigrations(AppDatabase.MIGRATION_7_8)
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
     }
 
     single { get<AppDatabase>().songDao() }
@@ -78,6 +83,7 @@ val appModule = module {
     single { AudioEffectsManager(get()) }
     single { WaveformGenerator(androidContext()) }
     single { WaveformPreloader(get(), get()) }
+    single { com.synth.synthmusic.data.local.cover.CoverCache(androidContext()) }
 
     single {
         ScanMusicUseCase(
@@ -86,12 +92,15 @@ val appModule = module {
             albumRepository = get(),
             artistRepository = get(),
             waveformPreloader = get(),
-            waveformDataDao = get()
+            waveformDataDao = get(),
+            coverCache = get()
         )
     }
 
     single { PlaySongUseCase(get()) }
-    single { UpdateMetadataUseCase(get()) }
+    single { CheckWritePermissionUseCase(androidContext()) }
+    single { WriteArtworkToMp3UseCase(get(), get()) }
+    single { UpdateMetadataUseCase(get(), get()) }
     single { BatchUpdateMetadataUseCase(get(), get()) }
     single { ExportPlaylistUseCase(androidContext(), get()) }
     single { ImportPlaylistUseCase(androidContext(), get(), get()) }
@@ -113,7 +122,9 @@ val appModule = module {
             songRepository = get(),
             settingsRepository = get(),
             waveformGenerator = get(),
-            waveformDataDao = get()
+            waveformDataDao = get(),
+            writeArtworkUseCase = get(),
+            checkWritePermission = get()
         )
     }
 
@@ -144,7 +155,8 @@ val appModule = module {
             playlistId = playlistId,
             playlistRepository = get(),
             playbackManager = get(),
-            recentlyPlayedRepository = get()
+            recentlyPlayedRepository = get(),
+            coverCache = get()
         )
     }
 
@@ -155,7 +167,8 @@ val appModule = module {
             albumRepository = get(),
             songRepository = get(),
             playbackManager = get(),
-            recentlyPlayedRepository = get()
+            recentlyPlayedRepository = get(),
+            coverCache = get()
         )
     }
 
@@ -166,14 +179,18 @@ val appModule = module {
             albumRepository = get(),
             songRepository = get(),
             playbackManager = get(),
-            recentlyPlayedRepository = get()
+            recentlyPlayedRepository = get(),
+            coverCache = get()
         )
     }
 
     viewModel { (songId: String) ->
         com.synth.synthmusic.ui.metadata.EditMetadataViewModel(
             songId = songId,
-            songRepository = get()
+            songRepository = get(),
+            checkWritePermission = get(),
+            writeArtworkUseCase = get(),
+            updateMetadataUseCase = get()
         )
     }
 

@@ -1,5 +1,8 @@
 package com.synth.synthmusic.ui.nowplaying
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
@@ -28,6 +32,8 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,10 +62,13 @@ import com.synth.synthmusic.R
 import com.synth.synthmusic.ui.nowplaying.components.LyricsBottomSheet
 import com.synth.synthmusic.ui.nowplaying.components.PlaybackSpeedBottomSheet
 import com.synth.synthmusic.ui.nowplaying.components.RatingStars
+import com.synth.synthmusic.ui.library.components.ChangeArtworkDialog
 import com.synth.synthmusic.ui.share.ShareSongSheet
 import com.synth.synthmusic.ui.share.VolumeOutputSheet
 import com.synth.synthmusic.ui.playback.PlaybackViewModel
 import com.synth.synthmusic.ui.sleeptimer.SleepTimerDialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 /**
@@ -76,11 +86,26 @@ fun NowPlayingScreen(
     playbackViewModel: PlaybackViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val hasWritePermission by viewModel.hasWritePermission.collectAsStateWithLifecycle()
     var showSleepTimer by remember { mutableStateOf(false) }
     var showShareSheet by remember { mutableStateOf(false) }
     var showVolumeSheet by remember { mutableStateOf(false) }
     var showLyrics by remember { mutableStateOf(false) }
     var showSpeedSheet by remember { mutableStateOf(false) }
+    var showArtworkDialog by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val pickMedia = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch(Dispatchers.IO) {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                viewModel.updateArtwork(bytes)
+            }
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -92,6 +117,23 @@ fun NowPlayingScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Change artwork") },
+                            onClick = {
+                                menuExpanded = false
+                                showArtworkDialog = true
+                            }
                         )
                     }
                 }
@@ -112,7 +154,6 @@ fun NowPlayingScreen(
             val imageRequest = remember(artworkUri) {
                 ImageRequest.Builder(context)
                     .data(artworkUri)
-                    .size(512)
                     .placeholder(R.drawable.ic_placeholder_artwork)
                     .error(R.drawable.ic_placeholder_artwork)
                     .build()
@@ -294,6 +335,14 @@ fun NowPlayingScreen(
             onSpeedChanged = { viewModel.onEvent(NowPlayingEvent.SetPlaybackSpeed(it)) },
             onPitchChanged = { viewModel.onEvent(NowPlayingEvent.SetPlaybackPitch(it)) },
             onDismiss = { showSpeedSheet = false }
+        )
+    }
+
+    if (showArtworkDialog && hasWritePermission) {
+        ChangeArtworkDialog(
+            onDismiss = { showArtworkDialog = false },
+            onPick = { pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            onRemove = { viewModel.removeArtwork() }
         )
     }
 }

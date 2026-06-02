@@ -44,7 +44,6 @@ fun RecentlyPlayedCard(
         val imageRequest = remember(collection.artworkUri) {
             ImageRequest.Builder(context)
                 .data(collection.artworkUri)
-                .size(120)
                 .placeholder(R.drawable.ic_placeholder_artwork)
                 .error(R.drawable.ic_placeholder_artwork)
                 .build()

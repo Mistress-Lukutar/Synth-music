@@ -22,4 +22,10 @@ interface ArtistDao {
 
     @Query("DELETE FROM artists")
     suspend fun deleteAll()
+
+    @Query("UPDATE artists SET artwork_uri = :artworkUri WHERE id = :artistId")
+    suspend fun updateArtworkUri(artistId: String, artworkUri: String?)
+
+    @Query("SELECT * FROM artists WHERE id = :artistId")
+    fun observeById(artistId: String): Flow<ArtistEntity?>
 }

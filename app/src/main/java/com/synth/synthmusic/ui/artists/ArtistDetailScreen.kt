@@ -15,11 +15,17 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,9 +36,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,7 +51,10 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.synth.synthmusic.R
 import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
+import com.synth.synthmusic.ui.library.components.ChangeArtworkDialog
 import com.synth.synthmusic.ui.library.components.SongListItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -69,6 +78,20 @@ fun ArtistDetailScreen(
     val songs by viewModel.songs.collectAsStateWithLifecycle()
     val playback by viewModel.playbackState.collectAsStateWithLifecycle()
     var selectedSongForPlaylist by remember { mutableStateOf<String?>(null) }
+    var showArtworkDialog by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val pickMedia = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch(Dispatchers.IO) {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                viewModel.updateArtwork(bytes)
+            }
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -86,6 +109,23 @@ fun ArtistDetailScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Change artwork") },
+                            onClick = {
+                                menuExpanded = false
+                                showArtworkDialog = true
+                            }
                         )
                     }
                 }
@@ -171,6 +211,14 @@ fun ArtistDetailScreen(
             onDismiss = { selectedSongForPlaylist = null }
         )
     }
+
+    if (showArtworkDialog) {
+        ChangeArtworkDialog(
+            onDismiss = { showArtworkDialog = false },
+            onPick = { pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            onRemove = { viewModel.updateArtwork(null) }
+        )
+    }
 }
 
 @Composable
@@ -189,7 +237,6 @@ private fun ArtistAlbumCard(
         val imageRequest = remember(album.artworkUri) {
             ImageRequest.Builder(context)
                 .data(album.artworkUri)
-                .size(120)
                 .placeholder(R.drawable.ic_placeholder_artwork)
                 .error(R.drawable.ic_placeholder_artwork)
                 .build()

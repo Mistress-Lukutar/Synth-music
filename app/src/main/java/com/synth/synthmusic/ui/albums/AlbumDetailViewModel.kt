@@ -8,7 +8,9 @@ import com.synth.synthmusic.domain.model.CollectionType
 import com.synth.synthmusic.domain.model.RecentlyPlayedCollection
 import com.synth.synthmusic.domain.repository.AlbumRepository
 import com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository
+import com.synth.synthmusic.data.local.cover.CoverCache
 import com.synth.synthmusic.domain.repository.SongRepository
+import android.net.Uri
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,7 +28,8 @@ class AlbumDetailViewModel(
     private val albumRepository: AlbumRepository,
     private val songRepository: SongRepository,
     private val playbackManager: com.synth.synthmusic.data.media.MediaPlaybackManager,
-    private val recentlyPlayedRepository: RecentlyPlayedCollectionRepository
+    private val recentlyPlayedRepository: RecentlyPlayedCollectionRepository,
+    private val coverCache: CoverCache
 ) : ViewModel() {
 
     private val _album = MutableStateFlow<Album?>(null)
@@ -73,6 +76,19 @@ class AlbumDetailViewModel(
     fun addToQueue(songId: String) {
         val song = _songs.value.find { it.id == songId } ?: return
         playbackManager.addToQueue(song)
+    }
+
+    fun updateArtwork(bytes: ByteArray?) {
+        viewModelScope.launch {
+            val album = _album.value ?: return@launch
+            if (bytes != null) {
+                val file = coverCache.saveCustomCover(CoverCache.Type.ALBUM, album.id, bytes)
+                albumRepository.updateAlbumArtwork(album.id, Uri.fromFile(file).toString())
+            } else {
+                coverCache.deleteCover(CoverCache.Type.ALBUM, album.id)
+                albumRepository.updateAlbumArtwork(album.id, null)
+            }
+        }
     }
 
     private fun recordAlbumPlayed() {

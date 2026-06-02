@@ -139,8 +139,10 @@ private fun LyricsTab(song: Song?) {
 private fun ArtworkTab(song: Song?) {
     ArtworkPicker(
         artworkUri = song?.artworkUri,
-        onArtworkUriChange = {},
         editable = false,
+        onPick = {},
+        onReset = {},
+        onRemove = {},
         modifier = Modifier.fillMaxSize()
     )
 }

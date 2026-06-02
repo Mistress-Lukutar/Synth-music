@@ -91,7 +91,6 @@ fun AddToPlaylistDialog(
                         val imageRequest = remember(playlist.artworkUri) {
                             ImageRequest.Builder(context)
                                 .data(playlist.artworkUri)
-                                .size(48)
                                 .placeholder(R.drawable.ic_placeholder_artwork)
                                 .error(R.drawable.ic_placeholder_artwork)
                                 .build()
