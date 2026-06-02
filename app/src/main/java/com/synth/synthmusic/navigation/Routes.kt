@@ -15,9 +15,6 @@ object HomeRoute
 object NowPlayingRoute
 
 @Serializable
-object QueueRoute
-
-@Serializable
 object SearchRoute
 
 @Serializable

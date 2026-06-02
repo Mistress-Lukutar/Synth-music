@@ -40,7 +40,6 @@ import com.synth.synthmusic.ui.metadata.SongInfoScreen
 import com.synth.synthmusic.ui.nowplaying.NowPlayingScreen
 import com.synth.synthmusic.ui.playback.PlaybackViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistDetailScreen
-import com.synth.synthmusic.ui.queue.QueueScreen
 import com.synth.synthmusic.ui.search.SearchScreen
 import com.synth.synthmusic.ui.settings.SettingsScreen
 import com.synth.synthmusic.ui.splash.SplashScreen
@@ -140,14 +139,8 @@ fun AppNavigation(
             composable<NowPlayingRoute> {
                 NowPlayingScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToQueue = { navController.navigate(QueueRoute) },
                     onNavigateToEqualizer = { navController.navigate(EqualizerRoute) },
                     onNavigateToVisualizer = { navController.navigate(VisualizerRoute) }
-                )
-            }
-            composable<QueueRoute> {
-                QueueScreen(
-                    onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable<SearchRoute> {

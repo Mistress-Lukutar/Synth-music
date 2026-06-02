@@ -78,7 +78,6 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun NowPlayingScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToQueue: () -> Unit,
     onNavigateToEqualizer: () -> Unit,
     onNavigateToVisualizer: () -> Unit,
     modifier: Modifier = Modifier,
