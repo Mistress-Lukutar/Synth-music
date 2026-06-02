@@ -12,4 +12,5 @@ interface AlbumRepository {
     suspend fun saveAlbums(albums: List<Album>)
     suspend fun updateAlbumArtwork(albumId: String, artworkUri: String?)
     suspend fun deleteAllAlbums()
+    suspend fun replaceAllAlbums(albums: List<Album>)
 }

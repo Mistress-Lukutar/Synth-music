@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
@@ -38,6 +39,28 @@ interface SongDao {
 
     @Update
     suspend fun update(song: SongEntity)
+
+    @Update
+    suspend fun updateAll(songs: List<SongEntity>)
+
+    @Transaction
+    suspend fun upsertSongs(songs: List<SongEntity>) {
+        val existing = getAll().associateBy { it.id }
+        val newSongs = songs.filter { it.id !in existing }
+        val updatedSongs = songs.mapNotNull { song ->
+            existing[song.id]?.let { old ->
+                song.copy(
+                    rating = old.rating,
+                    playCount = old.playCount,
+                    lastPlayed = old.lastPlayed,
+                    lyrics = old.lyrics,
+                    isFavorite = old.isFavorite
+                )
+            }
+        }
+        if (newSongs.isNotEmpty()) insertAll(newSongs)
+        if (updatedSongs.isNotEmpty()) updateAll(updatedSongs)
+    }
 
     @Query("DELETE FROM songs WHERE id = :songId")
     suspend fun deleteById(songId: String)

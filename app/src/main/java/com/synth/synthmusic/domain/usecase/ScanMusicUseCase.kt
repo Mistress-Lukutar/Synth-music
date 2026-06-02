@@ -36,16 +36,21 @@ class ScanMusicUseCase(
     suspend operator fun invoke(): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {
             val songs = scanSongs()
-            songRepository.saveSongs(songs)
+            songRepository.upsertSongs(songs)
+
+            val existingSongs = songRepository.getAllSongs()
+            val scannedIds = songs.map { it.id }.toSet()
+            val toDelete = existingSongs.map { it.id }.filter { it !in scannedIds }
+            toDelete.forEach { songRepository.deleteSong(it) }
 
             waveformPreloader.preload(songs)
             waveformDataDao.deleteOrphaned()
 
             val albums = deriveAlbums(songs)
-            albumRepository.saveAlbums(albums)
+            albumRepository.replaceAllAlbums(albums)
 
             val artists = deriveArtists(songs, albums)
-            artistRepository.saveArtists(artists)
+            artistRepository.replaceAllArtists(artists)
 
             songs.size
         }

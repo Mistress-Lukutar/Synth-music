@@ -24,6 +24,11 @@ class ArtistRepositoryImpl(
 
     override suspend fun deleteAllArtists() = artistDao.deleteAll()
 
+    override suspend fun replaceAllArtists(artists: List<Artist>) {
+        artistDao.deleteAll()
+        artistDao.insertAll(artists.map { it.toEntity() })
+    }
+
     override suspend fun updateArtistArtwork(artistId: String, artworkUri: String?) {
         artistDao.updateArtworkUri(artistId, artworkUri)
     }

@@ -45,6 +45,10 @@ class SongRepositoryImpl(
         songDao.insertAll(songs.map { it.toEntity() })
     }
 
+    override suspend fun upsertSongs(songs: List<Song>) {
+        songDao.upsertSongs(songs.map { it.toEntity() })
+    }
+
     override suspend fun deleteSong(songId: String) = songDao.deleteById(songId)
 
     override suspend fun updateSongRating(songId: String, rating: Float) =
