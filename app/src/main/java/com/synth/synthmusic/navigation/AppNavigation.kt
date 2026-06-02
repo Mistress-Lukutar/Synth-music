@@ -32,7 +32,6 @@ import com.synth.synthmusic.ui.artists.ArtistDetailScreen
 import com.synth.synthmusic.ui.components.SynthBottomNav
 import com.synth.synthmusic.ui.home.MainScreen
 import com.synth.synthmusic.ui.library.components.MiniPlayer
-import com.synth.synthmusic.ui.metadata.BatchEditScreen
 import com.synth.synthmusic.ui.metadata.EditMetadataScreen
 import com.synth.synthmusic.ui.metadata.SongInfoScreen
 import com.synth.synthmusic.ui.nowplaying.NowPlayingScreen
@@ -188,13 +187,6 @@ fun AppNavigation(
                 val route = backStackEntry.toRoute<EditMetadataRoute>()
                 EditMetadataScreen(
                     songId = route.songId,
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable<BatchEditRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<BatchEditRoute>()
-                BatchEditScreen(
-                    songIds = route.songIds,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
