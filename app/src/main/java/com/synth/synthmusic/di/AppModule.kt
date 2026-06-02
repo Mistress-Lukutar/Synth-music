@@ -1,10 +1,11 @@
 package com.synth.synthmusic.di
 
-import android.content.Context
 import androidx.room.Room
 import com.synth.synthmusic.data.local.database.AppDatabase
 import com.synth.synthmusic.data.local.datastore.SettingsDataStore
 import com.synth.synthmusic.data.media.MediaPlaybackManager
+import com.synth.synthmusic.data.media.waveform.WaveformGenerator
+import com.synth.synthmusic.data.media.waveform.WaveformPreloader
 import com.synth.synthmusic.data.repository.AlbumRepositoryImpl
 import com.synth.synthmusic.data.repository.ArtistRepositoryImpl
 import com.synth.synthmusic.data.repository.PlaylistRepositoryImpl
@@ -15,8 +16,6 @@ import com.synth.synthmusic.domain.repository.ArtistRepository
 import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
-import com.synth.synthmusic.data.media.waveform.WaveformGenerator
-import com.synth.synthmusic.data.media.waveform.WaveformPreloader
 import com.synth.synthmusic.domain.usecase.CheckWritePermissionUseCase
 import com.synth.synthmusic.domain.usecase.ExportPlaylistUseCase
 import com.synth.synthmusic.domain.usecase.ImportPlaylistUseCase
