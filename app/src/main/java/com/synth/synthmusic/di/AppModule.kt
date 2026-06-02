@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.room.Room
 import com.synth.synthmusic.data.local.database.AppDatabase
 import com.synth.synthmusic.data.local.datastore.SettingsDataStore
-import com.synth.synthmusic.data.media.AudioEffectsManager
 import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.data.repository.AlbumRepositoryImpl
 import com.synth.synthmusic.data.repository.ArtistRepositoryImpl
@@ -26,7 +25,6 @@ import com.synth.synthmusic.domain.usecase.PlaySongUseCase
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
 import com.synth.synthmusic.domain.usecase.UpdateMetadataUseCase
 import com.synth.synthmusic.domain.usecase.WriteArtworkToMp3UseCase
-import com.synth.synthmusic.ui.equalizer.EqualizerViewModel
 import com.synth.synthmusic.ui.library.LibraryViewModel
 import com.synth.synthmusic.ui.metadata.SongInfoViewModel
 import com.synth.synthmusic.ui.nowplaying.NowPlayingViewModel
@@ -59,7 +57,6 @@ val appModule = module {
     single { get<AppDatabase>().albumDao() }
     single { get<AppDatabase>().artistDao() }
     single { get<AppDatabase>().playlistDao() }
-    single { get<AppDatabase>().eqPresetDao() }
     single { get<AppDatabase>().playbackStateDao() }
     single { get<AppDatabase>().waveformDataDao() }
     single { get<AppDatabase>().recentlyPlayedCollectionDao() }
@@ -74,7 +71,6 @@ val appModule = module {
         com.synth.synthmusic.data.repository.RecentlyPlayedCollectionRepositoryImpl(get())
     }
     single { MediaPlaybackManager(androidContext(), get(), get(), get(), get()) }
-    single { AudioEffectsManager(get()) }
     single { WaveformGenerator(androidContext()) }
     single { WaveformPreloader(get(), get()) }
     single { com.synth.synthmusic.data.local.cover.CoverCache(androidContext()) }
@@ -127,12 +123,6 @@ val appModule = module {
     }
 
 
-    viewModel {
-        EqualizerViewModel(
-            audioEffectsManager = get(),
-            playbackManager = get()
-        )
-    }
 
     viewModel {
         PlaylistViewModel(

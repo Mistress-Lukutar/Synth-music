@@ -42,18 +42,6 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.updateAutoRescan(enabled) }
     }
 
-    fun updateEqEnabled(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.updateEqEnabled(enabled) }
-    }
-
-    fun updateBassBoost(strength: Int) {
-        viewModelScope.launch { settingsRepository.updateBassBoost(strength) }
-    }
-
-    fun updateLoudness(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.updateLoudness(enabled) }
-    }
-
     fun updatePlaybackSpeed(speed: Float) {
         viewModelScope.launch { settingsRepository.updatePlaybackSpeed(speed) }
     }
