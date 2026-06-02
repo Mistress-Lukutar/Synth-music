@@ -46,7 +46,7 @@ val appModule = module {
             AppDatabase::class.java,
             "synth_music.db"
         )
-            .addMigrations(AppDatabase.MIGRATION_7_8)
+            .addMigrations(AppDatabase.MIGRATION_7_8, AppDatabase.MIGRATION_8_9)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }

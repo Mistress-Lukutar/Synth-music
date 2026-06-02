@@ -17,4 +17,6 @@ interface PlaylistRepository {
     suspend fun removeSongFromPlaylist(playlistId: Long, songId: String)
     suspend fun isSongInPlaylist(playlistId: Long, songId: String): Boolean
     suspend fun updatePlaylistArtwork(playlistId: Long, artworkUri: String?)
+    suspend fun ensureFavoritesPlaylist(): Long
+    suspend fun getFavoritesPlaylistId(): Long?
 }

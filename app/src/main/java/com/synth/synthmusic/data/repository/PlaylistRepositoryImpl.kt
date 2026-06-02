@@ -97,6 +97,23 @@ class PlaylistRepositoryImpl(
     override suspend fun updatePlaylistArtwork(playlistId: Long, artworkUri: String?) {
         playlistDao.updateArtworkUri(playlistId, artworkUri)
     }
+
+    override suspend fun ensureFavoritesPlaylist(): Long {
+        val existing = playlistDao.getFixedPlaylist()
+        return existing?.id ?: playlistDao.insert(
+            PlaylistEntity(
+                name = "Favorites",
+                createdAt = System.currentTimeMillis(),
+                songCount = 0,
+                artworkUri = null,
+                isFixed = true
+            )
+        )
+    }
+
+    override suspend fun getFavoritesPlaylistId(): Long? {
+        return playlistDao.getFixedPlaylist()?.id
+    }
 }
 
 private fun PlaylistEntity.toDomain(): Playlist = Playlist(
@@ -104,5 +121,6 @@ private fun PlaylistEntity.toDomain(): Playlist = Playlist(
     name = name,
     createdAt = createdAt,
     songCount = songCount,
-    artworkUri = artworkUri
+    artworkUri = artworkUri,
+    isFixed = isFixed
 )
