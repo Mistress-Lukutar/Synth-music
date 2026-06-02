@@ -1,24 +1,23 @@
 package com.synth.synthmusic.domain.usecase
 
-import android.content.ContentResolver
+import android.annotation.SuppressLint
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.MediaStore
-import org.jaudiotagger.audio.AudioFileIO
-import org.jaudiotagger.tag.id3.AbstractID3v2Frame
+import com.synth.synthmusic.data.local.cover.CoverCache
+import com.synth.synthmusic.data.local.database.WaveformDataDao
+import com.synth.synthmusic.data.media.waveform.WaveformPreloader
 import com.synth.synthmusic.domain.model.Album
 import com.synth.synthmusic.domain.model.Artist
 import com.synth.synthmusic.domain.model.Song
-import com.synth.synthmusic.data.local.database.WaveformDataDao
-import com.synth.synthmusic.data.media.waveform.WaveformPreloader
 import com.synth.synthmusic.domain.repository.AlbumRepository
 import com.synth.synthmusic.domain.repository.ArtistRepository
 import com.synth.synthmusic.domain.repository.SongRepository
-import com.synth.synthmusic.data.local.cover.CoverCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
+import org.jaudiotagger.audio.AudioFileIO
+import org.jaudiotagger.tag.id3.AbstractID3v2Frame
 
 /**
  * Use case for scanning device storage and indexing MP3 files into the local database.
@@ -51,6 +50,7 @@ class ScanMusicUseCase(
         }
     }
 
+    @SuppressLint("InlinedApi")
     private fun scanSongs(): List<Song> {
         val resolver = context.contentResolver
         val projection = arrayOf(

@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.koin.androidx.compose.koinViewModel
+import java.util.Locale
 
 /**
  * Sleep timer dialog with preset duration options.
@@ -49,7 +50,7 @@ fun SleepTimerDialog(
                     val seconds = (uiState.remainingMs / 1000) % 60
                     Text(
                         text = if (uiState.endOfTrack) "Stopping at end of track"
-                        else String.format("Remaining: %d:%02d", minutes, seconds),
+                        else String.format(Locale.US, "Remaining: %d:%02d", minutes, seconds),
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )

@@ -5,7 +5,6 @@ import android.content.Intent
 import android.util.Log
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
@@ -19,7 +18,6 @@ import org.koin.android.ext.android.inject
 /**
  * Foreground service providing background playback via Media3 MediaSession.
  */
-@UnstableApi
 class PlaybackService : MediaSessionService() {
 
     private val playbackManager: MediaPlaybackManager by inject()

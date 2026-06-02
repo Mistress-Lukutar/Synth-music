@@ -2,7 +2,6 @@ package com.synth.synthmusic.ui.nowplaying
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.media3.common.Player
 import com.synth.synthmusic.data.local.database.WaveformDataDao
 import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.data.media.waveform.WaveformGenerator
@@ -16,7 +15,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -29,6 +27,8 @@ import kotlinx.coroutines.launch
 
 /**
  * ViewModel for the now playing screen managing playback controls and state.
+ *
+ * The ExoPlayer instance is **not** released here; its lifecycle is tied to [com.synth.synthmusic.service.PlaybackService].
  */
 @OptIn(
     kotlinx.coroutines.ExperimentalCoroutinesApi::class,
@@ -191,10 +191,5 @@ class NowPlayingViewModel(
         } catch (e: Exception) {
             emptyList()
         }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        // Do NOT release player here; it is managed by the service lifecycle
     }
 }
