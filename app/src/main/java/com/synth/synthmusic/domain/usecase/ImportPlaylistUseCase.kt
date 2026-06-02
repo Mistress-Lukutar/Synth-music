@@ -2,7 +2,6 @@ package com.synth.synthmusic.domain.usecase
 
 import android.content.Context
 import android.net.Uri
-import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import kotlinx.coroutines.Dispatchers

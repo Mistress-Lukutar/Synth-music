@@ -1,6 +1,5 @@
 package com.synth.synthmusic.ui.library
 
-import com.synth.synthmusic.domain.model.Album
 import com.synth.synthmusic.domain.model.Artist
 import com.synth.synthmusic.domain.model.RecentlyPlayedCollection
 import com.synth.synthmusic.domain.model.Song
