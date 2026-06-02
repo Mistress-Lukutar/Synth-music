@@ -64,16 +64,18 @@ fun PlaylistGridCard(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
-                DropdownMenuItem(
-                    text = { Text("Rename") },
-                    onClick = { expanded = false; showRename = true },
-                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
-                )
-                DropdownMenuItem(
-                    text = { Text("Delete") },
-                    onClick = { expanded = false; showDeleteConfirm = true },
-                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) }
-                )
+                if (!playlist.isFixed) {
+                    DropdownMenuItem(
+                        text = { Text("Rename") },
+                        onClick = { expanded = false; showRename = true },
+                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        onClick = { expanded = false; showDeleteConfirm = true },
+                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) }
+                    )
+                }
             }
         },
         modifier = modifier
