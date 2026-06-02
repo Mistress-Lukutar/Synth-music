@@ -14,6 +14,7 @@ import com.synth.synthmusic.domain.model.Artist
 import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.domain.repository.AlbumRepository
 import com.synth.synthmusic.domain.repository.ArtistRepository
+import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -28,6 +29,7 @@ class ScanMusicUseCase(
     private val songRepository: SongRepository,
     private val albumRepository: AlbumRepository,
     private val artistRepository: ArtistRepository,
+    private val playlistRepository: PlaylistRepository,
     private val waveformPreloader: WaveformPreloader,
     private val waveformDataDao: WaveformDataDao,
     private val coverCache: CoverCache
@@ -51,6 +53,8 @@ class ScanMusicUseCase(
 
             val artists = deriveArtists(songs, albums)
             artistRepository.replaceAllArtists(artists)
+
+            playlistRepository.ensureFavoritesPlaylist()
 
             songs.size
         }
