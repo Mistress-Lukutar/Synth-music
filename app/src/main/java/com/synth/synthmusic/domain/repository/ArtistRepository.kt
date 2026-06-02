@@ -11,4 +11,5 @@ interface ArtistRepository {
     suspend fun saveArtists(artists: List<Artist>)
     suspend fun deleteAllArtists()
     suspend fun updateArtistArtwork(artistId: String, artworkUri: String?)
+    suspend fun replaceAllArtists(artists: List<Artist>)
 }
