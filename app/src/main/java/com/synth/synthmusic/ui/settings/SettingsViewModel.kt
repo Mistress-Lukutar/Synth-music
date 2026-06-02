@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synth.synthmusic.domain.model.AccentColor
 import com.synth.synthmusic.domain.model.AppSettings
-import com.synth.synthmusic.domain.model.ReplayGainMode
 import com.synth.synthmusic.domain.model.ThemeMode
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.SharingStarted
@@ -32,10 +31,6 @@ class SettingsViewModel(
 
     fun updateFadeDuration(durationMs: Int) {
         viewModelScope.launch { settingsRepository.updateFadeDuration(durationMs) }
-    }
-
-    fun updateReplayGain(mode: ReplayGainMode) {
-        viewModelScope.launch { settingsRepository.updateReplayGain(mode) }
     }
 
     fun updateAutoRescan(enabled: Boolean) {

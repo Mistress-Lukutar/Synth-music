@@ -11,7 +11,6 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.synth.synthmusic.domain.model.AccentColor
 import com.synth.synthmusic.domain.model.AppSettings
-import com.synth.synthmusic.domain.model.ReplayGainMode
 import com.synth.synthmusic.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -36,7 +35,6 @@ class SettingsDataStore(
         private val THEME = stringPreferencesKey("theme")
         private val ACCENT_COLOR = stringPreferencesKey("accent_color")
         private val FADE_DURATION = intPreferencesKey("fade_duration_ms")
-        private val REPLAY_GAIN_MODE = stringPreferencesKey("replay_gain_mode")
         private val AUTO_RESCAN = booleanPreferencesKey("auto_rescan")
         private val PLAYBACK_SPEED = floatPreferencesKey("playback_speed")
         private val PLAYBACK_PITCH = floatPreferencesKey("playback_pitch")
@@ -48,7 +46,6 @@ class SettingsDataStore(
             theme = prefs[THEME]?.let { ThemeMode.valueOf(it) } ?: ThemeMode.DARK,
             accentColor = prefs[ACCENT_COLOR]?.let { AccentColor.valueOf(it) } ?: AccentColor.YELLOW,
             fadeDurationMs = prefs[FADE_DURATION] ?: 300,
-            replayGainMode = prefs[REPLAY_GAIN_MODE]?.let { ReplayGainMode.valueOf(it) } ?: ReplayGainMode.TRACK,
             autoRescan = prefs[AUTO_RESCAN] ?: true,
             playbackSpeed = prefs[PLAYBACK_SPEED] ?: 1.0f,
             playbackPitch = prefs[PLAYBACK_PITCH] ?: 1.0f,
@@ -66,10 +63,6 @@ class SettingsDataStore(
 
     suspend fun updateFadeDuration(durationMs: Int) {
         dataStore.edit { it[FADE_DURATION] = durationMs }
-    }
-
-    suspend fun updateReplayGain(mode: ReplayGainMode) {
-        dataStore.edit { it[REPLAY_GAIN_MODE] = mode.name }
     }
 
     suspend fun updateAutoRescan(enabled: Boolean) {

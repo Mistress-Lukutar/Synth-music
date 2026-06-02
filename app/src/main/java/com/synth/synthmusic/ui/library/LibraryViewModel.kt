@@ -3,7 +3,6 @@ package com.synth.synthmusic.ui.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synth.synthmusic.data.media.MediaPlaybackManager
-import com.synth.synthmusic.domain.model.Playlist
 import com.synth.synthmusic.domain.repository.ArtistRepository
 import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository
@@ -35,19 +34,11 @@ class LibraryViewModel(
 
     val currentPlayback = playbackManager.playbackState
 
-    private val _playlists = MutableStateFlow<List<Playlist>>(emptyList())
-    val playlists: StateFlow<List<Playlist>> = _playlists.asStateFlow()
 
     init {
         artistRepository.observeAllArtists()
             .onEach { artists ->
                 _uiState.update { it.copy(artists = artists) }
-            }
-            .launchIn(viewModelScope)
-
-        songRepository.observeAllSongs()
-            .onEach { songs ->
-                _uiState.update { it.copy(songCount = songs.size) }
             }
             .launchIn(viewModelScope)
 
@@ -61,10 +52,6 @@ class LibraryViewModel(
 
         songRepository.observeHistory()
             .onEach { list -> _uiState.update { it.copy(historySongs = list) } }
-            .launchIn(viewModelScope)
-
-        playlistRepository.observeAllPlaylists()
-            .onEach { list -> _playlists.value = list }
             .launchIn(viewModelScope)
 
         playbackManager.currentQueue
@@ -90,25 +77,10 @@ class LibraryViewModel(
         }
     }
 
-    fun shuffleAll() {
-        viewModelScope.launch {
-            val songs = songRepository.observeAllSongs().first().shuffled()
-            if (songs.isNotEmpty()) {
-                playbackManager.playSongs(songs, 0)
-            }
-        }
-    }
-
     fun addToQueue(songId: String) {
         viewModelScope.launch {
             val song = songRepository.getSongById(songId) ?: return@launch
             playbackManager.addToQueue(song)
-        }
-    }
-
-    fun addSongToPlaylist(playlistId: Long, songId: String) {
-        viewModelScope.launch {
-            playlistRepository.addSongToPlaylist(playlistId, songId)
         }
     }
 
@@ -130,8 +102,8 @@ class LibraryViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isScanning = true, scanError = null) }
             scanMusicUseCase()
-                .onSuccess { count ->
-                    _uiState.update { it.copy(isScanning = false, songCount = count) }
+                .onSuccess {
+                    _uiState.update { it.copy(isScanning = false) }
                 }
                 .onFailure { error ->
                     _uiState.update { it.copy(isScanning = false, scanError = error.message) }

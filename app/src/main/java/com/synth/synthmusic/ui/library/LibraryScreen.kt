@@ -62,7 +62,7 @@ import com.synth.synthmusic.ui.share.ShareSongSheet
 import org.koin.androidx.compose.koinViewModel
 
 /**
- * Main library screen with tabs for Songs, Albums, Artists, Folders, and Playlists.
+ * Main library screen with tabs for Queue, Artists, Top, and History.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

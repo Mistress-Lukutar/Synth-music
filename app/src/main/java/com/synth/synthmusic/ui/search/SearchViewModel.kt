@@ -49,13 +49,6 @@ class SearchViewModel(
         _query.value = newQuery
     }
 
-    fun playSearchResultAt(index: Int) {
-        val tracks = _results.value
-        if (index in tracks.indices) {
-            playbackManager.playSongs(tracks, index)
-        }
-    }
-
     fun playSong(song: Song) {
         val tracks = _results.value
         val index = tracks.indexOfFirst { it.id == song.id }

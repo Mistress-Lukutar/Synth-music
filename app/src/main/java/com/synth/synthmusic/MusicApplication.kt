@@ -11,7 +11,6 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.synth.synthmusic.data.media.waveform.WaveformPreloader
 import com.synth.synthmusic.di.appModule
-import com.synth.synthmusic.di.dataModule
 import com.synth.synthmusic.domain.repository.SongRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +33,7 @@ class MusicApplication : Application() {
         initImageLoader()
         startKoin {
             androidContext(this@MusicApplication)
-            modules(appModule, dataModule)
+            modules(appModule)
         }
         createNotificationChannel()
         resumeWaveformGeneration()

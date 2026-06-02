@@ -16,8 +16,7 @@ data class LibraryUiState(
     val scanError: String? = null,
     val topSongs: List<Song> = emptyList(),
     val recentCollections: List<RecentlyPlayedCollection> = emptyList(),
-    val historySongs: List<Song> = emptyList(),
-    val songCount: Int = 0
+    val historySongs: List<Song> = emptyList()
 )
 
 enum class LibraryTab {
