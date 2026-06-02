@@ -8,13 +8,11 @@ import com.synth.synthmusic.data.media.AudioEffectsManager
 import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.data.repository.AlbumRepositoryImpl
 import com.synth.synthmusic.data.repository.ArtistRepositoryImpl
-import com.synth.synthmusic.data.repository.BookmarkRepositoryImpl
 import com.synth.synthmusic.data.repository.PlaylistRepositoryImpl
 import com.synth.synthmusic.data.repository.SettingsRepositoryImpl
 import com.synth.synthmusic.data.repository.SongRepositoryImpl
 import com.synth.synthmusic.domain.repository.AlbumRepository
 import com.synth.synthmusic.domain.repository.ArtistRepository
-import com.synth.synthmusic.domain.repository.BookmarkRepository
 import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
@@ -28,7 +26,6 @@ import com.synth.synthmusic.domain.usecase.PlaySongUseCase
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
 import com.synth.synthmusic.domain.usecase.UpdateMetadataUseCase
 import com.synth.synthmusic.domain.usecase.WriteArtworkToMp3UseCase
-import com.synth.synthmusic.ui.bookmarks.BookmarkViewModel
 import com.synth.synthmusic.ui.equalizer.EqualizerViewModel
 import com.synth.synthmusic.ui.library.LibraryViewModel
 import com.synth.synthmusic.ui.metadata.SongInfoViewModel
@@ -62,7 +59,6 @@ val appModule = module {
     single { get<AppDatabase>().albumDao() }
     single { get<AppDatabase>().artistDao() }
     single { get<AppDatabase>().playlistDao() }
-    single { get<AppDatabase>().bookmarkDao() }
     single { get<AppDatabase>().eqPresetDao() }
     single { get<AppDatabase>().playbackStateDao() }
     single { get<AppDatabase>().waveformDataDao() }
@@ -74,7 +70,6 @@ val appModule = module {
     single<ArtistRepository> { ArtistRepositoryImpl(get()) }
     single<SettingsRepository> { SettingsRepositoryImpl(get()) }
     single<PlaylistRepository> { PlaylistRepositoryImpl(get(), get()) }
-    single<BookmarkRepository> { BookmarkRepositoryImpl(get()) }
     single<com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository> {
         com.synth.synthmusic.data.repository.RecentlyPlayedCollectionRepositoryImpl(get())
     }
@@ -202,9 +197,6 @@ val appModule = module {
         SettingsViewModel(settingsRepository = get())
     }
 
-    viewModel {
-        BookmarkViewModel(bookmarkRepository = get())
-    }
 
     viewModel {
         SearchViewModel(
