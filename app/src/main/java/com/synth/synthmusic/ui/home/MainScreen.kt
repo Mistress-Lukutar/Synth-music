@@ -18,9 +18,7 @@ import com.synth.synthmusic.ui.settings.SettingsScreen
  * MiniPlayer and BottomNav lives in [AppNavigation].
  *
  * @param selectedTab Currently selected bottom-nav tab index.
- * @param onNavigateToNowPlaying Navigate to full-screen player.
  * @param onNavigateToSearch Navigate to search.
- * @param onNavigateToQueue Navigate to queue.
  * @param onNavigateToPlaylistDetail Navigate to playlist detail.
  * @param onNavigateToSongInfo Navigate to song info.
  * @param onNavigateToEditMetadata Navigate to metadata editor.
@@ -31,9 +29,7 @@ import com.synth.synthmusic.ui.settings.SettingsScreen
 @Composable
 fun MainScreen(
     selectedTab: Int,
-    onNavigateToNowPlaying: () -> Unit,
     onNavigateToSearch: () -> Unit,
-    onNavigateToQueue: () -> Unit,
     onNavigateToPlaylistDetail: (Long) -> Unit,
     onNavigateToSongInfo: (String) -> Unit,
     onNavigateToEditMetadata: (String) -> Unit,
@@ -49,9 +45,7 @@ fun MainScreen(
     ) { tab ->
         when (tab) {
             0 -> LibraryScreen(
-                onNavigateToNowPlaying = onNavigateToNowPlaying,
                 onNavigateToSearch = onNavigateToSearch,
-                onNavigateToQueue = onNavigateToQueue,
                 onNavigateToPlaylistDetail = onNavigateToPlaylistDetail,
                 onNavigateToSongInfo = onNavigateToSongInfo,
                 onNavigateToEditMetadata = onNavigateToEditMetadata,

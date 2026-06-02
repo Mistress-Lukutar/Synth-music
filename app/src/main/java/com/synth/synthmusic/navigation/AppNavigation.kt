@@ -33,7 +33,6 @@ import com.synth.synthmusic.ui.bookmarks.BookmarksScreen
 import com.synth.synthmusic.ui.components.SynthBottomNav
 import com.synth.synthmusic.ui.equalizer.EqualizerScreen
 import com.synth.synthmusic.ui.home.MainScreen
-import com.synth.synthmusic.ui.library.LibraryViewModel
 import com.synth.synthmusic.ui.library.components.MiniPlayer
 import com.synth.synthmusic.ui.metadata.BatchEditScreen
 import com.synth.synthmusic.ui.metadata.EditMetadataScreen
@@ -66,11 +65,9 @@ fun AppNavigation(
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     val playbackViewModel: PlaybackViewModel = koinViewModel()
-    val libraryViewModel: LibraryViewModel = koinViewModel()
 
     val playback by playbackViewModel.playbackState.collectAsStateWithLifecycle()
     val currentSong by playbackViewModel.currentSong.collectAsStateWithLifecycle()
-    val libraryUiState by libraryViewModel.uiState.collectAsStateWithLifecycle()
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = currentBackStackEntry?.destination
@@ -127,9 +124,7 @@ fun AppNavigation(
             composable<HomeRoute> {
                 MainScreen(
                     selectedTab = selectedTab,
-                    onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
                     onNavigateToSearch = { navController.navigate(SearchRoute) },
-                    onNavigateToQueue = { navController.navigate(QueueRoute) },
                     onNavigateToPlaylistDetail = { navController.navigate(PlaylistDetailRoute(it)) },
                     onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
                     onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) },

@@ -12,9 +12,6 @@ object SplashRoute
 object HomeRoute
 
 @Serializable
-object LibraryRoute
-
-@Serializable
 object NowPlayingRoute
 
 @Serializable
