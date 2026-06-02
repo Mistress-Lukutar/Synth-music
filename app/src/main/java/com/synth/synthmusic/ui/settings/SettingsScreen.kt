@@ -37,8 +37,8 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
-    showBackButton: Boolean = true,
     modifier: Modifier = Modifier,
+    showBackButton: Boolean = true,
     viewModel: SettingsViewModel = koinViewModel()
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()

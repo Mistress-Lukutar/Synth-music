@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -53,7 +54,7 @@ fun ShareSongSheet(
                 onClick = {
                     val intent = Intent(Intent.ACTION_SEND).apply {
                         type = "audio/*"
-                        putExtra(Intent.EXTRA_STREAM, Uri.parse(song.uri))
+                        putExtra(Intent.EXTRA_STREAM, song.uri.toUri())
                     }
                     context.startActivity(Intent.createChooser(intent, "Share audio"))
                     onDismiss()
