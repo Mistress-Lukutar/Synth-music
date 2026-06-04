@@ -358,14 +358,14 @@ class MediaPlaybackManager(
 
     private fun startPositionUpdates() {
         stopPositionUpdates()
-        positionUpdateJob = scope.launch {
+        positionUpdateJob = scope.launch(Dispatchers.Main) {
             while (isActive) {
                 if (player.isPlaying) {
                     _playbackState.update {
                         it.copy(positionMs = player.currentPosition)
                     }
                 }
-                delay(500)
+                delay(250)
             }
         }
     }

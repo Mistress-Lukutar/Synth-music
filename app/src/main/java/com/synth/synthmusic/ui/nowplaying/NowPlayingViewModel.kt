@@ -15,8 +15,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
@@ -55,10 +56,38 @@ class NowPlayingViewModel(
     init {
         _uiState.update { it.copy(hasRecordAudioPermission = checkRecordAudioPermission()) }
 
+        // Pre-load the current track immediately so the screen never opens blank.
+        val currentPlayback = playbackManager.playbackState.value
+        val currentSongId = currentPlayback.currentSongId
+        if (currentSongId != null) {
+            viewModelScope.launch {
+                val song = songRepository.getSongById(currentSongId)
+                if (song != null) {
+                    _uiState.update {
+                        it.copy(
+                            song = song,
+                            isPlaying = currentPlayback.isPlaying,
+                            positionMs = currentPlayback.positionMs,
+                            durationMs = currentPlayback.durationMs,
+                            repeatMode = currentPlayback.repeatMode,
+                            shuffleEnabled = currentPlayback.shuffleEnabled,
+                            rating = song.rating,
+                            isFavorite = song.isFavorite,
+                            playbackSpeed = settingsRepository.settings.first().playbackSpeed,
+                            playbackPitch = settingsRepository.settings.first().playbackPitch,
+                            audioSessionId = playbackManager.player.audioSessionId,
+                            hasRecordAudioPermission = checkRecordAudioPermission(),
+                            audioQualityLabel = buildAudioQualityLabel(song)
+                        )
+                    }
+                }
+            }
+        }
+
         playbackManager.playbackState
             .map { it.currentSongId }
             .filterNotNull()
-            .debounce(300)
+            .distinctUntilChanged()
             .flatMapLatest { songId ->
                 combine(
                     playbackManager.playbackState,
@@ -93,6 +122,7 @@ class NowPlayingViewModel(
         playbackManager.playbackState
             .map { it.currentSongId }
             .filterNotNull()
+            .distinctUntilChanged()
             .flatMapLatest { songId ->
                 flow { emit(loadWaveform(songId)) }
             }
