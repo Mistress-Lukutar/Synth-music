@@ -47,9 +47,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import com.synth.synthmusic.R
+import com.synth.synthmusic.ui.components.CollectionCard
+import com.synth.synthmusic.ui.components.CollectionCardStyle
 import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
 import com.synth.synthmusic.ui.library.components.ChangeArtworkDialog
 import com.synth.synthmusic.ui.library.components.SongListItem
@@ -181,8 +180,10 @@ fun ArtistDetailScreen(
                         modifier = Modifier.padding(bottom = 8.dp)
                     ) {
                         items(albums, key = { it.id }) { album ->
-                            ArtistAlbumCard(
-                                album = album,
+                            CollectionCard(
+                                imageUri = album.artworkUri,
+                                title = album.title,
+                                style = CollectionCardStyle.Compact,
                                 onClick = { onNavigateToAlbumDetail(album.title, album.artist) }
                             )
                         }
@@ -221,40 +222,4 @@ fun ArtistDetailScreen(
     }
 }
 
-@Composable
-private fun ArtistAlbumCard(
-    album: com.synth.synthmusic.domain.model.Album,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .clickable { onClick() }
-            .padding(end = 12.dp),
-        horizontalAlignment = Alignment.Start
-    ) {
-        val context = LocalContext.current
-        val imageRequest = remember(album.artworkUri) {
-            ImageRequest.Builder(context)
-                .data(album.artworkUri)
-                .placeholder(R.drawable.ic_placeholder_artwork)
-                .error(R.drawable.ic_placeholder_artwork)
-                .build()
-        }
-        AsyncImage(
-            model = imageRequest,
-            contentDescription = album.title,
-            modifier = Modifier
-                .size(120.dp)
-                .clip(RoundedCornerShape(12.dp)),
-            contentScale = ContentScale.Crop
-        )
-        Text(
-            text = album.title,
-            style = MaterialTheme.typography.bodySmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 6.dp)
-        )
-    }
-}
+

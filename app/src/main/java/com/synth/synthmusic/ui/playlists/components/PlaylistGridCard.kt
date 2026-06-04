@@ -25,8 +25,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.synth.synthmusic.domain.model.Playlist
+import com.synth.synthmusic.ui.components.CollectionCard
+import com.synth.synthmusic.ui.components.CollectionCardStyle
 import com.synth.synthmusic.ui.library.components.ChangeArtworkDialog
-import com.synth.synthmusic.ui.library.components.GridCardItem
+import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -70,11 +72,12 @@ fun PlaylistGridCard(
     }
 
     Box(modifier = modifier) {
-        GridCardItem(
+        CollectionCard(
             imageUri = playlist.artworkUri,
             title = playlist.name,
             subtitle = null,
             meta = "${playlist.songCount} tracks",
+            style = CollectionCardStyle.Grid,
             onClick = onClick,
             onLongClick = { expanded = true }
         )
@@ -155,4 +158,23 @@ fun PlaylistGridCard(
             onRemove = { onChangeArtwork(null) }
         )
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PlaylistGridCardPreview() {
+    PlaylistGridCard(
+        playlist = com.synth.synthmusic.domain.model.Playlist(
+            id = 1,
+            name = "My Playlist",
+            createdAt = 0,
+            songCount = 8,
+            artworkUri = null,
+            isFixed = false
+        ),
+        onClick = {},
+        onRename = {},
+        onDelete = {},
+        onChangeArtwork = {}
+    )
 }

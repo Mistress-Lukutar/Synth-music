@@ -52,9 +52,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.synth.synthmusic.R
 import com.synth.synthmusic.ui.components.SongList
+import com.synth.synthmusic.ui.components.CollectionCard
+import com.synth.synthmusic.ui.components.CollectionCardStyle
 import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
 import com.synth.synthmusic.ui.library.components.ArtistListItem
-import com.synth.synthmusic.ui.library.components.RecentlyPlayedCard
 import com.synth.synthmusic.ui.library.components.SongListItem
 import com.synth.synthmusic.ui.share.ShareSongSheet
 import org.koin.androidx.compose.koinViewModel
@@ -190,8 +191,10 @@ fun LibraryScreen(
                                             uiState.recentCollections,
                                             key = { _, collection -> collection.id }
                                         ) { _, collection ->
-                                            RecentlyPlayedCard(
-                                                collection = collection,
+                                            CollectionCard(
+                                                imageUri = collection.artworkUri,
+                                                title = collection.name,
+                                                style = CollectionCardStyle.Compact,
                                                 onClick = {
                                                     when (collection.type) {
                                                         com.synth.synthmusic.domain.model.CollectionType.ALBUM ->
