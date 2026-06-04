@@ -1,5 +1,8 @@
 package com.synth.synthmusic.ui.nowplaying
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,23 +15,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,16 +30,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import android.Manifest
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
+import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.ui.nowplaying.components.ActionBar
 import com.synth.synthmusic.ui.nowplaying.components.AudioQualityLabel
 import com.synth.synthmusic.ui.nowplaying.components.AudioVisualizerRing
@@ -62,23 +55,44 @@ import org.koin.androidx.compose.koinViewModel
 import java.util.Locale
 
 /**
- * Full-screen player with blurred background, spinning vinyl, visualizer ring,
- * waveform seekbar, and playback controls.
+ * Stateless content composable for the Now Playing screen.
+ *
+ * @param uiState Current UI state including song metadata and playback info.
+ * @param onNavigateBack Callback to collapse the player.
+ * @param onNavigateToVisualizer Callback to open the visualizer screen.
+ * @param onToggleFavorite Callback to toggle the favorite status of the current song.
+ * @param onToggleShuffle Callback to toggle shuffle mode.
+ * @param onCycleRepeat Callback to cycle through repeat modes.
+ * @param onPlayPause Callback to toggle playback.
+ * @param onPrevious Callback to skip to the previous track.
+ * @param onNext Callback to skip to the next track.
+ * @param onSeek Callback with the desired position in milliseconds.
+ * @param onRecordAudioPermissionGranted Callback invoked when RECORD_AUDIO permission result arrives.
+ * @param onShowSleepTimer Callback to show the sleep timer dialog.
+ * @param onShowShareSheet Callback to show the share sheet.
+ * @param onShowLyrics Callback to show the lyrics bottom sheet.
+ * @param onShowSpeedSheet Callback to show the playback speed bottom sheet.
+ * @param modifier Modifier for styling.
  */
 @Composable
-fun NowPlayingScreen(
+fun NowPlayingContent(
+    uiState: NowPlayingUiState,
     onNavigateBack: () -> Unit,
     onNavigateToVisualizer: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onToggleShuffle: () -> Unit,
+    onCycleRepeat: () -> Unit,
+    onPlayPause: () -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onRecordAudioPermissionGranted: (Boolean) -> Unit,
+    onShowSleepTimer: () -> Unit,
+    onShowShareSheet: () -> Unit,
+    onShowLyrics: () -> Unit,
+    onShowSpeedSheet: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: NowPlayingViewModel = koinViewModel(),
-    playbackViewModel: PlaybackViewModel = koinViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var showSleepTimer by remember { mutableStateOf(false) }
-    var showShareSheet by remember { mutableStateOf(false) }
-    var showLyrics by remember { mutableStateOf(false) }
-    var showSpeedSheet by remember { mutableStateOf(false) }
-
     Box(modifier = modifier.fillMaxSize()) {
         // Background layer
         BlurredArtworkBackground(artworkUri = uiState.song?.artworkUri)
@@ -126,9 +140,7 @@ fun NowPlayingScreen(
                 val recordAudioLauncher = rememberLauncherForActivityResult(
                     ActivityResultContracts.RequestPermission()
                 ) { isGranted ->
-                    if (isGranted) {
-                        viewModel.refreshRecordAudioPermission()
-                    }
+                    onRecordAudioPermissionGranted(isGranted)
                 }
 
                 LaunchedEffect(Unit) {
@@ -184,7 +196,7 @@ fun NowPlayingScreen(
                     )
                 }
 
-                IconButton(onClick = { viewModel.onEvent(NowPlayingEvent.ToggleFavorite) }) {
+                IconButton(onClick = onToggleFavorite) {
                     Icon(
                         imageVector = if (uiState.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                         contentDescription = "Favorite",
@@ -210,7 +222,7 @@ fun NowPlayingScreen(
                 progress = if (uiState.durationMs > 0) uiState.positionMs.toFloat() / uiState.durationMs else 0f,
                 onSeek = { fraction ->
                     val pos = (fraction * uiState.durationMs).toLong()
-                    playbackViewModel.seekTo(pos)
+                    onSeek(pos)
                 },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -247,26 +259,64 @@ fun NowPlayingScreen(
                 isPlaying = uiState.isPlaying,
                 shuffleEnabled = uiState.shuffleEnabled,
                 repeatMode = uiState.repeatMode,
-                onShuffleClick = { viewModel.onEvent(NowPlayingEvent.ToggleShuffle) },
-                onPreviousClick = { playbackViewModel.previous() },
-                onPlayPauseClick = { playbackViewModel.playPause() },
-                onNextClick = { playbackViewModel.next() },
-                onRepeatClick = { viewModel.onEvent(NowPlayingEvent.CycleRepeat) }
+                onShuffleClick = onToggleShuffle,
+                onPreviousClick = onPrevious,
+                onPlayPauseClick = onPlayPause,
+                onNextClick = onNext,
+                onRepeatClick = onCycleRepeat
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Bottom action bar
             ActionBar(
-                onTimerClick = { showSleepTimer = true },
-                onShareClick = { showShareSheet = true },
-                onLyricsClick = { showLyrics = true },
+                onTimerClick = onShowSleepTimer,
+                onShareClick = onShowShareSheet,
+                onLyricsClick = onShowLyrics,
                 onVisualizerClick = onNavigateToVisualizer
             )
 
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+}
+
+/**
+ * Full-screen player with blurred background, spinning vinyl, visualizer ring,
+ * waveform seekbar, and playback controls.
+ */
+@Composable
+fun NowPlayingScreen(
+    onNavigateBack: () -> Unit,
+    onNavigateToVisualizer: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: NowPlayingViewModel = koinViewModel(),
+    playbackViewModel: PlaybackViewModel = koinViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var showSleepTimer by remember { mutableStateOf(false) }
+    var showShareSheet by remember { mutableStateOf(false) }
+    var showLyrics by remember { mutableStateOf(false) }
+    var showSpeedSheet by remember { mutableStateOf(false) }
+
+    NowPlayingContent(
+        uiState = uiState,
+        onNavigateBack = onNavigateBack,
+        onNavigateToVisualizer = onNavigateToVisualizer,
+        onToggleFavorite = { viewModel.onEvent(NowPlayingEvent.ToggleFavorite) },
+        onToggleShuffle = { viewModel.onEvent(NowPlayingEvent.ToggleShuffle) },
+        onCycleRepeat = { viewModel.onEvent(NowPlayingEvent.CycleRepeat) },
+        onPlayPause = { playbackViewModel.playPause() },
+        onPrevious = { playbackViewModel.previous() },
+        onNext = { playbackViewModel.next() },
+        onSeek = { playbackViewModel.seekTo(it) },
+        onRecordAudioPermissionGranted = { viewModel.refreshRecordAudioPermission() },
+        onShowSleepTimer = { showSleepTimer = true },
+        onShowShareSheet = { showShareSheet = true },
+        onShowLyrics = { showLyrics = true },
+        onShowSpeedSheet = { showSpeedSheet = true },
+        modifier = modifier
+    )
 
     if (showSleepTimer) {
         SleepTimerDialog(onDismiss = { showSleepTimer = false })
@@ -302,4 +352,65 @@ private fun formatDuration(ms: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return String.format(Locale.US, "%d:%02d", minutes, seconds)
+}
+
+@Preview(device = "id:pixel_5")
+@Composable
+private fun NowPlayingContentPreview() {
+    NowPlayingContent(
+        uiState = NowPlayingUiState(
+            song = Song(
+                id = "1",
+                title = "Neon Dreams",
+                artist = "Synthwave Artist",
+                album = "Midnight Run",
+                albumArtist = "Synthwave Artist",
+                durationMs = 234000,
+                trackNumber = 3,
+                year = 2024,
+                genre = "Synthwave",
+                comment = "",
+                path = "/music/neon_dreams.mp3",
+                uri = "content://media/external/audio/media/1",
+                bitrate = 320,
+                sampleRate = 44100,
+                fileSize = 9_400_000,
+                artworkUri = null,
+                rating = 4.5f,
+                playCount = 128,
+                lastPlayed = null,
+                dateAdded = 0,
+                dateModified = 0,
+                lyrics = null,
+                isFavorite = true
+            ),
+            isPlaying = true,
+            positionMs = 45000,
+            durationMs = 234000,
+            repeatMode = Player.REPEAT_MODE_ALL,
+            shuffleEnabled = true,
+            rating = 4.5f,
+            isFavorite = true,
+            waveformAmplitudes = List(200) { 0.05f + kotlin.random.Random.nextFloat() * 0.9f },
+            playbackSpeed = 1.0f,
+            playbackPitch = 1.0f,
+            audioSessionId = 0,
+            hasRecordAudioPermission = false,
+            audioQualityLabel = "320 kbps"
+        ),
+        onNavigateBack = {},
+        onNavigateToVisualizer = {},
+        onToggleFavorite = {},
+        onToggleShuffle = {},
+        onCycleRepeat = {},
+        onPlayPause = {},
+        onPrevious = {},
+        onNext = {},
+        onSeek = {},
+        onRecordAudioPermissionGranted = {},
+        onShowSleepTimer = {},
+        onShowShareSheet = {},
+        onShowLyrics = {},
+        onShowSpeedSheet = {}
+    )
 }

@@ -181,7 +181,7 @@ fun ArtistDetailScreen(
                     ) {
                         items(albums, key = { it.id }) { album ->
                             CollectionCard(
-                                imageUri = album.artworkUri,
+                                imageModel = album.artworkUri,
                                 title = album.title,
                                 style = CollectionCardStyle.Compact,
                                 onClick = { onNavigateToAlbumDetail(album.title, album.artist) }
