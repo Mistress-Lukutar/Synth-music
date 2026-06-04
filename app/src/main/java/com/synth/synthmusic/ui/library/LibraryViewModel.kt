@@ -4,26 +4,31 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.domain.repository.ArtistRepository
-import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 /**
  * ViewModel for the library screen managing tabs and media scanning.
  */
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class LibraryViewModel(
     private val songRepository: SongRepository,
     private val artistRepository: ArtistRepository,
-    private val playlistRepository: PlaylistRepository,
     private val scanMusicUseCase: ScanMusicUseCase,
     private val playbackManager: MediaPlaybackManager,
     private val recentlyPlayedRepository: RecentlyPlayedCollectionRepository
@@ -34,7 +39,6 @@ class LibraryViewModel(
 
     val currentPlayback = playbackManager.playbackState
 
-
     init {
         artistRepository.observeAllArtists()
             .onEach { artists ->
@@ -42,20 +46,30 @@ class LibraryViewModel(
             }
             .launchIn(viewModelScope)
 
-        songRepository.observeTopSongs()
-            .onEach { list -> _uiState.update { it.copy(topSongs = list) } }
-            .launchIn(viewModelScope)
-
         recentlyPlayedRepository.observeRecent()
             .onEach { list -> _uiState.update { it.copy(recentCollections = list) } }
             .launchIn(viewModelScope)
 
-        songRepository.observeHistory()
-            .onEach { list -> _uiState.update { it.copy(historySongs = list) } }
-            .launchIn(viewModelScope)
-
         playbackManager.currentQueue
             .onEach { list -> _uiState.update { it.copy(queueSongs = list) } }
+            .launchIn(viewModelScope)
+
+        songRepository.observeGenres()
+            .onEach { genres -> _uiState.update { it.copy(genres = genres) } }
+            .launchIn(viewModelScope)
+
+        // Debounced search flow
+        _uiState
+            .debounce(300)
+            .flatMapLatest { state ->
+                val query = state.searchQuery
+                if (query.isBlank()) {
+                    flowOf(emptyList())
+                } else {
+                    songRepository.searchSongs(query)
+                }
+            }
+            .onEach { results -> _uiState.update { it.copy(searchResults = results) } }
             .launchIn(viewModelScope)
     }
 
@@ -67,6 +81,9 @@ class LibraryViewModel(
             is LibraryEvent.ScanLibrary -> scanLibrary()
             is LibraryEvent.PlaySong -> playSong(event.songId)
             is LibraryEvent.ClearQueue -> playbackManager.clearQueue()
+            is LibraryEvent.SearchQueryChanged -> {
+                _uiState.update { it.copy(searchQuery = event.query) }
+            }
         }
     }
 

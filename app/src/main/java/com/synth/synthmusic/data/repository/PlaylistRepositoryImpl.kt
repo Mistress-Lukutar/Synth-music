@@ -99,7 +99,7 @@ class PlaylistRepositoryImpl(
     }
 
     override suspend fun ensureFavoritesPlaylist(): Long {
-        val existing = playlistDao.getFixedPlaylist()
+        val existing = playlistDao.getFixedPlaylistByName("Favorites")
         return existing?.id ?: playlistDao.insert(
             PlaylistEntity(
                 name = "Favorites",
@@ -112,8 +112,86 @@ class PlaylistRepositoryImpl(
     }
 
     override suspend fun getFavoritesPlaylistId(): Long? {
-        return playlistDao.getFixedPlaylist()?.id
+        return playlistDao.getFixedPlaylistByName("Favorites")?.id
     }
+
+    override suspend fun ensureHistoryPlaylist(): Long {
+        val existing = playlistDao.getFixedPlaylistByName("History")
+        return existing?.id ?: playlistDao.insert(
+            PlaylistEntity(
+                name = "History",
+                createdAt = System.currentTimeMillis(),
+                songCount = 0,
+                artworkUri = null,
+                isFixed = true
+            )
+        )
+    }
+
+    override suspend fun ensureTopTracksPlaylist(): Long {
+        val existing = playlistDao.getFixedPlaylistByName("Top Tracks")
+        return existing?.id ?: playlistDao.insert(
+            PlaylistEntity(
+                name = "Top Tracks",
+                createdAt = System.currentTimeMillis(),
+                songCount = 0,
+                artworkUri = null,
+                isFixed = true
+            )
+        )
+    }
+
+    override suspend fun recordPlayAndSyncPlaylists(songId: String) {
+        val timestamp = System.currentTimeMillis()
+        songDao.incrementPlayCount(songId, timestamp)
+
+        val historyId = ensureHistoryPlaylist()
+        val topId = ensureTopTracksPlaylist()
+
+        // Sync History: last 50 played
+        playlistDao.deleteAllSongs(historyId)
+        val historySongs = songDao.observeHistory(50).first()
+        historySongs.forEachIndexed { index, song ->
+            playlistDao.insertSong(
+                PlaylistSongEntity(historyId, song.id, index)
+            )
+        }
+
+        // Sync Top: top 50 by play count
+        playlistDao.deleteAllSongs(topId)
+        val topSongs = songDao.observeTopSongs(50).first()
+        topSongs.forEachIndexed { index, song ->
+            playlistDao.insertSong(
+                PlaylistSongEntity(topId, song.id, index)
+            )
+        }
+
+        // Update playlist metadata
+        val historyEntity = playlistDao.getById(historyId)
+        if (historyEntity != null) {
+            playlistDao.update(
+                historyEntity.copy(
+                    songCount = historySongs.size,
+                    artworkUri = historySongs.firstOrNull()?.artworkUri ?: historyEntity.artworkUri
+                )
+            )
+        }
+
+        val topEntity = playlistDao.getById(topId)
+        if (topEntity != null) {
+            playlistDao.update(
+                topEntity.copy(
+                    songCount = topSongs.size,
+                    artworkUri = topSongs.firstOrNull()?.artworkUri ?: topEntity.artworkUri
+                )
+            )
+        }
+    }
+
+    override fun observeFixedPlaylists(): Flow<List<Playlist>> =
+        playlistDao.observeFixedPlaylists().map { list ->
+            list.map { it.toDomain() }
+        }
 }
 
 private fun PlaylistEntity.toDomain(): Playlist = Playlist(

@@ -11,13 +11,14 @@ data class LibraryUiState(
     val selectedTab: LibraryTab = LibraryTab.Queue,
     val queueSongs: List<Song> = emptyList(),
     val artists: List<Artist> = emptyList(),
+    val genres: List<String> = emptyList(),
+    val searchQuery: String = "",
+    val searchResults: List<Song> = emptyList(),
     val isScanning: Boolean = false,
     val scanError: String? = null,
-    val topSongs: List<Song> = emptyList(),
-    val recentCollections: List<RecentlyPlayedCollection> = emptyList(),
-    val historySongs: List<Song> = emptyList()
+    val recentCollections: List<RecentlyPlayedCollection> = emptyList()
 )
 
 enum class LibraryTab {
-    Queue, Artists, Top, History
+    Queue, Artists, Genres, Search
 }

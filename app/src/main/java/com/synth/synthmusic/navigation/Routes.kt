@@ -15,7 +15,7 @@ object HomeRoute
 object NowPlayingRoute
 
 @Serializable
-object SearchRoute
+data class GenreDetailRoute(val genre: String)
 
 @Serializable
 data class SongInfoRoute(val songId: String)

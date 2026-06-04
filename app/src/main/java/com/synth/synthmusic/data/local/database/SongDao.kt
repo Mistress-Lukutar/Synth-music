@@ -89,11 +89,23 @@ interface SongDao {
     @Query("SELECT * FROM songs ORDER BY play_count DESC, title COLLATE NOCASE ASC LIMIT 100")
     fun observeTopSongs(): Flow<List<SongEntity>>
 
+    @Query("SELECT * FROM songs ORDER BY play_count DESC, title COLLATE NOCASE ASC LIMIT :limit")
+    fun observeTopSongs(limit: Int): Flow<List<SongEntity>>
+
     @Query("SELECT * FROM songs ORDER BY date_added DESC LIMIT 100")
     fun observeRecentSongs(): Flow<List<SongEntity>>
 
     @Query("SELECT * FROM songs WHERE last_played IS NOT NULL ORDER BY last_played DESC LIMIT 100")
     fun observeHistory(): Flow<List<SongEntity>>
+
+    @Query("SELECT * FROM songs WHERE last_played IS NOT NULL ORDER BY last_played DESC LIMIT :limit")
+    fun observeHistory(limit: Int): Flow<List<SongEntity>>
+
+    @Query("SELECT DISTINCT genre FROM songs WHERE genre IS NOT NULL AND genre != '' ORDER BY genre COLLATE NOCASE ASC")
+    fun observeGenres(): Flow<List<String>>
+
+    @Query("SELECT * FROM songs WHERE genre = :genre ORDER BY title COLLATE NOCASE ASC")
+    fun observeByGenre(genre: String): Flow<List<SongEntity>>
 
     @Query("SELECT * FROM songs WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%'")
     fun search(query: String): Flow<List<SongEntity>>

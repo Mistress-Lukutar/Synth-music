@@ -55,6 +55,8 @@ class ScanMusicUseCase(
             artistRepository.replaceAllArtists(artists)
 
             playlistRepository.ensureFavoritesPlaylist()
+            playlistRepository.ensureHistoryPlaylist()
+            playlistRepository.ensureTopTracksPlaylist()
 
             songs.size
         }

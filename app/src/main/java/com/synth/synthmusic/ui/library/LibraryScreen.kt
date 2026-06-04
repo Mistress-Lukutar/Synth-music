@@ -5,9 +5,10 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,7 +24,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -38,6 +38,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -52,9 +53,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.synth.synthmusic.R
-import com.synth.synthmusic.ui.components.SongList
 import com.synth.synthmusic.ui.components.CollectionCard
 import com.synth.synthmusic.ui.components.CollectionCardStyle
+import com.synth.synthmusic.ui.components.SongList
 import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
 import com.synth.synthmusic.ui.library.components.ArtistListItem
 import com.synth.synthmusic.ui.library.components.SongListItem
@@ -62,17 +63,17 @@ import com.synth.synthmusic.ui.share.ShareSongSheet
 import org.koin.androidx.compose.koinViewModel
 
 /**
- * Main library screen with tabs for Queue, Artists, Top, and History.
+ * Main library screen with tabs for Queue, Artists, Genres, and Search.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
-    onNavigateToSearch: () -> Unit,
     onNavigateToPlaylistDetail: (Long) -> Unit,
     onNavigateToSongInfo: (String) -> Unit,
     onNavigateToEditMetadata: (String) -> Unit,
     onNavigateToAlbumDetail: (String, String) -> Unit,
     onNavigateToArtistDetail: (String) -> Unit,
+    onNavigateToGenreDetail: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = koinViewModel()
 ) {
@@ -120,9 +121,6 @@ fun LibraryScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onNavigateToSearch) {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
-                    }
                     Box {
                         IconButton(onClick = { menuExpanded = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "Menu")
@@ -246,33 +244,24 @@ fun LibraryScreen(
                         onArtistClick = { onNavigateToArtistDetail(it.name) }
                     )
 
-                    LibraryTab.Top -> SongList(
-                        songs = uiState.topSongs,
+                    LibraryTab.Genres -> GenresTab(
+                        genres = uiState.genres,
+                        onGenreClick = onNavigateToGenreDetail
+                    )
+
+                    LibraryTab.Search -> SearchTab(
+                        query = uiState.searchQuery,
+                        results = uiState.searchResults,
                         currentSongId = playback.currentSongId,
+                        onQueryChange = { viewModel.onEvent(LibraryEvent.SearchQueryChanged(it)) },
                         onSongClick = { song -> viewModel.onEvent(LibraryEvent.PlaySong(song.id)) },
                         onNavigateToSongInfo = onNavigateToSongInfo,
                         onNavigateToEditMetadata = onNavigateToEditMetadata,
                         onAddToPlaylist = { selectedSongForPlaylist = it },
                         onPlayNext = { viewModel.playNext(it) },
                         onAddToQueue = { viewModel.addToQueue(it) },
-                        onShare = { selectedSongForShare = it },
-                        modifier = Modifier.fillMaxSize()
+                        onShare = { selectedSongForShare = it }
                     )
-
-                    LibraryTab.History -> SongList(
-                        songs = uiState.historySongs,
-                        currentSongId = playback.currentSongId,
-                        onSongClick = { song -> viewModel.onEvent(LibraryEvent.PlaySong(song.id)) },
-                        onNavigateToSongInfo = onNavigateToSongInfo,
-                        onNavigateToEditMetadata = onNavigateToEditMetadata,
-                        onAddToPlaylist = { selectedSongForPlaylist = it },
-                        onPlayNext = { viewModel.playNext(it) },
-                        onAddToQueue = { viewModel.addToQueue(it) },
-                        onShare = { selectedSongForShare = it },
-                        modifier = Modifier.fillMaxSize()
-                    )
-
-
                 }
             }
         }
@@ -287,16 +276,13 @@ fun LibraryScreen(
 
     selectedSongForShare?.let { songId ->
         val song = uiState.queueSongs.find { it.id == songId }
-            ?: uiState.topSongs.find { it.id == songId }
-            ?: uiState.historySongs.find { it.id == songId }
+            ?: uiState.searchResults.find { it.id == songId }
         ShareSongSheet(
             song = song,
             onDismiss = { selectedSongForShare = null }
         )
     }
 }
-
-
 
 @Composable
 private fun SectionHeader(
@@ -343,5 +329,73 @@ private fun ArtistsTab(
                 onClick = { onArtistClick(artist) }
             )
         }
+    }
+}
+
+@Composable
+private fun GenresTab(
+    genres: List<String>,
+    onGenreClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(vertical = 8.dp)
+    ) {
+        items(genres, key = { it }) { genre ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onGenreClick(genre) }
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = genre,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchTab(
+    query: String,
+    results: List<com.synth.synthmusic.domain.model.Song>,
+    currentSongId: String?,
+    onQueryChange: (String) -> Unit,
+    onSongClick: (com.synth.synthmusic.domain.model.Song) -> Unit,
+    onNavigateToSongInfo: (String) -> Unit,
+    onNavigateToEditMetadata: (String) -> Unit,
+    onAddToPlaylist: (String) -> Unit,
+    onPlayNext: (String) -> Unit,
+    onAddToQueue: (String) -> Unit,
+    onShare: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxSize()) {
+        TextField(
+            value = query,
+            onValueChange = onQueryChange,
+            placeholder = { Text("Search songs, artists, albums...") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            singleLine = true
+        )
+        SongList(
+            songs = results,
+            currentSongId = currentSongId,
+            onSongClick = onSongClick,
+            onNavigateToSongInfo = onNavigateToSongInfo,
+            onNavigateToEditMetadata = onNavigateToEditMetadata,
+            onAddToPlaylist = onAddToPlaylist,
+            onPlayNext = onPlayNext,
+            onAddToQueue = onAddToQueue,
+            onShare = onShare,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }

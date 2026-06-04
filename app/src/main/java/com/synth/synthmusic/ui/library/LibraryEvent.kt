@@ -8,4 +8,5 @@ sealed class LibraryEvent {
     data object ScanLibrary : LibraryEvent()
     data class PlaySong(val songId: String) : LibraryEvent()
     data object ClearQueue : LibraryEvent()
+    data class SearchQueryChanged(val query: String) : LibraryEvent()
 }

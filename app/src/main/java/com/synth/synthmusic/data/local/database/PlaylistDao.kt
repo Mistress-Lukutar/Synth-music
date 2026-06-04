@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface PlaylistDao {
-    @Query("SELECT * FROM playlists ORDER BY created_at DESC")
+    @Query("SELECT * FROM playlists ORDER BY is_fixed DESC, created_at DESC")
     fun observeAll(): Flow<List<PlaylistEntity>>
 
     @Query("SELECT * FROM playlists WHERE id = :playlistId")
@@ -27,6 +27,15 @@ interface PlaylistDao {
 
     @Query("SELECT * FROM playlists WHERE is_fixed = 1 LIMIT 1")
     fun observeFixedPlaylist(): Flow<PlaylistEntity?>
+
+    @Query("SELECT * FROM playlists WHERE is_fixed = 1 ORDER BY name ASC")
+    fun observeFixedPlaylists(): Flow<List<PlaylistEntity>>
+
+    @Query("SELECT * FROM playlists WHERE is_fixed = 1 AND name = :name LIMIT 1")
+    suspend fun getFixedPlaylistByName(name: String): PlaylistEntity?
+
+    @Query("SELECT * FROM playlists WHERE is_fixed = 1 AND name = :name LIMIT 1")
+    fun observeFixedPlaylistByName(name: String): Flow<PlaylistEntity?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(playlist: PlaylistEntity): Long

@@ -30,7 +30,7 @@ import com.synth.synthmusic.ui.nowplaying.NowPlayingViewModel
 import com.synth.synthmusic.ui.playback.PlaybackViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistDetailViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistViewModel
-import com.synth.synthmusic.ui.search.SearchViewModel
+import com.synth.synthmusic.ui.genres.GenreDetailViewModel
 import com.synth.synthmusic.ui.settings.SettingsViewModel
 import com.synth.synthmusic.ui.sleeptimer.SleepTimerViewModel
 import org.koin.android.ext.koin.androidContext
@@ -69,7 +69,7 @@ val appModule = module {
     single<com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository> {
         com.synth.synthmusic.data.repository.RecentlyPlayedCollectionRepositoryImpl(get())
     }
-    single { MediaPlaybackManager(androidContext(), get(), get(), get(), get()) }
+    single { MediaPlaybackManager(androidContext(), get(), get(), get(), get(), get()) }
     single { WaveformGenerator(androidContext()) }
     single { WaveformPreloader(get(), get()) }
     single { com.synth.synthmusic.data.local.cover.CoverCache(androidContext()) }
@@ -99,7 +99,6 @@ val appModule = module {
         LibraryViewModel(
             songRepository = get(),
             artistRepository = get(),
-            playlistRepository = get(),
             scanMusicUseCase = get(),
             playbackManager = get(),
             recentlyPlayedRepository = get()
@@ -184,8 +183,9 @@ val appModule = module {
     }
 
 
-    viewModel {
-        SearchViewModel(
+    viewModel { (genre: String) ->
+        GenreDetailViewModel(
+            genre = genre,
             songRepository = get(),
             playbackManager = get()
         )
