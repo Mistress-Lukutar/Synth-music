@@ -27,12 +27,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.synth.synthmusic.R
 import com.synth.synthmusic.domain.model.Song
+import com.synth.synthmusic.ui.theme.SynthMusicTheme
 
 /**
  * Persistent bottom mini-player shown across library screens.
@@ -71,8 +74,9 @@ fun MiniPlayer(
             progress = { progress.coerceIn(0f, 1f) },
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
-        )
+            trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+            drawStopIndicator = {}
+            )
         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
         Row(
             modifier = Modifier
@@ -139,5 +143,46 @@ fun MiniPlayer(
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MiniPlayerPreview() {
+    SynthMusicTheme {
+        MiniPlayer(
+            song = Song(
+                id = "preview",
+                title = "Untitled",
+                artist = "Unknown",
+                album = "Preview Album",
+                albumArtist = "Preview Artist",
+                durationMs = 180000L,
+                trackNumber = 1,
+                year = 2024,
+                genre = "Pop",
+                comment = "",
+                path = "/music/preview.mp3",
+                uri = "content://media/external/audio/media/1",
+                bitrate = 320,
+                sampleRate = 44100,
+                fileSize = 0L,
+                artworkUri = null,
+                rating = 0f,
+                playCount = 0,
+                lastPlayed = null,
+                dateAdded = 0L,
+                dateModified = 0L,
+                lyrics = null,
+                isFavorite = false
+            ),
+            isPlaying = true,
+            positionMs = 0L,
+            durationMs = 180000L,
+            onTogglePlayPause = {},
+            onPrevious = {},
+            onNext = {},
+            onExpand = {}
+        )
     }
 }
