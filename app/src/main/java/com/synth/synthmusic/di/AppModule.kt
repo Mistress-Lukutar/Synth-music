@@ -16,6 +16,7 @@ import com.synth.synthmusic.domain.repository.ArtistRepository
 import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
+import com.synth.synthmusic.domain.usecase.CheckRecordAudioPermissionUseCase
 import com.synth.synthmusic.domain.usecase.CheckWritePermissionUseCase
 import com.synth.synthmusic.domain.usecase.ExportPlaylistUseCase
 import com.synth.synthmusic.domain.usecase.ImportPlaylistUseCase
@@ -88,6 +89,7 @@ val appModule = module {
 
     single { PlaySongUseCase(get()) }
     single { CheckWritePermissionUseCase(androidContext()) }
+    single { CheckRecordAudioPermissionUseCase(androidContext()) }
     single { WriteArtworkToMp3UseCase(get(), get()) }
     single { UpdateMetadataUseCase(get(), get()) }
     single { ExportPlaylistUseCase(androidContext(), get()) }
@@ -113,7 +115,8 @@ val appModule = module {
             waveformGenerator = get(),
             waveformDataDao = get(),
             writeArtworkUseCase = get(),
-            checkWritePermission = get()
+            checkWritePermission = get(),
+            checkRecordAudioPermission = get()
         )
     }
 

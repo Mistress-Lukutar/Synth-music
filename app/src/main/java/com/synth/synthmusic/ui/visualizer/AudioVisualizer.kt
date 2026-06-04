@@ -26,14 +26,15 @@ fun AudioVisualizer(
     modifier: Modifier = Modifier,
     barCount: Int = 48,
     color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
+    hasRecordAudioPermission: Boolean = false,
 ) {
-    if (audioSessionId == 0) {
+    if (audioSessionId == 0 || !hasRecordAudioPermission) {
         return
     }
 
     val barHeights = remember { mutableStateListOf<Float>().apply { repeat(barCount) { add(0f) } } }
 
-    DisposableEffect(audioSessionId, barCount) {
+    DisposableEffect(audioSessionId, barCount, hasRecordAudioPermission) {
         val visualizer = try {
             Visualizer(audioSessionId).apply {
                 captureSize = Visualizer.getCaptureSizeRange()[1].coerceAtMost(1024)

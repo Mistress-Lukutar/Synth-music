@@ -33,12 +33,13 @@ fun AudioVisualizerRing(
     isPlaying: Boolean,
     dotColor: Color,
     modifier: Modifier = Modifier,
-    dotCount: Int = 64
+    dotCount: Int = 64,
+    hasRecordAudioPermission: Boolean = false
 ) {
     val barHeights = remember { mutableStateListOf<Float>().apply { repeat(dotCount) { add(0.05f) } } }
 
-    DisposableEffect(audioSessionId, isPlaying, dotCount) {
-        if (audioSessionId == 0 || !isPlaying) {
+    DisposableEffect(audioSessionId, isPlaying, dotCount, hasRecordAudioPermission) {
+        if (audioSessionId == 0 || !isPlaying || !hasRecordAudioPermission) {
             // Reset to baseline when not playing
             for (i in barHeights.indices) {
                 barHeights[i] = 0.05f

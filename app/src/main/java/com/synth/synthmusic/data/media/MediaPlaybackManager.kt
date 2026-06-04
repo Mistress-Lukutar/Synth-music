@@ -63,6 +63,7 @@ class MediaPlaybackManager(
     private var fadeDurationMs: Int = 300
     private var currentTargetVolume: Float = 1f
     private var endOfTrackJob: Job? = null
+    private var positionUpdateJob: Job? = null
     private var persistJob: Job? = null
 
     private val listener = object : Player.Listener {
@@ -73,6 +74,11 @@ class MediaPlaybackManager(
                     positionMs = player.currentPosition,
                     durationMs = player.duration.coerceAtLeast(0)
                 )
+            }
+            if (player.isPlaying) {
+                startPositionUpdates()
+            } else {
+                stopPositionUpdates()
             }
             persistState()
         }
@@ -93,8 +99,10 @@ class MediaPlaybackManager(
                     player.volume = currentTargetVolume
                 }
                 startEndOfTrackMonitor()
+                startPositionUpdates()
             } else {
                 stopEndOfTrackMonitor()
+                stopPositionUpdates()
             }
             persistState()
         }
@@ -320,6 +328,7 @@ class MediaPlaybackManager(
 
     fun release() {
         stopEndOfTrackMonitor()
+        stopPositionUpdates()
         fadeManager.cancel()
         player.removeListener(listener)
         player.release()
@@ -345,6 +354,25 @@ class MediaPlaybackManager(
     private fun stopEndOfTrackMonitor() {
         endOfTrackJob?.cancel()
         endOfTrackJob = null
+    }
+
+    private fun startPositionUpdates() {
+        stopPositionUpdates()
+        positionUpdateJob = scope.launch {
+            while (isActive) {
+                if (player.isPlaying) {
+                    _playbackState.update {
+                        it.copy(positionMs = player.currentPosition)
+                    }
+                }
+                delay(500)
+            }
+        }
+    }
+
+    private fun stopPositionUpdates() {
+        positionUpdateJob?.cancel()
+        positionUpdateJob = null
     }
 
     private fun updateTargetVolume(songId: String) {
