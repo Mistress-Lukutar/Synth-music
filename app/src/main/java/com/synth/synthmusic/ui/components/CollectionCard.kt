@@ -1,5 +1,6 @@
 package com.synth.synthmusic.ui.components
 
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,7 +47,7 @@ sealed class CollectionCardStyle {
 /**
  * Reusable card composable for music collections (albums, playlists, recent items, etc.).
  *
- * @param imageUri URI for the cover image. If null, a placeholder is shown.
+ * @param imageModel Cover image source. Accepts a URI string, an `R.drawable` resource id, or null for placeholder.
  * @param title Primary text (e.g. album or playlist name).
  * @param subtitle Secondary text (e.g. artist name). May be null.
  * @param meta Tertiary text (e.g. track count). May be null.
@@ -56,19 +58,19 @@ sealed class CollectionCardStyle {
  */
 @Composable
 fun CollectionCard(
-    imageUri: String?,
+    modifier: Modifier = Modifier,
+    imageModel: Any?,
     title: String,
     subtitle: String? = null,
     meta: String? = null,
     style: CollectionCardStyle = CollectionCardStyle.Grid,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
-    val imageRequest = remember(imageUri) {
+    val imageRequest = remember(imageModel) {
         ImageRequest.Builder(context)
-            .data(imageUri)
+            .data(imageModel)
             .placeholder(R.drawable.ic_placeholder_artwork)
             .error(R.drawable.ic_placeholder_artwork)
             .build()
@@ -146,8 +148,11 @@ fun CollectionCard(
                     text = title,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 6.dp)
+                    softWrap = false,
+                    modifier = Modifier
+                        .width(120.dp)
+                        .basicMarquee(iterations = Int.MAX_VALUE)
+                        .padding(top = 6.dp)
                 )
             }
         }
@@ -158,9 +163,9 @@ fun CollectionCard(
 @Composable
 private fun CollectionCardGridPreview() {
     CollectionCard(
-        imageUri = null,
-        title = "Sample Album",
-        subtitle = "Sample Artist",
+        imageModel = R.drawable.ic_logo_yellow,
+        title = "Sample Album with very very long name and lorem ipsum dolor sit amet",
+        subtitle = "Sample Artist with very very long name and lorem ipsum dolor sit amet",
         meta = "12 tracks",
         style = CollectionCardStyle.Grid,
         onClick = {}
@@ -171,8 +176,8 @@ private fun CollectionCardGridPreview() {
 @Composable
 private fun CollectionCardCompactPreview() {
     CollectionCard(
-        imageUri = null,
-        title = "Recent Album",
+        imageModel = R.drawable.ic_logo_yellow,
+        title = "Recent Album with very very long name and lorem ipsum dolor sit amet",
         style = CollectionCardStyle.Compact,
         onClick = {}
     )

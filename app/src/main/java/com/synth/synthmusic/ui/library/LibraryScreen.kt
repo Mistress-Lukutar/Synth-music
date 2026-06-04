@@ -192,7 +192,7 @@ fun LibraryScreen(
                                             key = { _, collection -> collection.id }
                                         ) { _, collection ->
                                             CollectionCard(
-                                                imageUri = collection.artworkUri,
+                                                imageModel = collection.artworkUri,
                                                 title = collection.name,
                                                 style = CollectionCardStyle.Compact,
                                                 onClick = {

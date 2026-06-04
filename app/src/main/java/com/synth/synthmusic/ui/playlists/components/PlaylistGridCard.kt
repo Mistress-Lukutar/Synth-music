@@ -73,7 +73,7 @@ fun PlaylistGridCard(
 
     Box(modifier = modifier) {
         CollectionCard(
-            imageUri = playlist.artworkUri,
+            imageModel = playlist.artworkUri,
             title = playlist.name,
             subtitle = null,
             meta = "${playlist.songCount} tracks",
