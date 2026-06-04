@@ -106,7 +106,8 @@ fun CollectionCard(
                         text = title,
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        softWrap = false,
+                        modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
                     )
                     if (!subtitle.isNullOrBlank()) {
                         Text(
@@ -131,11 +132,12 @@ fun CollectionCard(
         is CollectionCardStyle.Compact -> {
             Column(
                 modifier = modifier
+                    .width(120.dp)
+                    .padding(4.dp)
                     .combinedClickable(
                         onClick = onClick,
                         onLongClick = onLongClick
-                    )
-                    .padding(end = 12.dp),
+                    ),
                 horizontalAlignment = Alignment.Start
             ) {
                 AsyncImage(
