@@ -19,4 +19,8 @@ interface PlaylistRepository {
     suspend fun updatePlaylistArtwork(playlistId: Long, artworkUri: String?)
     suspend fun ensureFavoritesPlaylist(): Long
     suspend fun getFavoritesPlaylistId(): Long?
+    suspend fun ensureHistoryPlaylist(): Long
+    suspend fun ensureTopTracksPlaylist(): Long
+    suspend fun recordPlayAndSyncPlaylists(songId: String)
+    fun observeFixedPlaylists(): Flow<List<Playlist>>
 }

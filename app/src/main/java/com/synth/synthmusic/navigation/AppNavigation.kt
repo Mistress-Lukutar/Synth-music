@@ -38,7 +38,7 @@ import com.synth.synthmusic.ui.metadata.SongInfoScreen
 import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.ui.nowplaying.NowPlayingScreen
 import com.synth.synthmusic.ui.playlists.PlaylistDetailScreen
-import com.synth.synthmusic.ui.search.SearchScreen
+import com.synth.synthmusic.ui.genres.GenreDetailScreen
 import com.synth.synthmusic.ui.settings.SettingsScreen
 import com.synth.synthmusic.ui.splash.SplashScreen
 import com.synth.synthmusic.ui.visualizer.VisualizerScreen
@@ -124,7 +124,6 @@ fun AppNavigation(
             composable<HomeRoute> {
                 MainScreen(
                     selectedTab = selectedTab,
-                    onNavigateToSearch = { navController.navigate(SearchRoute) },
                     onNavigateToPlaylistDetail = { navController.navigate(PlaylistDetailRoute(it)) },
                     onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
                     onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) },
@@ -133,6 +132,9 @@ fun AppNavigation(
                     },
                     onNavigateToArtistDetail = { name ->
                         navController.navigate(ArtistDetailRoute(name))
+                    },
+                    onNavigateToGenreDetail = { genre ->
+                        navController.navigate(GenreDetailRoute(genre))
                     }
                 )
             }
@@ -143,9 +145,12 @@ fun AppNavigation(
                     onNavigateToVisualizer = { navController.navigate(VisualizerRoute) }
                 )
             }
-            composable<SearchRoute> {
-                SearchScreen(
+            composable<GenreDetailRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<GenreDetailRoute>()
+                GenreDetailScreen(
+                    genre = route.genre,
                     onNavigateBack = { navController.popBackStack() },
+                    onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
                     onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
                     onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) }
                 )

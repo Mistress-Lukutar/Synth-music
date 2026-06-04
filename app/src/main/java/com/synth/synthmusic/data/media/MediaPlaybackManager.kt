@@ -38,7 +38,8 @@ class MediaPlaybackManager(
     private val playbackStateDao: PlaybackStateDao,
     private val songDao: SongDao,
     private val songRepository: SongRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val playlistRepository: com.synth.synthmusic.domain.repository.PlaylistRepository
 ) {
     private val _playbackState = MutableStateFlow(PlaybackState())
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
@@ -117,7 +118,7 @@ class MediaPlaybackManager(
             }
             mediaItem?.mediaId?.let { songId ->
                 updateTargetVolume(songId)
-                scope.launch { songRepository.incrementPlayCount(songId) }
+                scope.launch { playlistRepository.recordPlayAndSyncPlaylists(songId) }
             }
             if (player.isPlaying && fadeDurationMs > 0) {
                 player.volume = 0f

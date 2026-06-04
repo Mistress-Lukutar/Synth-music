@@ -17,23 +17,23 @@ import com.synth.synthmusic.ui.settings.SettingsScreen
  * MiniPlayer and BottomNav lives in [AppNavigation].
  *
  * @param selectedTab Currently selected bottom-nav tab index.
- * @param onNavigateToSearch Navigate to search.
  * @param onNavigateToPlaylistDetail Navigate to playlist detail.
  * @param onNavigateToSongInfo Navigate to song info.
  * @param onNavigateToEditMetadata Navigate to metadata editor.
  * @param onNavigateToAlbumDetail Navigate to album detail.
  * @param onNavigateToArtistDetail Navigate to artist detail.
+ * @param onNavigateToGenreDetail Navigate to genre detail.
  * @param modifier Modifier for the root container.
  */
 @Composable
 fun MainScreen(
     selectedTab: Int,
-    onNavigateToSearch: () -> Unit,
     onNavigateToPlaylistDetail: (Long) -> Unit,
     onNavigateToSongInfo: (String) -> Unit,
     onNavigateToEditMetadata: (String) -> Unit,
     onNavigateToAlbumDetail: (String, String) -> Unit,
     onNavigateToArtistDetail: (String) -> Unit,
+    onNavigateToGenreDetail: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Crossfade(
@@ -44,12 +44,12 @@ fun MainScreen(
     ) { tab ->
         when (tab) {
             0 -> LibraryScreen(
-                onNavigateToSearch = onNavigateToSearch,
                 onNavigateToPlaylistDetail = onNavigateToPlaylistDetail,
                 onNavigateToSongInfo = onNavigateToSongInfo,
                 onNavigateToEditMetadata = onNavigateToEditMetadata,
                 onNavigateToAlbumDetail = onNavigateToAlbumDetail,
-                onNavigateToArtistDetail = onNavigateToArtistDetail
+                onNavigateToArtistDetail = onNavigateToArtistDetail,
+                onNavigateToGenreDetail = onNavigateToGenreDetail
             )
 
             1 -> PlaylistsScreen(
