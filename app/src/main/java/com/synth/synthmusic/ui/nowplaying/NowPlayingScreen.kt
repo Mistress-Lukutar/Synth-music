@@ -36,6 +36,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import android.content.res.Configuration
+import com.synth.synthmusic.ui.theme.SynthMusicTheme
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import com.synth.synthmusic.domain.model.Song
@@ -354,63 +356,66 @@ private fun formatDuration(ms: Long): String {
     return String.format(Locale.US, "%d:%02d", minutes, seconds)
 }
 
-@Preview(device = "id:pixel_5")
+@Preview(device = "id:pixel_5", name = "Light")
+@Preview(device = "id:pixel_5", name = "Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun NowPlayingContentPreview() {
-    NowPlayingContent(
-        uiState = NowPlayingUiState(
-            song = Song(
-                id = "1",
-                title = "Neon Dreams",
-                artist = "Synthwave Artist",
-                album = "Midnight Run",
-                albumArtist = "Synthwave Artist",
+    SynthMusicTheme {
+        NowPlayingContent(
+            uiState = NowPlayingUiState(
+                song = Song(
+                    id = "1",
+                    title = "Neon Dreams",
+                    artist = "Synthwave Artist",
+                    album = "Midnight Run",
+                    albumArtist = "Synthwave Artist",
+                    durationMs = 234000,
+                    trackNumber = 3,
+                    year = 2024,
+                    genre = "Synthwave",
+                    comment = "",
+                    path = "/music/neon_dreams.mp3",
+                    uri = "content://media/external/audio/media/1",
+                    bitrate = 320,
+                    sampleRate = 44100,
+                    fileSize = 9_400_000,
+                    artworkUri = null,
+                    rating = 4.5f,
+                    playCount = 128,
+                    lastPlayed = null,
+                    dateAdded = 0,
+                    dateModified = 0,
+                    lyrics = null,
+                    isFavorite = true
+                ),
+                isPlaying = true,
+                positionMs = 45000,
                 durationMs = 234000,
-                trackNumber = 3,
-                year = 2024,
-                genre = "Synthwave",
-                comment = "",
-                path = "/music/neon_dreams.mp3",
-                uri = "content://media/external/audio/media/1",
-                bitrate = 320,
-                sampleRate = 44100,
-                fileSize = 9_400_000,
-                artworkUri = null,
+                repeatMode = Player.REPEAT_MODE_ALL,
+                shuffleEnabled = true,
                 rating = 4.5f,
-                playCount = 128,
-                lastPlayed = null,
-                dateAdded = 0,
-                dateModified = 0,
-                lyrics = null,
-                isFavorite = true
+                isFavorite = true,
+                waveformAmplitudes = List(200) { 0.05f + kotlin.random.Random.nextFloat() * 0.9f },
+                playbackSpeed = 1.0f,
+                playbackPitch = 1.0f,
+                audioSessionId = 0,
+                hasRecordAudioPermission = false,
+                audioQualityLabel = "320 kbps"
             ),
-            isPlaying = true,
-            positionMs = 45000,
-            durationMs = 234000,
-            repeatMode = Player.REPEAT_MODE_ALL,
-            shuffleEnabled = true,
-            rating = 4.5f,
-            isFavorite = true,
-            waveformAmplitudes = List(200) { 0.05f + kotlin.random.Random.nextFloat() * 0.9f },
-            playbackSpeed = 1.0f,
-            playbackPitch = 1.0f,
-            audioSessionId = 0,
-            hasRecordAudioPermission = false,
-            audioQualityLabel = "320 kbps"
-        ),
-        onNavigateBack = {},
-        onNavigateToVisualizer = {},
-        onToggleFavorite = {},
-        onToggleShuffle = {},
-        onCycleRepeat = {},
-        onPlayPause = {},
-        onPrevious = {},
-        onNext = {},
-        onSeek = {},
-        onRecordAudioPermissionGranted = {},
-        onShowSleepTimer = {},
-        onShowShareSheet = {},
-        onShowLyrics = {},
-        onShowSpeedSheet = {}
-    )
+            onNavigateBack = {},
+            onNavigateToVisualizer = {},
+            onToggleFavorite = {},
+            onToggleShuffle = {},
+            onCycleRepeat = {},
+            onPlayPause = {},
+            onPrevious = {},
+            onNext = {},
+            onSeek = {},
+            onRecordAudioPermissionGranted = {},
+            onShowSleepTimer = {},
+            onShowShareSheet = {},
+            onShowLyrics = {},
+            onShowSpeedSheet = {}
+        )
+    }
 }

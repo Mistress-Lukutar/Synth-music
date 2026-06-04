@@ -29,6 +29,8 @@ import com.synth.synthmusic.ui.components.CollectionCard
 import com.synth.synthmusic.ui.components.CollectionCardStyle
 import com.synth.synthmusic.ui.library.components.ChangeArtworkDialog
 import androidx.compose.ui.tooling.preview.Preview
+import android.content.res.Configuration
+import com.synth.synthmusic.ui.theme.SynthMusicTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -160,21 +162,24 @@ fun PlaylistGridCard(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Light")
+@Preview(showBackground = true, name = "Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun PlaylistGridCardPreview() {
-    PlaylistGridCard(
-        playlist = com.synth.synthmusic.domain.model.Playlist(
-            id = 1,
-            name = "My Playlist",
-            createdAt = 0,
-            songCount = 8,
-            artworkUri = null,
-            isFixed = false
-        ),
-        onClick = {},
-        onRename = {},
-        onDelete = {},
-        onChangeArtwork = {}
-    )
+    SynthMusicTheme {
+        PlaylistGridCard(
+            playlist = com.synth.synthmusic.domain.model.Playlist(
+                id = 1,
+                name = "My Playlist",
+                createdAt = 0,
+                songCount = 8,
+                artworkUri = null,
+                isFixed = false
+            ),
+            onClick = {},
+            onRename = {},
+            onDelete = {},
+            onChangeArtwork = {}
+        )
+    }
 }

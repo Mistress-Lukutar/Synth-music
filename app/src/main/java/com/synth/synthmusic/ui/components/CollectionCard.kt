@@ -22,6 +22,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import android.content.res.Configuration
+import com.synth.synthmusic.ui.theme.SynthMusicTheme
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.synth.synthmusic.R
@@ -159,26 +161,32 @@ fun CollectionCard(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Grid Light")
+@Preview(showBackground = true, name = "Grid Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun CollectionCardGridPreview() {
-    CollectionCard(
-        imageModel = R.drawable.ic_logo_yellow,
-        title = "Sample Album with very very long name and lorem ipsum dolor sit amet",
-        subtitle = "Sample Artist with very very long name and lorem ipsum dolor sit amet",
-        meta = "12 tracks",
-        style = CollectionCardStyle.Grid,
-        onClick = {}
-    )
+    SynthMusicTheme {
+        CollectionCard(
+            imageModel = R.drawable.ic_logo_yellow,
+            title = "Sample Album with very very long name and lorem ipsum dolor sit amet",
+            subtitle = "Sample Artist with very very long name and lorem ipsum dolor sit amet",
+            meta = "12 tracks",
+            style = CollectionCardStyle.Grid,
+            onClick = {}
+        )
+    }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Compact Light")
+@Preview(showBackground = true, name = "Compact Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun CollectionCardCompactPreview() {
-    CollectionCard(
-        imageModel = R.drawable.ic_logo_yellow,
-        title = "Recent Album with very very long name and lorem ipsum dolor sit amet",
-        style = CollectionCardStyle.Compact,
-        onClick = {}
-    )
+    SynthMusicTheme {
+        CollectionCard(
+            imageModel = R.drawable.ic_logo_yellow,
+            title = "Recent Album with very very long name and lorem ipsum dolor sit amet",
+            style = CollectionCardStyle.Compact,
+            onClick = {}
+        )
+    }
 }
