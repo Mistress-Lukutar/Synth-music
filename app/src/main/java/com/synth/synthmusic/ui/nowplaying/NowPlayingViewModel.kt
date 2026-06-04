@@ -8,9 +8,9 @@ import com.synth.synthmusic.data.media.waveform.WaveformGenerator
 import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
+import com.synth.synthmusic.domain.usecase.CheckRecordAudioPermissionUseCase
 import com.synth.synthmusic.domain.usecase.CheckWritePermissionUseCase
 import com.synth.synthmusic.domain.usecase.WriteArtworkToMp3UseCase
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +23,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -43,7 +42,8 @@ class NowPlayingViewModel(
     private val waveformGenerator: WaveformGenerator,
     private val waveformDataDao: WaveformDataDao,
     private val writeArtworkUseCase: WriteArtworkToMp3UseCase,
-    private val checkWritePermission: CheckWritePermissionUseCase
+    private val checkWritePermission: CheckWritePermissionUseCase,
+    private val checkRecordAudioPermission: CheckRecordAudioPermissionUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NowPlayingUiState())
@@ -53,6 +53,8 @@ class NowPlayingViewModel(
     val hasWritePermission: StateFlow<Boolean> = _hasWritePermission.asStateFlow()
 
     init {
+        _uiState.update { it.copy(hasRecordAudioPermission = checkRecordAudioPermission()) }
+
         playbackManager.playbackState
             .map { it.currentSongId }
             .filterNotNull()
@@ -80,6 +82,7 @@ class NowPlayingViewModel(
                         playbackSpeed = settings.playbackSpeed,
                         playbackPitch = settings.playbackPitch,
                         audioSessionId = playbackManager.player.audioSessionId,
+                        hasRecordAudioPermission = checkRecordAudioPermission(),
                         audioQualityLabel = buildAudioQualityLabel(song)
                     )
                 }
@@ -98,17 +101,6 @@ class NowPlayingViewModel(
             }
             .launchIn(viewModelScope)
 
-        // Poll position while playing
-        viewModelScope.launch {
-            while (isActive) {
-                if (_uiState.value.isPlaying) {
-                    _uiState.update {
-                        it.copy(positionMs = playbackManager.player.currentPosition)
-                    }
-                }
-                delay(1000)
-            }
-        }
     }
 
     fun onEvent(event: NowPlayingEvent) {
@@ -164,6 +156,10 @@ class NowPlayingViewModel(
 
     fun refreshPermission() {
         _hasWritePermission.value = checkWritePermission()
+    }
+
+    fun refreshRecordAudioPermission() {
+        _uiState.update { it.copy(hasRecordAudioPermission = checkRecordAudioPermission()) }
     }
 
     fun updateArtwork(bytes: ByteArray?) {

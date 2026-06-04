@@ -13,11 +13,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.synth.synthmusic.data.media.MediaPlaybackManager
 import org.koin.compose.koinInject
@@ -33,6 +42,26 @@ fun VisualizerScreen(
     playbackManager: MediaPlaybackManager = koinInject()
 ) {
     val playback by playbackManager.playbackState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var hasRecordAudioPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val recordAudioLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasRecordAudioPermission = isGranted
+    }
+
+    LaunchedEffect(Unit) {
+        if (!hasRecordAudioPermission) {
+            recordAudioLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -67,7 +96,8 @@ fun VisualizerScreen(
                     AudioVisualizer(
                         audioSessionId = sessionId,
                         barCount = 56,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        hasRecordAudioPermission = hasRecordAudioPermission
                     )
                 }
             } else {
