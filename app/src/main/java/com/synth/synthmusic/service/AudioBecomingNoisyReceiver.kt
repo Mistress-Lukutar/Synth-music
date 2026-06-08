@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
+import android.os.Build
 
 /**
  * Receiver that pauses playback when audio output changes from headphones
@@ -19,7 +20,11 @@ class AudioBecomingNoisyReceiver : BroadcastReceiver() {
             val pauseIntent = Intent(context, PlaybackService::class.java).apply {
                 action = ACTION_PAUSE
             }
-            context.startService(pauseIntent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(pauseIntent)
+            } else {
+                context.startService(pauseIntent)
+            }
         }
     }
 
