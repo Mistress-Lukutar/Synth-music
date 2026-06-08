@@ -29,7 +29,7 @@ class ArtistDetailViewModel(
     private val artistRepository: ArtistRepository,
     private val albumRepository: AlbumRepository,
     private val songRepository: SongRepository,
-    private val playbackManager: com.synth.synthmusic.data.media.MediaPlaybackManager,
+    private val playbackRepository: com.synth.synthmusic.data.media.PlaybackRepository,
     private val recentlyPlayedRepository: RecentlyPlayedCollectionRepository,
     private val coverCache: CoverCache
 ) : ViewModel() {
@@ -37,7 +37,7 @@ class ArtistDetailViewModel(
     private val _artist = MutableStateFlow<Artist?>(null)
     val artist: StateFlow<Artist?> = _artist.asStateFlow()
 
-    val playbackState = playbackManager.playbackState
+    val playbackState = playbackRepository.playbackState
 
     private val _albums = MutableStateFlow<List<Album>>(emptyList())
     val albums: StateFlow<List<Album>> = _albums.asStateFlow()
@@ -48,7 +48,7 @@ class ArtistDetailViewModel(
     fun playSongAt(index: Int) {
         val tracks = _songs.value
         if (index in tracks.indices) {
-            playbackManager.playSongs(tracks, index)
+            playbackRepository.playSongs(tracks, index)
             recordArtistPlayed()
         }
     }
@@ -57,7 +57,7 @@ class ArtistDetailViewModel(
         viewModelScope.launch {
             val tracks = songRepository.observeSongsByArtist(artistName).first()
             if (tracks.isNotEmpty()) {
-                playbackManager.playSongs(tracks, 0)
+                playbackRepository.playSongs(tracks, 0)
                 recordArtistPlayed()
             }
         }
@@ -67,7 +67,7 @@ class ArtistDetailViewModel(
         viewModelScope.launch {
             val tracks = songRepository.observeSongsByArtist(artistName).first().shuffled()
             if (tracks.isNotEmpty()) {
-                playbackManager.playSongs(tracks, 0)
+                playbackRepository.playSongs(tracks, 0)
                 recordArtistPlayed()
             }
         }
@@ -75,12 +75,12 @@ class ArtistDetailViewModel(
 
     fun playNext(songId: String) {
         val song = _songs.value.find { it.id == songId } ?: return
-        playbackManager.playNext(song)
+        playbackRepository.playNext(song)
     }
 
     fun addToQueue(songId: String) {
         val song = _songs.value.find { it.id == songId } ?: return
-        playbackManager.addToQueue(song)
+        playbackRepository.addToQueue(song)
     }
 
     fun updateArtwork(bytes: ByteArray?) {

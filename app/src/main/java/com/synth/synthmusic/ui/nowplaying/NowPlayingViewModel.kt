@@ -3,7 +3,7 @@ package com.synth.synthmusic.ui.nowplaying
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synth.synthmusic.data.local.database.WaveformDataDao
-import com.synth.synthmusic.data.media.MediaPlaybackManager
+import com.synth.synthmusic.data.media.PlaybackRepository
 import com.synth.synthmusic.data.media.waveform.WaveformGenerator
 import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
@@ -36,7 +36,7 @@ import kotlinx.coroutines.launch
     kotlinx.coroutines.FlowPreview::class
 )
 class NowPlayingViewModel(
-    private val playbackManager: MediaPlaybackManager,
+    private val playbackRepository: PlaybackRepository,
     private val songRepository: SongRepository,
     private val playlistRepository: PlaylistRepository,
     private val settingsRepository: SettingsRepository,
@@ -57,7 +57,7 @@ class NowPlayingViewModel(
         _uiState.update { it.copy(hasRecordAudioPermission = checkRecordAudioPermission()) }
 
         // Pre-load the current track immediately so the screen never opens blank.
-        val currentPlayback = playbackManager.playbackState.value
+        val currentPlayback = playbackRepository.playbackState.value
         val currentSongId = currentPlayback.currentSongId
         if (currentSongId != null) {
             viewModelScope.launch {
@@ -67,15 +67,15 @@ class NowPlayingViewModel(
                         it.copy(
                             song = song,
                             isPlaying = currentPlayback.isPlaying,
-                            positionMs = playbackManager.currentPositionMs.value,
-                            durationMs = playbackManager.currentDurationMs.value,
+                            positionMs = playbackRepository.currentPositionMs.value,
+                            durationMs = playbackRepository.currentDurationMs.value,
                             repeatMode = currentPlayback.repeatMode,
                             shuffleEnabled = currentPlayback.shuffleEnabled,
                             rating = song.rating,
                             isFavorite = song.isFavorite,
                             playbackSpeed = settingsRepository.settings.first().playbackSpeed,
                             playbackPitch = settingsRepository.settings.first().playbackPitch,
-                            audioSessionId = playbackManager.audioSessionId.value,
+                            audioSessionId = playbackRepository.audioSessionId.value,
                             hasRecordAudioPermission = checkRecordAudioPermission(),
                             audioQualityLabel = buildAudioQualityLabel(song)
                         )
@@ -86,17 +86,17 @@ class NowPlayingViewModel(
 
         // Reactive stream: re-fetch song metadata only when currentSongId changes,
         // but continuously observe position/duration as separate high-frequency flows.
-        playbackManager.playbackState
+        playbackRepository.playbackState
             .map { it.currentSongId }
             .filterNotNull()
             .distinctUntilChanged()
             .flatMapLatest { songId ->
                 combine(
-                    playbackManager.playbackState,
+                    playbackRepository.playbackState,
                     songRepository.observeSongById(songId),
                     settingsRepository.settings,
-                    playbackManager.currentPositionMs,
-                    playbackManager.currentDurationMs
+                    playbackRepository.currentPositionMs,
+                    playbackRepository.currentDurationMs
                 ) { playback, song, settings, position, duration ->
                     Quintuple(playback, song, settings, position, duration)
                 }
@@ -114,7 +114,7 @@ class NowPlayingViewModel(
                         isFavorite = song?.isFavorite ?: false,
                         playbackSpeed = settings.playbackSpeed,
                         playbackPitch = settings.playbackPitch,
-                        audioSessionId = playbackManager.audioSessionId.value,
+                        audioSessionId = playbackRepository.audioSessionId.value,
                         hasRecordAudioPermission = checkRecordAudioPermission(),
                         audioQualityLabel = buildAudioQualityLabel(song)
                     )
@@ -123,7 +123,7 @@ class NowPlayingViewModel(
             .launchIn(viewModelScope)
 
         // Load waveform when song changes; cancel previous generation on rapid skips
-        playbackManager.playbackState
+        playbackRepository.playbackState
             .map { it.currentSongId }
             .filterNotNull()
             .distinctUntilChanged()
@@ -139,9 +139,9 @@ class NowPlayingViewModel(
     fun onEvent(event: NowPlayingEvent) {
         when (event) {
             is NowPlayingEvent.ToggleShuffle -> {
-                playbackManager.setShuffleEnabled(!_uiState.value.shuffleEnabled)
+                playbackRepository.setShuffleEnabled(!_uiState.value.shuffleEnabled)
             }
-            is NowPlayingEvent.CycleRepeat -> playbackManager.cycleRepeatMode()
+            is NowPlayingEvent.CycleRepeat -> playbackRepository.cycleRepeatMode()
             is NowPlayingEvent.UpdateRating -> {
                 val songId = _uiState.value.song?.id ?: return
                 viewModelScope.launch {

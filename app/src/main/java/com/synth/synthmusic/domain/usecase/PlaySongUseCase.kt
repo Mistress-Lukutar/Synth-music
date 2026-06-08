@@ -1,15 +1,15 @@
 package com.synth.synthmusic.domain.usecase
 
-import com.synth.synthmusic.data.media.MediaPlaybackManager
+import com.synth.synthmusic.data.media.PlaybackRepository
 import com.synth.synthmusic.domain.model.Song
 
 /**
  * Use case for starting playback of a list of songs.
  *
- * @param playbackManager the media playback manager controlling the queue.
+ * @param playbackRepository the playback repository controlling the queue via MediaController.
  */
 class PlaySongUseCase(
-    private val playbackManager: MediaPlaybackManager
+    private val playbackRepository: PlaybackRepository
 ) {
 
     /**
@@ -19,6 +19,6 @@ class PlaySongUseCase(
      * @param startIndex the zero-based index of the song to start playback from.
      */
     operator fun invoke(songs: List<Song>, startIndex: Int = 0) {
-        playbackManager.playSongs(songs, startIndex)
+        playbackRepository.playSongs(songs, startIndex)
     }
 }

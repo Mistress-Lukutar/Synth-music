@@ -2,7 +2,7 @@ package com.synth.synthmusic.ui.library
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.synth.synthmusic.data.media.MediaPlaybackManager
+import com.synth.synthmusic.data.media.PlaybackRepository
 import com.synth.synthmusic.domain.repository.ArtistRepository
 import com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository
 import com.synth.synthmusic.domain.repository.SongRepository
@@ -30,14 +30,14 @@ class LibraryViewModel(
     private val songRepository: SongRepository,
     private val artistRepository: ArtistRepository,
     private val scanMusicUseCase: ScanMusicUseCase,
-    private val playbackManager: MediaPlaybackManager,
+    private val playbackRepository: PlaybackRepository,
     private val recentlyPlayedRepository: RecentlyPlayedCollectionRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LibraryUiState())
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
 
-    val currentPlayback = playbackManager.playbackState
+    val currentPlayback = playbackRepository.playbackState
 
     init {
         artistRepository.observeAllArtists()
@@ -50,7 +50,7 @@ class LibraryViewModel(
             .onEach { list -> _uiState.update { it.copy(recentCollections = list) } }
             .launchIn(viewModelScope)
 
-        playbackManager.currentQueue
+        playbackRepository.currentQueue
             .onEach { list -> _uiState.update { it.copy(queueSongs = list) } }
             .launchIn(viewModelScope)
 
@@ -80,7 +80,7 @@ class LibraryViewModel(
             }
             is LibraryEvent.ScanLibrary -> scanLibrary()
             is LibraryEvent.PlaySong -> playSong(event.songId)
-            is LibraryEvent.ClearQueue -> playbackManager.clearQueue()
+            is LibraryEvent.ClearQueue -> playbackRepository.clearQueue()
             is LibraryEvent.SearchQueryChanged -> {
                 _uiState.update { it.copy(searchQuery = event.query) }
             }
@@ -90,19 +90,19 @@ class LibraryViewModel(
     fun playNext(songId: String) {
         viewModelScope.launch {
             val song = songRepository.getSongById(songId) ?: return@launch
-            playbackManager.playNext(song)
+            playbackRepository.playNext(song)
         }
     }
 
     fun addToQueue(songId: String) {
         viewModelScope.launch {
             val song = songRepository.getSongById(songId) ?: return@launch
-            playbackManager.addToQueue(song)
+            playbackRepository.addToQueue(song)
         }
     }
 
     fun playQueueItem(index: Int) {
-        playbackManager.playQueueItem(index)
+        playbackRepository.playQueueItem(index)
     }
 
     private fun playSong(songId: String) {
@@ -110,7 +110,7 @@ class LibraryViewModel(
             val songs = songRepository.observeAllSongs().first()
             val index = songs.indexOfFirst { it.id == songId }
             if (index != -1) {
-                playbackManager.playSongs(songs, index)
+                playbackRepository.playSongs(songs, index)
             }
         }
     }
