@@ -70,7 +70,7 @@ val appModule = module {
     single<com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository> {
         com.synth.synthmusic.data.repository.RecentlyPlayedCollectionRepositoryImpl(get())
     }
-    single { MediaPlaybackManager(androidContext(), get(), get(), get(), get(), get(), get()) }
+    single { MediaPlaybackManager(androidContext(), get(), get(), get(), get(), get()) }
     single { WaveformGenerator(androidContext()) }
     single { WaveformPreloader(get(), get()) }
     single { com.synth.synthmusic.data.local.cover.CoverCache(androidContext()) }

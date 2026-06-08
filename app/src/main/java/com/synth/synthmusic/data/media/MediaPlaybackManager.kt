@@ -7,9 +7,8 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import com.synth.synthmusic.data.local.database.PlaybackQueueItemDao
+import com.synth.synthmusic.data.local.database.AppDatabase
 import com.synth.synthmusic.data.local.database.PlaybackQueueItemEntity
-import com.synth.synthmusic.data.local.database.PlaybackStateDao
 import com.synth.synthmusic.data.local.database.PlaybackStateEntity
 import com.synth.synthmusic.data.local.database.SongDao
 import com.synth.synthmusic.domain.model.PlaybackState
@@ -47,8 +46,7 @@ import kotlin.math.pow
  */
 class MediaPlaybackManager(
     private val context: Context,
-    private val playbackStateDao: PlaybackStateDao,
-    private val playbackQueueItemDao: PlaybackQueueItemDao,
+    private val appDatabase: AppDatabase,
     private val songDao: SongDao,
     private val songRepository: SongRepository,
     private val settingsRepository: SettingsRepository,
@@ -466,16 +464,14 @@ class MediaPlaybackManager(
         val state = _playbackState.value
         val queue = _currentQueue.value
         persistMutex.withLock {
-            playbackStateDao.insert(
+            appDatabase.savePlaybackState(
                 PlaybackStateEntity(
                     currentSongId = state.currentSongId,
                     positionMs = _currentPositionMs.value,
                     isPlaying = false, // do not auto-resume; just restore position
                     repeatMode = state.repeatMode,
                     shuffleMode = state.shuffleEnabled
-                )
-            )
-            playbackQueueItemDao.replaceAll(
+                ),
                 queue.mapIndexed { index, song ->
                     PlaybackQueueItemEntity(songId = song.id, orderIndex = index)
                 }
@@ -487,8 +483,8 @@ class MediaPlaybackManager(
         scope.launch {
             isRestoring.set(true)
             try {
-                val saved = playbackStateDao.get() ?: return@launch
-                val queueItems = playbackQueueItemDao.getAllOrdered()
+                val saved = appDatabase.playbackStateDao().get() ?: return@launch
+                val queueItems = appDatabase.playbackQueueItemDao().getAllOrdered()
                 val songs = if (queueItems.isNotEmpty()) {
                     val songMap = queueItems.chunked(999)
                         .flatMap { chunk ->
