@@ -37,29 +37,22 @@ class PlaybackService : MediaSessionService() {
         )
         super.onCreate()
 
-        try {
-            playbackManager.ensureInitialized()
+        val sessionActivityPendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val sessionPlayer = FadingSessionPlayer(playbackManager, playbackManager.player)
+        mediaSession = MediaSession.Builder(this, sessionPlayer)
+            .setSessionActivity(sessionActivityPendingIntent)
+            .build()
 
-            val sessionActivityPendingIntent = PendingIntent.getActivity(
-                this,
-                0,
-                Intent(this, MainActivity::class.java),
-                PendingIntent.FLAG_IMMUTABLE
-            )
-            val sessionPlayer = FadingSessionPlayer(playbackManager, playbackManager.player)
-            mediaSession = MediaSession.Builder(this, sessionPlayer)
-                .setSessionActivity(sessionActivityPendingIntent)
-                .build()
-
-            // Register the session with the service so MediaNotificationManager
-            // starts tracking it and can post the playback notification.
-            mediaSession?.let {
-                addSession(it)
-                Log.d(TAG, "MediaSession added to service")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize MediaSession", e)
-            stopSelf()
+        // Register the session with the service so MediaNotificationManager
+        // starts tracking it and can post the playback notification.
+        mediaSession?.let {
+            addSession(it)
+            Log.d(TAG, "MediaSession added to service")
         }
     }
 
@@ -68,13 +61,9 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
-        try {
-            mediaSession?.let { removeSession(it) }
-            mediaSession?.release()
-            mediaSession = null
-        } catch (e: Exception) {
-            Log.e(TAG, "Error during onDestroy", e)
-        }
+        mediaSession?.let { removeSession(it) }
+        mediaSession?.release()
+        mediaSession = null
         super.onDestroy()
     }
 
@@ -96,9 +85,6 @@ class PlaybackService : MediaSessionService() {
      *
      * Seek operations (seek bar, rewind, fast-forward) are delegated directly to the
      * player without fade to keep seeking responsive.
-     *
-     * Destructive operations ([stop] and [clearMediaItems]) are also routed through
-     * the manager to prevent Media3 from silently dropping the queue.
      */
     private class FadingSessionPlayer(
         private val playbackManager: MediaPlaybackManager,
@@ -111,10 +97,6 @@ class PlaybackService : MediaSessionService() {
 
         override fun pause() {
             playbackManager.pause()
-        }
-
-        override fun stop() {
-            playbackManager.stop()
         }
 
         override fun seekToNext() {
@@ -131,10 +113,6 @@ class PlaybackService : MediaSessionService() {
 
         override fun seekToPreviousMediaItem() {
             playbackManager.previous()
-        }
-
-        override fun clearMediaItems() {
-            playbackManager.clearQueue()
         }
     }
 

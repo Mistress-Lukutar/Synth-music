@@ -2,7 +2,6 @@ package com.synth.synthmusic.data.local.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
-import androidx.room.Transaction
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
@@ -60,17 +59,4 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun playbackQueueItemDao(): PlaybackQueueItemDao
     abstract fun waveformDataDao(): WaveformDataDao
     abstract fun recentlyPlayedCollectionDao(): RecentlyPlayedCollectionDao
-
-    /**
-     * Atomically persists playback state and queue as a single transaction.
-     * Guarantees that [playback_state] and [playback_queue_items] are always consistent.
-     */
-    @Transaction
-    suspend fun savePlaybackState(state: PlaybackStateEntity, queue: List<PlaybackQueueItemEntity>) {
-        playbackStateDao().insert(state)
-        playbackQueueItemDao().clearAll()
-        if (queue.isNotEmpty()) {
-            playbackQueueItemDao().insertAll(queue)
-        }
-    }
 }
