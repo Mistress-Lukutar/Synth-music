@@ -331,28 +331,35 @@ class PlaybackService : MediaSessionService() {
 
     private suspend fun writePlaybackState() {
         val player = exoPlayer ?: return
-        val currentSongId = player.currentMediaItem?.mediaId
-        val positionMs = withContext(Dispatchers.Main) { player.currentPosition }
-        val queueSize = player.currentTimeline.windowCount
-        val queueMediaIds = mutableListOf<String>()
-        val window = androidx.media3.common.Timeline.Window()
-        for (i in 0 until queueSize) {
-            player.currentTimeline.getWindow(i, window)
-            queueMediaIds.add(window.mediaItem.mediaId)
+
+        // All player reads must happen on the main thread.
+        val (currentSongId, positionMs, queueMediaIds, repeatMode, shuffleMode) = withContext(Dispatchers.Main) {
+            val songId = player.currentMediaItem?.mediaId
+            val position = player.currentPosition
+            val queueSize = player.currentTimeline.windowCount
+            val mediaIds = mutableListOf<String>()
+            val window = androidx.media3.common.Timeline.Window()
+            for (i in 0 until queueSize) {
+                player.currentTimeline.getWindow(i, window)
+                mediaIds.add(window.mediaItem.mediaId)
+            }
+            Quintuple(songId, position, mediaIds, player.repeatMode, player.shuffleModeEnabled)
         }
 
-        appDatabase.savePlaybackState(
-            PlaybackStateEntity(
-                currentSongId = currentSongId,
-                positionMs = positionMs,
-                isPlaying = false,
-                repeatMode = player.repeatMode,
-                shuffleMode = player.shuffleModeEnabled
-            ),
-            queueMediaIds.mapIndexed { index, songId ->
-                PlaybackQueueItemEntity(songId = songId, orderIndex = index)
-            }
-        )
+        withContext(Dispatchers.IO) {
+            appDatabase.savePlaybackState(
+                PlaybackStateEntity(
+                    currentSongId = currentSongId,
+                    positionMs = positionMs,
+                    isPlaying = false,
+                    repeatMode = repeatMode,
+                    shuffleMode = shuffleMode
+                ),
+                queueMediaIds.mapIndexed { index, songId ->
+                    PlaybackQueueItemEntity(songId = songId, orderIndex = index)
+                }
+            )
+        }
     }
 
     // endregion
@@ -595,6 +602,14 @@ class PlaybackService : MediaSessionService() {
     }
 
     // endregion
+
+    private data class Quintuple<A, B, C, D, E>(
+        val first: A,
+        val second: B,
+        val third: C,
+        val fourth: D,
+        val fifth: E
+    )
 
     companion object {
         private const val TAG = "PlaybackService"
