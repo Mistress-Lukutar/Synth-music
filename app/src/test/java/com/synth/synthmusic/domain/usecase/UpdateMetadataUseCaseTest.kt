@@ -6,6 +6,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
+import org.mockito.Mockito.mock
 
 /**
  * Unit tests for [UpdateMetadataUseCase].
@@ -18,7 +19,7 @@ class UpdateMetadataUseCaseTest {
     @Before
     fun setup() {
         repository = FakeSongRepository()
-        useCase = UpdateMetadataUseCase(repository)
+        useCase = UpdateMetadataUseCase(repository, mock(WriteArtworkToMp3UseCase::class.java))
     }
 
     @Test

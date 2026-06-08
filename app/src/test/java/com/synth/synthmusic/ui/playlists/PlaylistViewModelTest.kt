@@ -1,5 +1,6 @@
 package com.synth.synthmusic.ui.playlists
 
+import com.synth.synthmusic.data.local.cover.CoverCache
 import com.synth.synthmusic.data.repository.FakePlaylistRepository
 import com.synth.synthmusic.data.repository.FakeSongRepository
 import com.synth.synthmusic.domain.model.Playlist
@@ -16,6 +17,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.mockito.Mockito.mock
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlaylistViewModelTest {
@@ -28,7 +30,7 @@ class PlaylistViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         repository = FakePlaylistRepository()
-        viewModel = PlaylistViewModel(repository, FakeSongRepository())
+        viewModel = PlaylistViewModel(repository, FakeSongRepository(), mock(CoverCache::class.java))
     }
 
     @After

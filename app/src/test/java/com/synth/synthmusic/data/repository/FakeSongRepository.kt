@@ -32,8 +32,16 @@ class FakeSongRepository : SongRepository {
     override suspend fun getSongsByIds(songIds: List<String>): List<Song> =
         songs.value.filter { it.id in songIds }
 
+    override suspend fun getAllSongs(): List<Song> = songs.value
+
     override suspend fun saveSongs(value: List<Song>) {
         songs.value = value
+    }
+
+    override suspend fun upsertSongs(songs: List<Song>) {
+        this.songs.value = this.songs.value.filter { existing ->
+            songs.none { it.id == existing.id }
+        } + songs
     }
 
     override suspend fun deleteSong(songId: String) {}
@@ -46,6 +54,8 @@ class FakeSongRepository : SongRepository {
 
     override suspend fun updateSongLyrics(songId: String, lyrics: String?) {}
 
+    override suspend fun updateSongArtwork(songId: String, artworkUri: String?) {}
+
     override suspend fun deleteAllSongs() {}
 
     override fun observeFavoriteSongs(): Flow<List<Song>> = flowOf(emptyList())
@@ -57,6 +67,10 @@ class FakeSongRepository : SongRepository {
     override fun observeHistory(): Flow<List<Song>> = flowOf(emptyList())
 
     override fun observeFolders(): Flow<List<String>> = flowOf(emptyList())
+
+    override fun observeGenres(): Flow<List<String>> = flowOf(emptyList())
+
+    override fun observeSongsByGenre(genre: String): Flow<List<Song>> = flowOf(emptyList())
 
     override fun searchSongs(query: String): Flow<List<Song>> =
         flowOf(songs.value.filter { it.title.contains(query, ignoreCase = true) })

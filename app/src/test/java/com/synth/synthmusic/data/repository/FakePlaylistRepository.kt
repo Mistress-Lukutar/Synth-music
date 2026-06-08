@@ -38,4 +38,11 @@ class FakePlaylistRepository : PlaylistRepository {
     override suspend fun addSongToPlaylist(playlistId: Long, songId: String) {}
     override suspend fun removeSongFromPlaylist(playlistId: Long, songId: String) {}
     override suspend fun isSongInPlaylist(playlistId: Long, songId: String): Boolean = false
+    override suspend fun updatePlaylistArtwork(playlistId: Long, artworkUri: String?) {}
+    override suspend fun ensureFavoritesPlaylist(): Long = 1L
+    override suspend fun getFavoritesPlaylistId(): Long? = 1L
+    override suspend fun ensureHistoryPlaylist(): Long = 2L
+    override suspend fun ensureTopTracksPlaylist(): Long = 3L
+    override suspend fun recordPlayAndSyncPlaylists(songId: String) {}
+    override fun observeFixedPlaylists(): Flow<List<Playlist>> = flowOf(emptyList())
 }
