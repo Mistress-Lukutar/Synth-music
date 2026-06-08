@@ -38,6 +38,8 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
 
         try {
+            playbackManager.ensureInitialized()
+
             val sessionActivityPendingIntent = PendingIntent.getActivity(
                 this,
                 0,

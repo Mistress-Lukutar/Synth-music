@@ -75,7 +75,7 @@ class NowPlayingViewModel(
                             isFavorite = song.isFavorite,
                             playbackSpeed = settingsRepository.settings.first().playbackSpeed,
                             playbackPitch = settingsRepository.settings.first().playbackPitch,
-                            audioSessionId = playbackManager.player.audioSessionId,
+                            audioSessionId = playbackManager.audioSessionId.value,
                             hasRecordAudioPermission = checkRecordAudioPermission(),
                             audioQualityLabel = buildAudioQualityLabel(song)
                         )
@@ -114,7 +114,7 @@ class NowPlayingViewModel(
                         isFavorite = song?.isFavorite ?: false,
                         playbackSpeed = settings.playbackSpeed,
                         playbackPitch = settings.playbackPitch,
-                        audioSessionId = playbackManager.player.audioSessionId,
+                        audioSessionId = playbackManager.audioSessionId.value,
                         hasRecordAudioPermission = checkRecordAudioPermission(),
                         audioQualityLabel = buildAudioQualityLabel(song)
                     )
