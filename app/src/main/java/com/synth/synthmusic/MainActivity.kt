@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        startService(Intent(this, com.synth.synthmusic.service.PlaybackService::class.java))
         enableEdgeToEdge()
         setContent {
             val settings by settingsDataStore.settings.collectAsStateWithLifecycle(initialValue = AppSettings())

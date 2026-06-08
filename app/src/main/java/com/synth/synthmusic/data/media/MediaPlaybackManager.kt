@@ -64,20 +64,16 @@ class MediaPlaybackManager(
     private val _currentDurationMs = MutableStateFlow(0L)
     val currentDurationMs: StateFlow<Long> = _currentDurationMs.asStateFlow()
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val _audioSessionId = MutableStateFlow(0)
+    val audioSessionId: StateFlow<Int> = _audioSessionId.asStateFlow()
 
-    val player: ExoPlayer = ExoPlayer.Builder(context)
-        .setAudioAttributes(
-            AudioAttributes.Builder()
-                .setUsage(C.USAGE_MEDIA)
-                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                .build(),
-            true // handleAudioFocus
-        )
-        .setWakeMode(C.WAKE_MODE_LOCAL)
-        .build()
+    private var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val fadeManager = AudioFadeManager(player, scope)
+    private var _player: ExoPlayer? = null
+    val player: ExoPlayer
+        get() = _player ?: createPlayer().also { _player = it }
+
+    private var fadeManager: AudioFadeManager = createFadeManager()
     private var fadeDurationMs: Int = 300
     private var currentTargetVolume: Float = 1f
     private var endOfTrackJob: Job? = null
@@ -155,12 +151,63 @@ class MediaPlaybackManager(
             _currentDurationMs.value = player.duration.coerceAtLeast(0)
             persistPositionDebounced()
         }
+
+        override fun onAudioSessionIdChanged(audioSessionId: Int) {
+            _audioSessionId.value = audioSessionId
+        }
     }
 
     init {
-        player.addListener(listener)
+        ensureInitialized()
         restoreState()
         collectPlaybackSettings()
+    }
+
+    /**
+     * Verifies that the player and coroutine scope are alive.
+     * If the manager was previously released (e.g. service death),
+     * this method recreates all internal resources so the singleton
+     * remains usable across service restarts.
+     */
+    fun ensureInitialized() {
+        if (isReleased || _player == null || !scope.isActive) {
+            isReleased = false
+            isRestoring.set(false)
+            _player?.let { safeRelease(it) }
+            _player = createPlayer()
+            if (!scope.isActive) {
+                scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+            }
+            fadeManager = createFadeManager()
+            _player?.addListener(listener)
+            // Do not call restoreState here; it runs once in init.
+        }
+    }
+
+    private fun createPlayer(): ExoPlayer {
+        return ExoPlayer.Builder(context)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                    .build(),
+                true // handleAudioFocus
+            )
+            .setWakeMode(C.WAKE_MODE_LOCAL)
+            .build()
+    }
+
+    private fun createFadeManager(): AudioFadeManager {
+        return AudioFadeManager(player, scope)
+    }
+
+    private fun safeRelease(player: ExoPlayer) {
+        try {
+            player.removeListener(listener)
+            player.release()
+        } catch (_: Exception) {
+            // Already released or in a bad state — ignore.
+        }
     }
 
     private fun collectPlaybackSettings() {
@@ -367,8 +414,8 @@ class MediaPlaybackManager(
         stopEndOfTrackMonitor()
         stopPositionUpdates()
         fadeManager.cancel()
-        player.removeListener(listener)
-        player.release()
+        _player?.let { safeRelease(it) }
+        _player = null
         scope.cancel()
     }
 
