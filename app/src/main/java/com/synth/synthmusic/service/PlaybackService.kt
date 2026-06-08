@@ -37,22 +37,27 @@ class PlaybackService : MediaSessionService() {
         )
         super.onCreate()
 
-        val sessionActivityPendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE
-        )
-        val sessionPlayer = FadingSessionPlayer(playbackManager, playbackManager.player)
-        mediaSession = MediaSession.Builder(this, sessionPlayer)
-            .setSessionActivity(sessionActivityPendingIntent)
-            .build()
+        try {
+            val sessionActivityPendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                Intent(this, MainActivity::class.java),
+                PendingIntent.FLAG_IMMUTABLE
+            )
+            val sessionPlayer = FadingSessionPlayer(playbackManager, playbackManager.player)
+            mediaSession = MediaSession.Builder(this, sessionPlayer)
+                .setSessionActivity(sessionActivityPendingIntent)
+                .build()
 
-        // Register the session with the service so MediaNotificationManager
-        // starts tracking it and can post the playback notification.
-        mediaSession?.let {
-            addSession(it)
-            Log.d(TAG, "MediaSession added to service")
+            // Register the session with the service so MediaNotificationManager
+            // starts tracking it and can post the playback notification.
+            mediaSession?.let {
+                addSession(it)
+                Log.d(TAG, "MediaSession added to service")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to initialize MediaSession", e)
+            stopSelf()
         }
     }
 
@@ -61,9 +66,13 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
-        mediaSession?.let { removeSession(it) }
-        mediaSession?.release()
-        mediaSession = null
+        try {
+            mediaSession?.let { removeSession(it) }
+            mediaSession?.release()
+            mediaSession = null
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during onDestroy", e)
+        }
         super.onDestroy()
     }
 

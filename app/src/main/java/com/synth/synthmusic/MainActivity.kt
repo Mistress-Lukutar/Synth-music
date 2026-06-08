@@ -26,10 +26,15 @@ import org.koin.android.ext.android.inject
 class MainActivity : ComponentActivity() {
 
     private val settingsDataStore: SettingsDataStore by inject()
+    private val playbackManager: com.synth.synthmusic.data.media.MediaPlaybackManager by inject()
+
+    override fun onStop() {
+        super.onStop()
+        playbackManager.flushPersist()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        startService(Intent(this, com.synth.synthmusic.service.PlaybackService::class.java))
         enableEdgeToEdge()
         setContent {
             val settings by settingsDataStore.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
