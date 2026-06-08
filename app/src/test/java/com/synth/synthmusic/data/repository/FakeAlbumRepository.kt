@@ -9,5 +9,7 @@ class FakeAlbumRepository : AlbumRepository {
     override fun observeAllAlbums(): Flow<List<Album>> = flowOf(emptyList())
     override fun observeAlbumsByArtist(artist: String): Flow<List<Album>> = flowOf(emptyList())
     override suspend fun saveAlbums(albums: List<Album>) {}
+    override suspend fun updateAlbumArtwork(albumId: String, artworkUri: String?) {}
     override suspend fun deleteAllAlbums() {}
+    override suspend fun replaceAllAlbums(albums: List<Album>) {}
 }

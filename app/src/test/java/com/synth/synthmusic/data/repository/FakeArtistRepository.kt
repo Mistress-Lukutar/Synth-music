@@ -9,4 +9,6 @@ class FakeArtistRepository : ArtistRepository {
     override fun observeAllArtists(): Flow<List<Artist>> = flowOf(emptyList())
     override suspend fun saveArtists(artists: List<Artist>) {}
     override suspend fun deleteAllArtists() {}
+    override suspend fun updateArtistArtwork(artistId: String, artworkUri: String?) {}
+    override suspend fun replaceAllArtists(artists: List<Artist>) {}
 }
