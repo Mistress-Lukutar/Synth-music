@@ -92,8 +92,11 @@ class PlaybackService : MediaSessionService() {
      * [MediaPlaybackManager] so that volume fade is applied when skipping tracks
      * or toggling play/pause from the media notification or other external controllers.
      *
-     * Seek operations (seek bar, rewind, fast-forward) are delegated directly to the
-     * player without fade to keep seeking responsive.
+     * Seek operations (seek bar, rewind, fast-forward) are delegated through the manager
+     * to keep fade behavior consistent across all controllers.
+     *
+     * Destructive operations ([stop] and [clearMediaItems]) are also routed through
+     * the manager to prevent Media3 from silently dropping the queue.
      */
     private class FadingSessionPlayer(
         private val playbackManager: MediaPlaybackManager,
@@ -106,6 +109,14 @@ class PlaybackService : MediaSessionService() {
 
         override fun pause() {
             playbackManager.pause()
+        }
+
+        override fun stop() {
+            playbackManager.stop()
+        }
+
+        override fun seekTo(positionMs: Long) {
+            playbackManager.seekTo(positionMs)
         }
 
         override fun seekToNext() {
@@ -122,6 +133,10 @@ class PlaybackService : MediaSessionService() {
 
         override fun seekToPreviousMediaItem() {
             playbackManager.previous()
+        }
+
+        override fun clearMediaItems() {
+            playbackManager.clearQueue()
         }
     }
 
