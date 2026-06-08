@@ -3,16 +3,18 @@ package com.synth.synthmusic.domain.model
 /**
  * Domain model representing the current playback state.
  *
+ * Does **not** include position or duration — those are exposed
+ * as separate high-frequency flows from [MediaPlaybackManager]
+ * to avoid unnecessary recompositions.
+ *
  * @param currentSongId ID of the currently playing song.
- * @param positionMs Current playback position in milliseconds.
  * @param isPlaying Whether playback is active.
  * @param repeatMode Repeat mode (0 = off, 1 = all, 2 = one).
- * @param shuffleMode Whether shuffle is enabled.
+ * @param shuffleEnabled Whether shuffle is enabled.
  */
 data class PlaybackState(
-    val currentSongId: String?,
-    val positionMs: Long,
-    val isPlaying: Boolean,
-    val repeatMode: Int,
-    val shuffleMode: Boolean
+    val currentSongId: String? = null,
+    val isPlaying: Boolean = false,
+    val repeatMode: Int = 0,
+    val shuffleEnabled: Boolean = false
 )

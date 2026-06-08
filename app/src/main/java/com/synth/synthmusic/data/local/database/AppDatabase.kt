@@ -17,10 +17,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PlaylistEntity::class,
         PlaylistSongEntity::class,
         PlaybackStateEntity::class,
+        PlaybackQueueItemEntity::class,
         WaveformDataEntity::class,
         RecentlyPlayedCollectionEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -38,12 +39,24 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE playlists ADD COLUMN is_fixed INTEGER NOT NULL DEFAULT 0")
             }
         }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS playback_queue_items (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "song_id TEXT NOT NULL, " +
+                    "order_index INTEGER NOT NULL)"
+                )
+            }
+        }
     }
     abstract fun songDao(): SongDao
     abstract fun albumDao(): AlbumDao
     abstract fun artistDao(): ArtistDao
     abstract fun playlistDao(): PlaylistDao
     abstract fun playbackStateDao(): PlaybackStateDao
+    abstract fun playbackQueueItemDao(): PlaybackQueueItemDao
     abstract fun waveformDataDao(): WaveformDataDao
     abstract fun recentlyPlayedCollectionDao(): RecentlyPlayedCollectionDao
 }

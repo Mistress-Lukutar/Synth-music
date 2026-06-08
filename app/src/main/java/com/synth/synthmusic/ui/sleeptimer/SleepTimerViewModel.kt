@@ -51,7 +51,8 @@ class SleepTimerViewModel(
             var wasPlaying = stateFlow.value.isPlaying
             while (isActive) {
                 val state = stateFlow.value
-                if (wasPlaying && !state.isPlaying && state.positionMs < 1000) {
+                val position = playbackManager.currentPositionMs.value
+                if (wasPlaying && !state.isPlaying && position < 1000) {
                     playbackManager.playPause()
                     _uiState.update { SleepTimerUiState() }
                     break
