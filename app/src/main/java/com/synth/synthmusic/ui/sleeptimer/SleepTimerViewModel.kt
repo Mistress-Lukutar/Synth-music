@@ -2,7 +2,7 @@ package com.synth.synthmusic.ui.sleeptimer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.synth.synthmusic.data.media.MediaPlaybackManager
+import com.synth.synthmusic.data.media.PlaybackRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
  * ViewModel for sleep timer functionality.
  */
 class SleepTimerViewModel(
-    private val playbackManager: MediaPlaybackManager
+    private val playbackRepository: PlaybackRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SleepTimerUiState())
@@ -36,7 +36,7 @@ class SleepTimerViewModel(
                 delay(1000)
             }
             if (isActive) {
-                playbackManager.playPause()
+                playbackRepository.playPause()
                 _uiState.update { SleepTimerUiState() }
             }
         }
@@ -47,13 +47,13 @@ class SleepTimerViewModel(
         _uiState.update { it.copy(isActive = true, endOfTrack = true) }
         // Simplified: stop when current track finishes
         timerJob = viewModelScope.launch {
-            val stateFlow = playbackManager.playbackState
+            val stateFlow = playbackRepository.playbackState
             var wasPlaying = stateFlow.value.isPlaying
             while (isActive) {
                 val state = stateFlow.value
-                val position = playbackManager.currentPositionMs.value
+                val position = playbackRepository.currentPositionMs.value
                 if (wasPlaying && !state.isPlaying && position < 1000) {
-                    playbackManager.playPause()
+                    playbackRepository.playPause()
                     _uiState.update { SleepTimerUiState() }
                     break
                 }

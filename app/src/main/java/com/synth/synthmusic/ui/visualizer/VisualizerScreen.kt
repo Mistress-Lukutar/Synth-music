@@ -28,7 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.synth.synthmusic.data.media.MediaPlaybackManager
+import com.synth.synthmusic.data.media.PlaybackRepository
 import org.koin.compose.koinInject
 
 /**
@@ -39,9 +39,9 @@ import org.koin.compose.koinInject
 fun VisualizerScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
-    playbackManager: MediaPlaybackManager = koinInject()
+    playbackRepository: PlaybackRepository = koinInject()
 ) {
-    val playback by playbackManager.playbackState.collectAsStateWithLifecycle()
+    val playback by playbackRepository.playbackState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var hasRecordAudioPermission by remember {
         mutableStateOf(
@@ -86,7 +86,7 @@ fun VisualizerScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val sessionId = playbackManager.player.audioSessionId
+            val sessionId by playbackRepository.audioSessionId.collectAsStateWithLifecycle()
             if (sessionId != 0 && playback.currentSongId != null) {
                 Box(
                     modifier = Modifier

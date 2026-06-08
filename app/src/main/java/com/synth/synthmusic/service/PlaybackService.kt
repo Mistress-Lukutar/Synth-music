@@ -186,6 +186,13 @@ class PlaybackService : MediaSessionService() {
         return mediaSession
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == AudioBecomingNoisyReceiver.ACTION_PAUSE) {
+            exoPlayer?.pause()
+        }
+        return super.onStartCommand(intent, flags, startId)
+    }
+
     override fun onDestroy() {
         stopEndOfTrackMonitor()
         settingsJob?.cancel()

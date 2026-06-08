@@ -4,7 +4,7 @@ package com.synth.synthmusic.domain.model
  * Domain model representing the current playback state.
  *
  * Does **not** include position or duration — those are exposed
- * as separate high-frequency flows from [MediaPlaybackManager]
+ * as separate high-frequency flows from [PlaybackRepository]
  * to avoid unnecessary recompositions.
  *
  * @param currentSongId ID of the currently playing song.

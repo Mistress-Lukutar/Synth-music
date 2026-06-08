@@ -1,6 +1,5 @@
 package com.synth.synthmusic
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.synth.synthmusic.data.local.datastore.SettingsDataStore
+import com.synth.synthmusic.data.media.PlaybackRepository
 import com.synth.synthmusic.domain.model.AppSettings
 import com.synth.synthmusic.domain.model.ThemeMode
 import com.synth.synthmusic.navigation.AppNavigation
@@ -22,20 +22,28 @@ import org.koin.android.ext.android.inject
 
 /**
  * Single entry point for the application.
+ *
+ * Manages the lifecycle of [PlaybackRepository] so that the [MediaController]
+ * connection is established when the activity is visible and released when it
+ * goes to the background.
  */
 class MainActivity : ComponentActivity() {
 
     private val settingsDataStore: SettingsDataStore by inject()
-    private val playbackManager: com.synth.synthmusic.data.media.MediaPlaybackManager by inject()
+    private val playbackRepository: PlaybackRepository by inject()
+
+    override fun onStart() {
+        super.onStart()
+        playbackRepository.connect()
+    }
 
     override fun onStop() {
         super.onStop()
-        playbackManager.flushPersist()
+        playbackRepository.disconnect()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        startService(Intent(this, com.synth.synthmusic.service.PlaybackService::class.java))
         enableEdgeToEdge()
         setContent {
             val settings by settingsDataStore.settings.collectAsStateWithLifecycle(initialValue = AppSettings())

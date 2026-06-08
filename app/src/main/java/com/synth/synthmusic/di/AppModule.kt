@@ -3,7 +3,6 @@ package com.synth.synthmusic.di
 import androidx.room.Room
 import com.synth.synthmusic.data.local.database.AppDatabase
 import com.synth.synthmusic.data.local.datastore.SettingsDataStore
-import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.data.media.PlaybackRepository
 import com.synth.synthmusic.data.media.waveform.WaveformGenerator
 import com.synth.synthmusic.data.media.waveform.WaveformPreloader
@@ -71,7 +70,6 @@ val appModule = module {
     single<com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository> {
         com.synth.synthmusic.data.repository.RecentlyPlayedCollectionRepositoryImpl(get())
     }
-    single { MediaPlaybackManager(androidContext(), get(), get(), get(), get(), get()) }
     single { PlaybackRepository(androidContext(), get()) }
     single { WaveformGenerator(androidContext()) }
     single { WaveformPreloader(get(), get()) }
@@ -103,14 +101,14 @@ val appModule = module {
             songRepository = get(),
             artistRepository = get(),
             scanMusicUseCase = get(),
-            playbackManager = get(),
+            playbackRepository = get(),
             recentlyPlayedRepository = get()
         )
     }
 
     viewModel {
         NowPlayingViewModel(
-            playbackManager = get(),
+            playbackRepository = get(),
             songRepository = get(),
             playlistRepository = get(),
             settingsRepository = get(),
@@ -123,7 +121,7 @@ val appModule = module {
     }
 
     viewModel {
-        PlaybackViewModel(playbackManager = get())
+        PlaybackViewModel(playbackRepository = get())
     }
 
 
@@ -140,7 +138,7 @@ val appModule = module {
         PlaylistDetailViewModel(
             playlistId = playlistId,
             playlistRepository = get(),
-            playbackManager = get(),
+            playbackRepository = get(),
             recentlyPlayedRepository = get(),
             coverCache = get()
         )
@@ -152,7 +150,7 @@ val appModule = module {
             albumArtist = albumArtist,
             albumRepository = get(),
             songRepository = get(),
-            playbackManager = get(),
+            playbackRepository = get(),
             recentlyPlayedRepository = get(),
             coverCache = get()
         )
@@ -164,7 +162,7 @@ val appModule = module {
             artistRepository = get(),
             albumRepository = get(),
             songRepository = get(),
-            playbackManager = get(),
+            playbackRepository = get(),
             recentlyPlayedRepository = get(),
             coverCache = get()
         )
@@ -190,12 +188,12 @@ val appModule = module {
         GenreDetailViewModel(
             genre = genre,
             songRepository = get(),
-            playbackManager = get()
+            playbackRepository = get()
         )
     }
 
     viewModel {
-        SleepTimerViewModel(playbackManager = get())
+        SleepTimerViewModel(playbackRepository = get())
     }
 
     viewModel { (songId: String) ->

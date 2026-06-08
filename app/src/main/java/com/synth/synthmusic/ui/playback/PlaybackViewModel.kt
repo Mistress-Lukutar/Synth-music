@@ -2,7 +2,7 @@ package com.synth.synthmusic.ui.playback
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.synth.synthmusic.data.media.MediaPlaybackManager
+import com.synth.synthmusic.data.media.PlaybackRepository
 import com.synth.synthmusic.domain.model.PlaybackState
 import com.synth.synthmusic.domain.model.Song
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,17 +18,17 @@ import kotlinx.coroutines.flow.stateIn
  * flows so that UI recompositions are scoped to position changes only.
  */
 class PlaybackViewModel(
-    private val playbackManager: MediaPlaybackManager
+    private val playbackRepository: PlaybackRepository
 ) : ViewModel() {
 
-    val playbackState: StateFlow<PlaybackState> = playbackManager.playbackState
-    val currentQueue: StateFlow<List<Song>> = playbackManager.currentQueue
-    val currentPositionMs: StateFlow<Long> = playbackManager.currentPositionMs
-    val currentDurationMs: StateFlow<Long> = playbackManager.currentDurationMs
+    val playbackState: StateFlow<PlaybackState> = playbackRepository.playbackState
+    val currentQueue: StateFlow<List<Song>> = playbackRepository.currentQueue
+    val currentPositionMs: StateFlow<Long> = playbackRepository.currentPositionMs
+    val currentDurationMs: StateFlow<Long> = playbackRepository.currentDurationMs
 
     val currentSong: StateFlow<Song?> = combine(
-        playbackManager.playbackState,
-        playbackManager.currentQueue
+        playbackRepository.playbackState,
+        playbackRepository.currentQueue
     ) { playback, queue ->
         queue.find { it.id == playback.currentSongId }
     }.stateIn(
@@ -37,11 +37,11 @@ class PlaybackViewModel(
         initialValue = null
     )
 
-    fun playPause() = playbackManager.playPause()
+    fun playPause() = playbackRepository.playPause()
 
-    fun next() = playbackManager.next()
+    fun next() = playbackRepository.next()
 
-    fun previous() = playbackManager.previous()
+    fun previous() = playbackRepository.previous()
 
-    fun seekTo(positionMs: Long) = playbackManager.seekTo(positionMs)
+    fun seekTo(positionMs: Long) = playbackRepository.seekTo(positionMs)
 }
