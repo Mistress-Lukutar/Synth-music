@@ -4,6 +4,7 @@ import androidx.room.Room
 import com.synth.synthmusic.data.local.database.AppDatabase
 import com.synth.synthmusic.data.local.datastore.SettingsDataStore
 import com.synth.synthmusic.data.media.MediaPlaybackManager
+import com.synth.synthmusic.data.media.PlaybackRepository
 import com.synth.synthmusic.data.media.waveform.WaveformGenerator
 import com.synth.synthmusic.data.media.waveform.WaveformPreloader
 import com.synth.synthmusic.data.repository.AlbumRepositoryImpl
@@ -71,6 +72,7 @@ val appModule = module {
         com.synth.synthmusic.data.repository.RecentlyPlayedCollectionRepositoryImpl(get())
     }
     single { MediaPlaybackManager(androidContext(), get(), get(), get(), get(), get()) }
+    single { PlaybackRepository(androidContext(), get()) }
     single { WaveformGenerator(androidContext()) }
     single { WaveformPreloader(get(), get()) }
     single { com.synth.synthmusic.data.local.cover.CoverCache(androidContext()) }
