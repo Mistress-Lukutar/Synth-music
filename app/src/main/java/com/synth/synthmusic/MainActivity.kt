@@ -14,7 +14,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.synth.synthmusic.data.local.datastore.SettingsDataStore
-import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.domain.model.AppSettings
 import com.synth.synthmusic.domain.model.ThemeMode
 import com.synth.synthmusic.navigation.AppNavigation
@@ -27,12 +26,6 @@ import org.koin.android.ext.android.inject
 class MainActivity : ComponentActivity() {
 
     private val settingsDataStore: SettingsDataStore by inject()
-    private val playbackManager: MediaPlaybackManager by inject()
-
-    override fun onStop() {
-        super.onStop()
-        playbackManager.flushPersist()
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
