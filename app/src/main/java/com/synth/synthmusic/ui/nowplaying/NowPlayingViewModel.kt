@@ -67,8 +67,8 @@ class NowPlayingViewModel(
                         it.copy(
                             song = song,
                             isPlaying = currentPlayback.isPlaying,
-                            positionMs = currentPlayback.positionMs,
-                            durationMs = currentPlayback.durationMs,
+                            positionMs = playbackManager.currentPositionMs.value,
+                            durationMs = playbackManager.currentDurationMs.value,
                             repeatMode = currentPlayback.repeatMode,
                             shuffleEnabled = currentPlayback.shuffleEnabled,
                             rating = song.rating,
@@ -84,6 +84,8 @@ class NowPlayingViewModel(
             }
         }
 
+        // Reactive stream: re-fetch song metadata only when currentSongId changes,
+        // but continuously observe position/duration as separate high-frequency flows.
         playbackManager.playbackState
             .map { it.currentSongId }
             .filterNotNull()
@@ -92,18 +94,20 @@ class NowPlayingViewModel(
                 combine(
                     playbackManager.playbackState,
                     songRepository.observeSongById(songId),
-                    settingsRepository.settings
-                ) { playback, song, settings ->
-                    Triple(playback, song, settings)
+                    settingsRepository.settings,
+                    playbackManager.currentPositionMs,
+                    playbackManager.currentDurationMs
+                ) { playback, song, settings, position, duration ->
+                    Quintuple(playback, song, settings, position, duration)
                 }
             }
-            .onEach { (playback, song, settings) ->
+            .onEach { (playback, song, settings, position, duration) ->
                 _uiState.update {
                     it.copy(
                         song = song,
                         isPlaying = playback.isPlaying,
-                        positionMs = playback.positionMs,
-                        durationMs = playback.durationMs,
+                        positionMs = position,
+                        durationMs = duration,
                         repeatMode = playback.repeatMode,
                         shuffleEnabled = playback.shuffleEnabled,
                         rating = song?.rating ?: 0f,
@@ -130,7 +134,6 @@ class NowPlayingViewModel(
                 _uiState.update { it.copy(waveformAmplitudes = amplitudes) }
             }
             .launchIn(viewModelScope)
-
     }
 
     fun onEvent(event: NowPlayingEvent) {
@@ -242,4 +245,12 @@ class NowPlayingViewModel(
             emptyList()
         }
     }
+
+    private data class Quintuple<A, B, C, D, E>(
+        val first: A,
+        val second: B,
+        val third: C,
+        val fourth: D,
+        val fifth: E
+    )
 }

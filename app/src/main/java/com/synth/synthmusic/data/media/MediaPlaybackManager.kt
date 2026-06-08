@@ -1,16 +1,19 @@
 package com.synth.synthmusic.data.media
 
 import android.content.Context
-import android.content.Intent
 import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.synth.synthmusic.data.local.database.PlaybackQueueItemDao
+import com.synth.synthmusic.data.local.database.PlaybackQueueItemEntity
 import com.synth.synthmusic.data.local.database.PlaybackStateDao
 import com.synth.synthmusic.data.local.database.PlaybackStateEntity
 import com.synth.synthmusic.data.local.database.SongDao
+import com.synth.synthmusic.domain.model.PlaybackState
+import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.data.local.database.toDomain
@@ -18,35 +21,47 @@ import com.synth.synthmusic.domain.model.Song
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlin.math.pow
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
+import kotlin.math.pow
 
 /**
  * Wrapper around ExoPlayer providing playback control, state observation,
  * and automatic process-death recovery via Room.
+ *
+ * Playback state is split into two layers:
+ * 1. [playbackState] — event-driven (track changes, play/pause, repeat/shuffle).
+ * 2. [currentPositionMs] / [currentDurationMs] — high-frequency position updates
+ *    (50 ms polling) exposed as separate flows to avoid spurious recompositions.
  */
 class MediaPlaybackManager(
     private val context: Context,
     private val playbackStateDao: PlaybackStateDao,
+    private val playbackQueueItemDao: PlaybackQueueItemDao,
     private val songDao: SongDao,
     private val songRepository: SongRepository,
     private val settingsRepository: SettingsRepository,
-    private val playlistRepository: com.synth.synthmusic.domain.repository.PlaylistRepository
+    private val playlistRepository: PlaylistRepository
 ) {
     private val _playbackState = MutableStateFlow(PlaybackState())
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
 
     private val _currentQueue = MutableStateFlow<List<Song>>(emptyList())
     val currentQueue: StateFlow<List<Song>> = _currentQueue.asStateFlow()
+
+    private val _currentPositionMs = MutableStateFlow(0L)
+    val currentPositionMs: StateFlow<Long> = _currentPositionMs.asStateFlow()
+
+    private val _currentDurationMs = MutableStateFlow(0L)
+    val currentDurationMs: StateFlow<Long> = _currentDurationMs.asStateFlow()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -67,33 +82,30 @@ class MediaPlaybackManager(
     private var endOfTrackJob: Job? = null
     private var positionUpdateJob: Job? = null
     private var persistJob: Job? = null
+    private var positionPersistJob: Job? = null
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
             _playbackState.update {
-                it.copy(
-                    isPlaying = player.isPlaying,
-                    positionMs = player.currentPosition,
-                    durationMs = player.duration.coerceAtLeast(0)
-                )
+                it.copy(isPlaying = player.isPlaying)
             }
+            _currentDurationMs.value = player.duration.coerceAtLeast(0)
             if (player.isPlaying) {
                 startPositionUpdates()
             } else {
                 stopPositionUpdates()
             }
-            persistState()
+            persistStateImmediate()
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             _playbackState.update {
                 it.copy(
                     isPlaying = isPlaying,
-                    currentSongId = player.currentMediaItem?.mediaId,
-                    positionMs = player.currentPosition,
-                    durationMs = player.duration.coerceAtLeast(0)
+                    currentSongId = player.currentMediaItem?.mediaId
                 )
             }
+            _currentDurationMs.value = player.duration.coerceAtLeast(0)
             if (isPlaying) {
                 if (fadeDurationMs > 0) {
                     fadeManager.fadeIn(fadeDurationMs.toLong(), currentTargetVolume)
@@ -106,17 +118,15 @@ class MediaPlaybackManager(
                 stopEndOfTrackMonitor()
                 stopPositionUpdates()
             }
-            persistState()
+            persistStateImmediate()
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             _playbackState.update {
-                it.copy(
-                    currentSongId = mediaItem?.mediaId,
-                    positionMs = 0,
-                    durationMs = player.duration.coerceAtLeast(0)
-                )
+                it.copy(currentSongId = mediaItem?.mediaId)
             }
+            _currentPositionMs.value = 0
+            _currentDurationMs.value = player.duration.coerceAtLeast(0)
             mediaItem?.mediaId?.let { songId ->
                 updateTargetVolume(songId)
                 scope.launch { playlistRepository.recordPlayAndSyncPlaylists(songId) }
@@ -129,7 +139,7 @@ class MediaPlaybackManager(
             }
             stopEndOfTrackMonitor()
             startEndOfTrackMonitor()
-            persistState()
+            persistStateImmediate()
         }
 
         override fun onPositionDiscontinuity(
@@ -137,13 +147,9 @@ class MediaPlaybackManager(
             newPosition: Player.PositionInfo,
             reason: Int
         ) {
-            _playbackState.update {
-                it.copy(
-                    positionMs = player.currentPosition,
-                    durationMs = player.duration.coerceAtLeast(0)
-                )
-            }
-            persistState()
+            _currentPositionMs.value = player.currentPosition
+            _currentDurationMs.value = player.duration.coerceAtLeast(0)
+            persistPositionDebounced()
         }
     }
 
@@ -182,7 +188,7 @@ class MediaPlaybackManager(
             player.prepare()
             player.play()
         }
-        persistState()
+        persistStateImmediate()
     }
 
     fun playQueueItem(index: Int) {
@@ -200,7 +206,7 @@ class MediaPlaybackManager(
     fun addToQueue(song: Song) {
         _currentQueue.update { it + song }
         player.addMediaItem(songToMediaItem(song))
-        persistState()
+        persistStateImmediate()
     }
 
     fun playNext(song: Song) {
@@ -210,7 +216,7 @@ class MediaPlaybackManager(
         queue.add(insertIndex, song)
         _currentQueue.value = queue
         player.addMediaItem(insertIndex, songToMediaItem(song))
-        persistState()
+        persistStateImmediate()
     }
 
     fun clearQueue() {
@@ -223,7 +229,7 @@ class MediaPlaybackManager(
             _currentQueue.value = emptyList()
             player.clearMediaItems()
         }
-        persistState()
+        persistStateImmediate()
     }
 
     fun moveQueueItem(fromIndex: Int, toIndex: Int) {
@@ -234,7 +240,7 @@ class MediaPlaybackManager(
         queue.add(newIndex, item)
         _currentQueue.value = queue
         player.moveMediaItem(fromIndex, newIndex)
-        persistState()
+        persistStateImmediate()
     }
 
     fun removeFromQueue(index: Int) {
@@ -244,7 +250,7 @@ class MediaPlaybackManager(
             _currentQueue.value = queue
             player.removeMediaItem(index)
         }
-        persistState()
+        persistStateImmediate()
     }
 
     fun play() {
@@ -312,7 +318,7 @@ class MediaPlaybackManager(
     fun setShuffleEnabled(enabled: Boolean) {
         player.shuffleModeEnabled = enabled
         _playbackState.update { it.copy(shuffleEnabled = enabled) }
-        persistState()
+        persistStateImmediate()
     }
 
     fun cycleRepeatMode() {
@@ -323,7 +329,7 @@ class MediaPlaybackManager(
         }
         player.repeatMode = next
         _playbackState.update { it.copy(repeatMode = next) }
-        persistState()
+        persistStateImmediate()
     }
 
     fun release() {
@@ -333,6 +339,19 @@ class MediaPlaybackManager(
         player.removeListener(listener)
         player.release()
         scope.cancel()
+    }
+
+    /**
+     * Synchronously flushes any pending state to disk.
+     * Called by [PlaybackService] before the service is destroyed
+     * to guarantee that the latest position / queue survive process death.
+     */
+    fun flushPersist() {
+        persistJob?.cancel()
+        positionPersistJob?.cancel()
+        scope.launch {
+            writePlaybackState()
+        }
     }
 
     private fun startEndOfTrackMonitor() {
@@ -361,11 +380,9 @@ class MediaPlaybackManager(
         positionUpdateJob = scope.launch(Dispatchers.Main) {
             while (isActive) {
                 if (player.isPlaying) {
-                    _playbackState.update {
-                        it.copy(positionMs = player.currentPosition)
-                    }
+                    _currentPositionMs.value = player.currentPosition
                 }
-                delay(250)
+                delay(50)
             }
         }
     }
@@ -385,31 +402,55 @@ class MediaPlaybackManager(
         }
     }
 
-    private fun persistState() {
-        val state = _playbackState.value
-        val queue = _currentQueue.value
+    /**
+     * Persists critical state (track, queue, repeat/shuffle) **immediately**.
+     * Used for discrete events where data loss is unacceptable.
+     */
+    private fun persistStateImmediate() {
         persistJob?.cancel()
         persistJob = scope.launch {
-            delay(500)
-            playbackStateDao.insert(
-                PlaybackStateEntity(
-                    currentSongId = state.currentSongId,
-                    positionMs = state.positionMs,
-                    isPlaying = false, // do not auto-resume; just restore position
-                    repeatMode = state.repeatMode,
-                    shuffleMode = state.shuffleEnabled,
-                    queueIds = queue.joinToString(",") { it.id }.takeIf { it.isNotEmpty() }
-                )
-            )
+            writePlaybackState()
         }
+    }
+
+    /**
+     * Debounced persistence for high-frequency position updates.
+     * Only writes [PlaybackStateEntity.positionMs] together with the rest of the row.
+     */
+    private fun persistPositionDebounced() {
+        positionPersistJob?.cancel()
+        positionPersistJob = scope.launch {
+            delay(1000)
+            writePlaybackState()
+        }
+    }
+
+    private suspend fun writePlaybackState() {
+        val state = _playbackState.value
+        val queue = _currentQueue.value
+        playbackStateDao.insert(
+            PlaybackStateEntity(
+                currentSongId = state.currentSongId,
+                positionMs = _currentPositionMs.value,
+                isPlaying = false, // do not auto-resume; just restore position
+                repeatMode = state.repeatMode,
+                shuffleMode = state.shuffleEnabled
+            )
+        )
+        playbackQueueItemDao.replaceAll(
+            queue.mapIndexed { index, song ->
+                PlaybackQueueItemEntity(songId = song.id, orderIndex = index)
+            }
+        )
     }
 
     private fun restoreState() {
         scope.launch {
             val saved = playbackStateDao.get() ?: return@launch
-            val queueIds = saved.queueIds?.split(",")?.filter { it.isNotEmpty() } ?: emptyList()
-            val songs = if (queueIds.isNotEmpty()) {
-                songDao.getByIds(queueIds)
+            val queueItems = playbackQueueItemDao.getAllOrdered()
+            val songs = if (queueItems.isNotEmpty()) {
+                val songMap = songDao.getByIds(queueItems.map { it.songId }).associateBy { it.id }
+                queueItems.mapNotNull { songMap[it.songId] }
             } else {
                 saved.currentSongId?.let { id ->
                     songDao.getById(id)?.let { listOf(it) } ?: emptyList()
@@ -430,11 +471,11 @@ class MediaPlaybackManager(
             _playbackState.value = PlaybackState(
                 currentSongId = saved.currentSongId,
                 isPlaying = false,
-                positionMs = saved.positionMs,
-                durationMs = withContext(Dispatchers.Main) { player.duration.coerceAtLeast(0) },
                 repeatMode = saved.repeatMode,
                 shuffleEnabled = saved.shuffleMode
             )
+            _currentPositionMs.value = saved.positionMs
+            _currentDurationMs.value = withContext(Dispatchers.Main) { player.duration.coerceAtLeast(0) }
             withContext(Dispatchers.Main) {
                 player.repeatMode = saved.repeatMode
                 player.shuffleModeEnabled = saved.shuffleMode
@@ -442,28 +483,18 @@ class MediaPlaybackManager(
         }
     }
 
-    private fun songToMediaItem(song: Song): MediaItem = with(song) { MediaItem.Builder() }
-        .setMediaId(song.id)
-        .setUri(song.uri)
-        .setMediaMetadata(
-            androidx.media3.common.MediaMetadata.Builder()
-                .setTitle(song.title)
-                .setArtist(song.artist)
-                .setAlbumTitle(song.album)
-                .setArtworkUri(song.artworkUri?.let { it.toUri() })
-                .build()
-        )
-        .build()
-
-    /**
-     * Current playback state exposed as a data class.
-     */
-    data class PlaybackState(
-        val currentSongId: String? = null,
-        val isPlaying: Boolean = false,
-        val positionMs: Long = 0,
-        val durationMs: Long = 0,
-        val repeatMode: Int = Player.REPEAT_MODE_OFF,
-        val shuffleEnabled: Boolean = false
-    )
+    private fun songToMediaItem(song: Song): MediaItem = with(song) {
+        MediaItem.Builder()
+            .setMediaId(song.id)
+            .setUri(song.uri)
+            .setMediaMetadata(
+                androidx.media3.common.MediaMetadata.Builder()
+                    .setTitle(song.title)
+                    .setArtist(song.artist)
+                    .setAlbumTitle(song.album)
+                    .setArtworkUri(song.artworkUri?.let { it.toUri() })
+                    .build()
+            )
+            .build()
+    }
 }

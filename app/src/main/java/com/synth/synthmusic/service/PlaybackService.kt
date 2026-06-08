@@ -73,6 +73,7 @@ class PlaybackService : MediaSessionService() {
             return
         }
         if (!player.playWhenReady || player.playbackState == Player.STATE_ENDED) {
+            playbackManager.flushPersist()
             stopSelf()
         }
     }

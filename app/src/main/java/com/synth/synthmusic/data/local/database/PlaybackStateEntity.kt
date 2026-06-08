@@ -21,7 +21,5 @@ data class PlaybackStateEntity(
     @ColumnInfo(name = "repeat_mode")
     val repeatMode: Int,
     @ColumnInfo(name = "shuffle_mode")
-    val shuffleMode: Boolean,
-    @ColumnInfo(name = "queue_ids")
-    val queueIds: String? = null
+    val shuffleMode: Boolean
 )

@@ -14,13 +14,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination
 import androidx.navigation.NavHostController
@@ -35,14 +34,14 @@ import com.synth.synthmusic.ui.home.MainScreen
 import com.synth.synthmusic.ui.library.components.MiniPlayer
 import com.synth.synthmusic.ui.metadata.EditMetadataScreen
 import com.synth.synthmusic.ui.metadata.SongInfoScreen
-import com.synth.synthmusic.data.media.MediaPlaybackManager
 import com.synth.synthmusic.ui.nowplaying.NowPlayingScreen
+import com.synth.synthmusic.ui.playback.PlaybackViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistDetailScreen
 import com.synth.synthmusic.ui.genres.GenreDetailScreen
 import com.synth.synthmusic.ui.settings.SettingsScreen
 import com.synth.synthmusic.ui.splash.SplashScreen
 import com.synth.synthmusic.ui.visualizer.VisualizerScreen
-import org.koin.compose.koinInject
+import org.koin.androidx.compose.koinViewModel
 
 /**
  * Root navigation host defining all application routes.
@@ -61,13 +60,12 @@ fun AppNavigation(
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
-    val playbackManager: MediaPlaybackManager = koinInject()
+    val playbackViewModel: PlaybackViewModel = koinViewModel()
 
-    val playback by playbackManager.playbackState.collectAsStateWithLifecycle()
-    val currentQueue by playbackManager.currentQueue.collectAsStateWithLifecycle()
-    val currentSong = remember(playback.currentSongId, currentQueue) {
-        currentQueue.find { it.id == playback.currentSongId }
-    }
+    val playback by playbackViewModel.playbackState.collectAsStateWithLifecycle()
+    val currentPositionMs by playbackViewModel.currentPositionMs.collectAsStateWithLifecycle()
+    val currentDurationMs by playbackViewModel.currentDurationMs.collectAsStateWithLifecycle()
+    val currentSong by playbackViewModel.currentSong.collectAsStateWithLifecycle()
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = currentBackStackEntry?.destination
@@ -82,11 +80,11 @@ fun AppNavigation(
                     MiniPlayer(
                         song = currentSong,
                         isPlaying = playback.isPlaying,
-                        positionMs = playback.positionMs,
-                        durationMs = playback.durationMs,
-                        onTogglePlayPause = { playbackManager.playPause() },
-                        onPrevious = { playbackManager.previous() },
-                        onNext = { playbackManager.next() },
+                        positionMs = currentPositionMs,
+                        durationMs = currentDurationMs,
+                        onTogglePlayPause = { playbackViewModel.playPause() },
+                        onPrevious = { playbackViewModel.previous() },
+                        onNext = { playbackViewModel.next() },
                         onExpand = { navController.navigate(NowPlayingRoute) }
                     )
                     SynthBottomNav(
