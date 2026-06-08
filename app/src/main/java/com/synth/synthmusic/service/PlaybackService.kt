@@ -85,7 +85,7 @@ class PlaybackService : MediaSessionService() {
      * Seek operations (seek bar, rewind, fast-forward) are delegated directly to the
      * player without fade to keep seeking responsive.
      */
-    private inner class FadingSessionPlayer(
+    private class FadingSessionPlayer(
         private val playbackManager: MediaPlaybackManager,
         player: ExoPlayer
     ) : ForwardingPlayer(player) {

@@ -32,7 +32,7 @@ class WriteArtworkToMp3UseCase(
 
             tag.deleteArtworkField()
             val artwork = StandardArtwork()
-            artwork.setBinaryData(scaledBytes)
+            artwork.binaryData = scaledBytes
             artwork.mimeType = "image/jpeg"
             artwork.pictureType = org.jaudiotagger.tag.reference.PictureTypes.DEFAULT_ID
             tag.setField(artwork)

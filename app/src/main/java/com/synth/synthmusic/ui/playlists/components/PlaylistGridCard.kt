@@ -168,7 +168,7 @@ fun PlaylistGridCard(
 private fun PlaylistGridCardPreview() {
     SynthMusicTheme {
         PlaylistGridCard(
-            playlist = com.synth.synthmusic.domain.model.Playlist(
+            playlist = Playlist(
                 id = 1,
                 name = "My Playlist",
                 createdAt = 0,

@@ -1,6 +1,7 @@
 package com.synth.synthmusic.data.media
 
 import android.content.Context
+import android.content.Intent
 import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -34,7 +35,7 @@ import kotlinx.coroutines.withContext
  * and automatic process-death recovery via Room.
  */
 class MediaPlaybackManager(
-    context: Context,
+    private val context: Context,
     private val playbackStateDao: PlaybackStateDao,
     private val songDao: SongDao,
     private val songRepository: SongRepository,
@@ -156,13 +157,11 @@ class MediaPlaybackManager(
         scope.launch {
             settingsRepository.settings.collect { settings ->
                 withContext(Dispatchers.Main) {
-                    player.setPlaybackParameters(
-                        androidx.media3.common.PlaybackParameters(
-                            settings.playbackSpeed.coerceIn(0.25f, 4.0f),
-                            settings.playbackPitch.coerceIn(0.25f, 4.0f)
-                        )
+                    player.playbackParameters = androidx.media3.common.PlaybackParameters(
+                        settings.playbackSpeed.coerceIn(0.25f, 4.0f),
+                        settings.playbackPitch.coerceIn(0.25f, 4.0f)
                     )
-                    player.setSkipSilenceEnabled(settings.skipSilence)
+                    player.skipSilenceEnabled = settings.skipSilence
                 }
                 fadeDurationMs = settings.fadeDurationMs.coerceIn(0, 2000)
             }
