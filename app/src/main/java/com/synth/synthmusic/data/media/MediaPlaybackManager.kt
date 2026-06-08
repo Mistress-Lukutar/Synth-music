@@ -7,9 +7,8 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import com.synth.synthmusic.data.local.database.PlaybackQueueItemDao
+import com.synth.synthmusic.data.local.database.AppDatabase
 import com.synth.synthmusic.data.local.database.PlaybackQueueItemEntity
-import com.synth.synthmusic.data.local.database.PlaybackStateDao
 import com.synth.synthmusic.data.local.database.PlaybackStateEntity
 import com.synth.synthmusic.data.local.database.SongDao
 import com.synth.synthmusic.domain.model.PlaybackState
@@ -30,7 +29,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.pow
 
 /**
@@ -41,11 +43,14 @@ import kotlin.math.pow
  * 1. [playbackState] — event-driven (track changes, play/pause, repeat/shuffle).
  * 2. [currentPositionMs] / [currentDurationMs] — high-frequency position updates
  *    (50 ms polling) exposed as separate flows to avoid spurious recompositions.
+ *
+ * This class is a Koin singleton whose lifecycle is tied to the [PlaybackService].
+ * If the service is destroyed and recreated, call [ensureInitialized] to verify
+ * that the underlying player and coroutine scope are still alive.
  */
 class MediaPlaybackManager(
     private val context: Context,
-    private val playbackStateDao: PlaybackStateDao,
-    private val playbackQueueItemDao: PlaybackQueueItemDao,
+    private val appDatabase: AppDatabase,
     private val songDao: SongDao,
     private val songRepository: SongRepository,
     private val settingsRepository: SettingsRepository,
@@ -63,26 +68,22 @@ class MediaPlaybackManager(
     private val _currentDurationMs = MutableStateFlow(0L)
     val currentDurationMs: StateFlow<Long> = _currentDurationMs.asStateFlow()
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    val player: ExoPlayer = ExoPlayer.Builder(context)
-        .setAudioAttributes(
-            AudioAttributes.Builder()
-                .setUsage(C.USAGE_MEDIA)
-                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                .build(),
-            true // handleAudioFocus
-        )
-        .setWakeMode(C.WAKE_MODE_LOCAL)
-        .build()
+    private var _player: ExoPlayer? = null
+    val player: ExoPlayer
+        get() = _player ?: createPlayer().also { _player = it }
 
-    private val fadeManager = AudioFadeManager(player, scope)
+    private var fadeManager: AudioFadeManager = createFadeManager()
     private var fadeDurationMs: Int = 300
     private var currentTargetVolume: Float = 1f
     private var endOfTrackJob: Job? = null
     private var positionUpdateJob: Job? = null
     private var persistJob: Job? = null
     private var positionPersistJob: Job? = null
+    private val persistMutex = Mutex()
+    private val isRestoring = AtomicBoolean(false)
+    private var isReleased = false
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
@@ -154,9 +155,56 @@ class MediaPlaybackManager(
     }
 
     init {
-        player.addListener(listener)
+        ensureInitialized()
         restoreState()
         collectPlaybackSettings()
+    }
+
+    /**
+     * Verifies that the player and coroutine scope are alive.
+     * If the manager was previously released (e.g. in a test teardown),
+     * this method recreates all internal resources so the singleton
+     * remains usable across service restarts.
+     */
+    fun ensureInitialized() {
+        if (isReleased || _player == null || !scope.isActive) {
+            isReleased = false
+            isRestoring.set(false)
+            _player?.let { safeRelease(it) }
+            _player = createPlayer()
+            if (!scope.isActive) {
+                scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+            }
+            fadeManager = createFadeManager()
+            _player?.addListener(listener)
+            // Do not call restoreState here; it runs once in init.
+        }
+    }
+
+    private fun createPlayer(): ExoPlayer {
+        return ExoPlayer.Builder(context)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                    .build(),
+                true // handleAudioFocus
+            )
+            .setWakeMode(C.WAKE_MODE_LOCAL)
+            .build()
+    }
+
+    private fun createFadeManager(): AudioFadeManager {
+        return AudioFadeManager(player, scope)
+    }
+
+    private fun safeRelease(player: ExoPlayer) {
+        try {
+            player.removeListener(listener)
+            player.release()
+        } catch (_: Exception) {
+            // Already released or in a bad state — ignore.
+        }
     }
 
     private fun collectPlaybackSettings() {
@@ -175,6 +223,8 @@ class MediaPlaybackManager(
     }
 
     fun playSongs(songs: List<Song>, startIndex: Int = 0) {
+        if (isRestoring.get()) return
+        isRestoring.set(false) // user explicitly chose a song — abort restore
         _currentQueue.value = songs
         val mediaItems = songs.map { songToMediaItem(it) }
         if (player.isPlaying && fadeDurationMs > 0) {
@@ -204,12 +254,14 @@ class MediaPlaybackManager(
     }
 
     fun addToQueue(song: Song) {
+        if (isRestoring.get()) return
         _currentQueue.update { it + song }
         player.addMediaItem(songToMediaItem(song))
         persistStateImmediate()
     }
 
     fun playNext(song: Song) {
+        if (isRestoring.get()) return
         val currentIndex = player.currentMediaItemIndex
         val queue = _currentQueue.value.toMutableList()
         val insertIndex = (currentIndex + 1).coerceAtMost(queue.size)
@@ -220,6 +272,7 @@ class MediaPlaybackManager(
     }
 
     fun clearQueue() {
+        if (isRestoring.get()) return
         if (player.isPlaying && fadeDurationMs > 0) {
             fadeManager.fadeOut(fadeDurationMs.toLong()) {
                 _currentQueue.value = emptyList()
@@ -233,6 +286,7 @@ class MediaPlaybackManager(
     }
 
     fun moveQueueItem(fromIndex: Int, toIndex: Int) {
+        if (isRestoring.get()) return
         val queue = _currentQueue.value.toMutableList()
         if (fromIndex !in queue.indices) return
         val item = queue.removeAt(fromIndex)
@@ -244,6 +298,7 @@ class MediaPlaybackManager(
     }
 
     fun removeFromQueue(index: Int) {
+        if (isRestoring.get()) return
         val queue = _currentQueue.value.toMutableList()
         if (index in queue.indices) {
             queue.removeAt(index)
@@ -273,6 +328,20 @@ class MediaPlaybackManager(
             } else {
                 player.pause()
             }
+        }
+    }
+
+    fun stop() {
+        if (player.isPlaying) {
+            if (fadeDurationMs > 0) {
+                fadeManager.fadeOut(fadeDurationMs.toLong()) {
+                    player.stop()
+                }
+            } else {
+                player.stop()
+            }
+        } else {
+            player.stop()
         }
     }
 
@@ -332,12 +401,18 @@ class MediaPlaybackManager(
         persistStateImmediate()
     }
 
-    fun release() {
+    /**
+     * Releases native resources. Intended for **testing teardown only**.
+     * After this call the manager will be automatically re-initialized
+     * on the next [ensureInitialized] invocation.
+     */
+    internal fun release() {
+        isReleased = true
         stopEndOfTrackMonitor()
         stopPositionUpdates()
         fadeManager.cancel()
-        player.removeListener(listener)
-        player.release()
+        _player?.let { safeRelease(it) }
+        _player = null
         scope.cancel()
     }
 
@@ -347,6 +422,7 @@ class MediaPlaybackManager(
      * to guarantee that the latest position / queue survive process death.
      */
     fun flushPersist() {
+        if (isReleased || !scope.isActive) return
         persistJob?.cancel()
         positionPersistJob?.cancel()
         scope.launch {
@@ -407,6 +483,7 @@ class MediaPlaybackManager(
      * Used for discrete events where data loss is unacceptable.
      */
     private fun persistStateImmediate() {
+        if (isReleased || !scope.isActive) return
         persistJob?.cancel()
         persistJob = scope.launch {
             writePlaybackState()
@@ -418,6 +495,7 @@ class MediaPlaybackManager(
      * Only writes [PlaybackStateEntity.positionMs] together with the rest of the row.
      */
     private fun persistPositionDebounced() {
+        if (isReleased || !scope.isActive) return
         positionPersistJob?.cancel()
         positionPersistJob = scope.launch {
             delay(1000)
@@ -426,59 +504,72 @@ class MediaPlaybackManager(
     }
 
     private suspend fun writePlaybackState() {
+        if (isReleased) return
         val state = _playbackState.value
         val queue = _currentQueue.value
-        playbackStateDao.insert(
-            PlaybackStateEntity(
-                currentSongId = state.currentSongId,
-                positionMs = _currentPositionMs.value,
-                isPlaying = false, // do not auto-resume; just restore position
-                repeatMode = state.repeatMode,
-                shuffleMode = state.shuffleEnabled
+        persistMutex.withLock {
+            appDatabase.savePlaybackState(
+                PlaybackStateEntity(
+                    currentSongId = state.currentSongId,
+                    positionMs = _currentPositionMs.value,
+                    isPlaying = false, // do not auto-resume; just restore position
+                    repeatMode = state.repeatMode,
+                    shuffleMode = state.shuffleEnabled
+                ),
+                queue.mapIndexed { index, song ->
+                    PlaybackQueueItemEntity(songId = song.id, orderIndex = index)
+                }
             )
-        )
-        playbackQueueItemDao.replaceAll(
-            queue.mapIndexed { index, song ->
-                PlaybackQueueItemEntity(songId = song.id, orderIndex = index)
-            }
-        )
+        }
     }
 
     private fun restoreState() {
         scope.launch {
-            val saved = playbackStateDao.get() ?: return@launch
-            val queueItems = playbackQueueItemDao.getAllOrdered()
-            val songs = if (queueItems.isNotEmpty()) {
-                val songMap = songDao.getByIds(queueItems.map { it.songId }).associateBy { it.id }
-                queueItems.mapNotNull { songMap[it.songId] }
-            } else {
-                saved.currentSongId?.let { id ->
-                    songDao.getById(id)?.let { listOf(it) } ?: emptyList()
-                } ?: emptyList()
-            }
-            if (songs.isEmpty()) return@launch
+            isRestoring.set(true)
+            try {
+                val saved = appDatabase.playbackStateDao().get() ?: return@launch
+                val queueItems = appDatabase.playbackQueueItemDao().getAllOrdered()
+                val songs = if (queueItems.isNotEmpty()) {
+                    val songMap = queueItems.chunked(999)
+                        .flatMap { chunk ->
+                            songDao.getByIds(chunk.map { it.songId })
+                        }
+                        .associateBy { it.id }
+                    queueItems.mapNotNull { songMap[it.songId] }
+                } else {
+                    saved.currentSongId?.let { id ->
+                        songDao.getById(id)?.let { listOf(it) } ?: emptyList()
+                    } ?: emptyList()
+                }
+                if (songs.isEmpty()) return@launch
 
-            val domainSongs = songs.map { it.toDomain() }
-            val startIndex = domainSongs.indexOfFirst { it.id == saved.currentSongId }.coerceAtLeast(0)
+                val domainSongs = songs.map { it.toDomain() }
+                val startIndex = domainSongs.indexOfFirst { it.id == saved.currentSongId }.coerceAtLeast(0)
 
-            _currentQueue.value = domainSongs
-            val mediaItems = domainSongs.map { song -> songToMediaItem(song) }
-            withContext(Dispatchers.Main) {
-                player.setMediaItems(mediaItems, startIndex, saved.positionMs.coerceAtLeast(0))
-                player.prepare()
-            }
+                // Abort restore if the user already started playback while we were reading DB.
+                if (!isRestoring.get()) return@launch
 
-            _playbackState.value = PlaybackState(
-                currentSongId = saved.currentSongId,
-                isPlaying = false,
-                repeatMode = saved.repeatMode,
-                shuffleEnabled = saved.shuffleMode
-            )
-            _currentPositionMs.value = saved.positionMs
-            _currentDurationMs.value = withContext(Dispatchers.Main) { player.duration.coerceAtLeast(0) }
-            withContext(Dispatchers.Main) {
-                player.repeatMode = saved.repeatMode
-                player.shuffleModeEnabled = saved.shuffleMode
+                _currentQueue.value = domainSongs
+                val mediaItems = domainSongs.map { song -> songToMediaItem(song) }
+                withContext(Dispatchers.Main) {
+                    player.setMediaItems(mediaItems, startIndex, saved.positionMs.coerceAtLeast(0))
+                    player.prepare()
+                }
+
+                _playbackState.value = PlaybackState(
+                    currentSongId = saved.currentSongId,
+                    isPlaying = false,
+                    repeatMode = saved.repeatMode,
+                    shuffleEnabled = saved.shuffleMode
+                )
+                _currentPositionMs.value = saved.positionMs
+                _currentDurationMs.value = withContext(Dispatchers.Main) { player.duration.coerceAtLeast(0) }
+                withContext(Dispatchers.Main) {
+                    player.repeatMode = saved.repeatMode
+                    player.shuffleModeEnabled = saved.shuffleMode
+                }
+            } finally {
+                isRestoring.set(false)
             }
         }
     }
