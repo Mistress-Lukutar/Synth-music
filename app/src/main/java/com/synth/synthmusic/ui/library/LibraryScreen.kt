@@ -1,9 +1,5 @@
 package com.synth.synthmusic.ui.library
 
-import android.Manifest
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,33 +18,21 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,14 +41,11 @@ import com.synth.synthmusic.domain.model.CollectionType
 import com.synth.synthmusic.domain.model.RecentlyPlayedCollection
 import com.synth.synthmusic.ui.components.CollectionCard
 import com.synth.synthmusic.ui.components.CollectionCardStyle
-import com.synth.synthmusic.ui.components.SongList
-import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
 import com.synth.synthmusic.ui.library.components.ArtistListItem
-import com.synth.synthmusic.ui.share.ShareSongSheet
 import org.koin.androidx.compose.koinViewModel
 
 /**
- * Main library screen with tabs for Home, Artists, Genres, and Search.
+ * Main library screen with tabs for Home, Artists, and Genres.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,36 +56,11 @@ fun LibraryScreen(
     onNavigateToAlbumDetail: (String, String) -> Unit,
     onNavigateToArtistDetail: (String) -> Unit,
     onNavigateToGenreDetail: (String) -> Unit,
+    onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val playback by viewModel.currentPlayback.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
-    var selectedSongForPlaylist by remember { mutableStateOf<String?>(null) }
-    var selectedSongForShare by remember { mutableStateOf<String?>(null) }
-    var menuExpanded by remember { mutableStateOf(false) }
-
-    val audioPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        Manifest.permission.READ_MEDIA_AUDIO
-    } else {
-        Manifest.permission.READ_EXTERNAL_STORAGE
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            viewModel.onEvent(LibraryEvent.ScanLibrary)
-        }
-    }
-
-    LaunchedEffect(uiState.scanError) {
-        uiState.scanError?.let { message ->
-            snackbarHostState.showSnackbar(message)
-        }
-    }
 
     Scaffold(
         modifier = modifier,
@@ -122,41 +78,15 @@ fun LibraryScreen(
                     }
                 },
                 actions = {
-                    Box {
-                        IconButton(onClick = { menuExpanded = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Menu")
-                        }
-                        DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Rescan Library") },
-                                onClick = {
-                                    menuExpanded = false
-                                    permissionLauncher.launch(audioPermission)
-                                },
-                                leadingIcon = {
-                                    if (uiState.isScanning) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(20.dp),
-                                            strokeWidth = 2.dp
-                                        )
-                                    } else {
-                                        Icon(
-                                            Icons.Default.Refresh,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                            )
-                        }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings"
+                        )
                     }
                 }
             )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        }
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
             PrimaryScrollableTabRow(
@@ -189,38 +119,9 @@ fun LibraryScreen(
                         genres = uiState.genres,
                         onGenreClick = onNavigateToGenreDetail
                     )
-
-                    LibraryTab.Search -> SearchTab(
-                        query = uiState.searchQuery,
-                        results = uiState.searchResults,
-                        currentSongId = playback.currentSongId,
-                        onQueryChange = { viewModel.onEvent(LibraryEvent.SearchQueryChanged(it)) },
-                        onSongClick = { song -> viewModel.onEvent(LibraryEvent.PlaySong(song.id)) },
-                        onNavigateToSongInfo = onNavigateToSongInfo,
-                        onNavigateToEditMetadata = onNavigateToEditMetadata,
-                        onAddToPlaylist = { selectedSongForPlaylist = it },
-                        onPlayNext = { viewModel.playNext(it) },
-                        onAddToQueue = { viewModel.addToQueue(it) },
-                        onShare = { selectedSongForShare = it }
-                    )
                 }
             }
         }
-    }
-
-    selectedSongForPlaylist?.let { songId ->
-        AddToPlaylistDialog(
-            songId = songId,
-            onDismiss = { selectedSongForPlaylist = null }
-        )
-    }
-
-    selectedSongForShare?.let { songId ->
-        val song = uiState.searchResults.find { it.id == songId }
-        ShareSongSheet(
-            song = song,
-            onDismiss = { selectedSongForShare = null }
-        )
     }
 }
 
@@ -343,7 +244,7 @@ private fun SectionHeader(
             modifier = Modifier.weight(1f)
         )
         if (actionLabel != null && onAction != null) {
-            TextButton(onClick = onAction) {
+            androidx.compose.material3.TextButton(onClick = onAction) {
                 Text(
                     text = actionLabel,
                     color = MaterialTheme.colorScheme.primary
@@ -397,45 +298,5 @@ private fun GenresTab(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun SearchTab(
-    query: String,
-    results: List<com.synth.synthmusic.domain.model.Song>,
-    currentSongId: String?,
-    onQueryChange: (String) -> Unit,
-    onSongClick: (com.synth.synthmusic.domain.model.Song) -> Unit,
-    onNavigateToSongInfo: (String) -> Unit,
-    onNavigateToEditMetadata: (String) -> Unit,
-    onAddToPlaylist: (String) -> Unit,
-    onPlayNext: (String) -> Unit,
-    onAddToQueue: (String) -> Unit,
-    onShare: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier.fillMaxSize()) {
-        TextField(
-            value = query,
-            onValueChange = onQueryChange,
-            placeholder = { Text("Search songs, artists, albums...") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            singleLine = true
-        )
-        SongList(
-            songs = results,
-            currentSongId = currentSongId,
-            onSongClick = onSongClick,
-            onNavigateToSongInfo = onNavigateToSongInfo,
-            onNavigateToEditMetadata = onNavigateToEditMetadata,
-            onAddToPlaylist = onAddToPlaylist,
-            onPlayNext = onPlayNext,
-            onAddToQueue = onAddToQueue,
-            onShare = onShare,
-            modifier = Modifier.fillMaxSize()
-        )
     }
 }

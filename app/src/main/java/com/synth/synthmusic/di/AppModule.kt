@@ -31,6 +31,7 @@ import com.synth.synthmusic.ui.playback.PlaybackViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistDetailViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistViewModel
 import com.synth.synthmusic.ui.genres.GenreDetailViewModel
+import com.synth.synthmusic.ui.search.SearchViewModel
 import com.synth.synthmusic.ui.settings.SettingsViewModel
 import com.synth.synthmusic.ui.sleeptimer.SleepTimerViewModel
 import org.koin.android.ext.koin.androidContext
@@ -100,7 +101,6 @@ val appModule = module {
         LibraryViewModel(
             songRepository = get(),
             artistRepository = get(),
-            scanMusicUseCase = get(),
             playbackRepository = get(),
             recentlyPlayedRepository = get()
         )
@@ -180,7 +180,17 @@ val appModule = module {
 
 
     viewModel {
-        SettingsViewModel(settingsRepository = get())
+        SettingsViewModel(
+            settingsRepository = get(),
+            scanMusicUseCase = get()
+        )
+    }
+
+    viewModel {
+        SearchViewModel(
+            songRepository = get(),
+            playbackRepository = get()
+        )
     }
 
 

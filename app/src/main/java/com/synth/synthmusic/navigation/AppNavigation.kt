@@ -133,7 +133,8 @@ fun AppNavigation(
                     },
                     onNavigateToGenreDetail = { genre ->
                         navController.navigate(GenreDetailRoute(genre))
-                    }
+                    },
+                    onNavigateToSettings = { navController.navigate(SettingsRoute) }
                 )
             }
 

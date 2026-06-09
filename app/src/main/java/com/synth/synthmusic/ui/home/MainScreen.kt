@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import com.synth.synthmusic.ui.ai.AiScreen
 import com.synth.synthmusic.ui.library.LibraryScreen
 import com.synth.synthmusic.ui.playlists.PlaylistsScreen
-import com.synth.synthmusic.ui.settings.SettingsScreen
+import com.synth.synthmusic.ui.search.SearchScreen
 
 /**
  * Root container hosting the primary bottom-navigation tab contents.
@@ -23,6 +23,7 @@ import com.synth.synthmusic.ui.settings.SettingsScreen
  * @param onNavigateToAlbumDetail Navigate to album detail.
  * @param onNavigateToArtistDetail Navigate to artist detail.
  * @param onNavigateToGenreDetail Navigate to genre detail.
+ * @param onNavigateToSettings Navigate to settings.
  * @param modifier Modifier for the root container.
  */
 @Composable
@@ -34,6 +35,7 @@ fun MainScreen(
     onNavigateToAlbumDetail: (String, String) -> Unit,
     onNavigateToArtistDetail: (String) -> Unit,
     onNavigateToGenreDetail: (String) -> Unit,
+    onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Crossfade(
@@ -49,7 +51,8 @@ fun MainScreen(
                 onNavigateToEditMetadata = onNavigateToEditMetadata,
                 onNavigateToAlbumDetail = onNavigateToAlbumDetail,
                 onNavigateToArtistDetail = onNavigateToArtistDetail,
-                onNavigateToGenreDetail = onNavigateToGenreDetail
+                onNavigateToGenreDetail = onNavigateToGenreDetail,
+                onNavigateToSettings = onNavigateToSettings
             )
 
             1 -> PlaylistsScreen(
@@ -58,9 +61,12 @@ fun MainScreen(
             )
 
             2 -> AiScreen(modifier = Modifier.fillMaxSize())
-            3 -> SettingsScreen(
-                showBackButton = false,
-                onNavigateBack = {},
+
+            3 -> SearchScreen(
+                onNavigateToSongInfo = onNavigateToSongInfo,
+                onNavigateToEditMetadata = onNavigateToEditMetadata,
+                onNavigateToAlbumDetail = onNavigateToAlbumDetail,
+                onNavigateToArtistDetail = onNavigateToArtistDetail,
                 modifier = Modifier.fillMaxSize()
             )
         }
