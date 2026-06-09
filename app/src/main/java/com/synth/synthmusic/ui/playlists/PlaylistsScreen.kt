@@ -21,10 +21,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -54,6 +56,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun PlaylistsScreen(
     onNavigateToPlaylistDetail: (Long) -> Unit,
+    onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PlaylistViewModel = koinViewModel()
 ) {
@@ -73,6 +76,14 @@ fun PlaylistsScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Playlists")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings"
+                        )
                     }
                 }
             )

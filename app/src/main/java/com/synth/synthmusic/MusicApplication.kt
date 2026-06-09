@@ -1,28 +1,34 @@
 package com.synth.synthmusic
 
+import android.Manifest
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import coil.Coil
 import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import com.synth.synthmusic.data.local.datastore.SettingsDataStore
 import com.synth.synthmusic.data.media.waveform.WaveformPreloader
 import com.synth.synthmusic.di.appModule
 import com.synth.synthmusic.domain.repository.SongRepository
+import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 
 /**
- * Application entry point initializing Koin dependency injection.
+ * Application entry point initializing Koin dependency injection,
+ * image loading, notification channels and optional auto-rescan.
  */
 class MusicApplication : Application() {
 
@@ -37,6 +43,39 @@ class MusicApplication : Application() {
         }
         createNotificationChannel()
         resumeWaveformGeneration()
+        maybeAutoRescan()
+    }
+
+    private fun maybeAutoRescan() {
+        applicationScope.launch {
+            try {
+                val koin = GlobalContext.get()
+                val settingsDataStore = koin.get<SettingsDataStore>()
+                val settings = settingsDataStore.settings.first()
+                if (!settings.autoRescan) {
+                    Log.d(TAG, "Auto rescan disabled")
+                    return@launch
+                }
+
+                val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) ==
+                        PackageManager.PERMISSION_GRANTED
+                } else {
+                    checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) ==
+                        PackageManager.PERMISSION_GRANTED
+                }
+                if (!hasPermission) {
+                    Log.d(TAG, "Auto rescan skipped: no audio permission")
+                    return@launch
+                }
+
+                val scanMusicUseCase = koin.get<ScanMusicUseCase>()
+                Log.d(TAG, "Auto rescan enabled, scanning library")
+                scanMusicUseCase()
+            } catch (e: Exception) {
+                Log.w(TAG, "Auto rescan failed", e)
+            }
+        }
     }
 
     private fun resumeWaveformGeneration() {
