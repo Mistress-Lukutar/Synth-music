@@ -48,6 +48,7 @@ import com.synth.synthmusic.ui.nowplaying.components.BlurredArtworkBackground
 import com.synth.synthmusic.ui.nowplaying.components.LyricsBottomSheet
 import com.synth.synthmusic.ui.nowplaying.components.PlaybackControls
 import com.synth.synthmusic.ui.nowplaying.components.PlaybackSpeedBottomSheet
+import com.synth.synthmusic.ui.nowplaying.components.QueueBottomSheet
 import com.synth.synthmusic.ui.nowplaying.components.RotatingVinyl
 import com.synth.synthmusic.ui.nowplaying.components.WaveformSlider
 import com.synth.synthmusic.ui.playback.PlaybackViewModel
@@ -74,6 +75,7 @@ import java.util.Locale
  * @param onShowShareSheet Callback to show the share sheet.
  * @param onShowLyrics Callback to show the lyrics bottom sheet.
  * @param onShowSpeedSheet Callback to show the playback speed bottom sheet.
+ * @param onShowQueue Callback to show the queue bottom sheet.
  * @param modifier Modifier for styling.
  */
 @Composable
@@ -93,6 +95,7 @@ fun NowPlayingContent(
     onShowShareSheet: () -> Unit,
     onShowLyrics: () -> Unit,
     onShowSpeedSheet: () -> Unit,
+    onShowQueue: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -207,7 +210,7 @@ fun NowPlayingContent(
                     )
                 }
 
-                IconButton(onClick = { /* Queue not yet implemented */ }) {
+                IconButton(onClick = onShowQueue) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.QueueMusic,
                         contentDescription = "Queue",
@@ -300,6 +303,7 @@ fun NowPlayingScreen(
     var showShareSheet by remember { mutableStateOf(false) }
     var showLyrics by remember { mutableStateOf(false) }
     var showSpeedSheet by remember { mutableStateOf(false) }
+    var showQueue by remember { mutableStateOf(false) }
 
     NowPlayingContent(
         uiState = uiState,
@@ -317,6 +321,7 @@ fun NowPlayingScreen(
         onShowShareSheet = { showShareSheet = true },
         onShowLyrics = { showLyrics = true },
         onShowSpeedSheet = { showSpeedSheet = true },
+        onShowQueue = { showQueue = true },
         modifier = modifier
     )
 
@@ -343,6 +348,16 @@ fun NowPlayingScreen(
             onSpeedChanged = { viewModel.onEvent(NowPlayingEvent.SetPlaybackSpeed(it)) },
             onPitchChanged = { viewModel.onEvent(NowPlayingEvent.SetPlaybackPitch(it)) },
             onDismiss = { showSpeedSheet = false }
+        )
+    }
+    if (showQueue) {
+        QueueBottomSheet(
+            queue = uiState.queueSongs,
+            currentSongId = uiState.song?.id,
+            onPlayQueueItem = { viewModel.playQueueItem(it) },
+            onRemoveFromQueue = { viewModel.removeFromQueue(it) },
+            onClearQueue = { viewModel.clearQueue() },
+            onDismiss = { showQueue = false }
         )
     }
 }
@@ -415,7 +430,8 @@ private fun NowPlayingContentPreview() {
             onShowSleepTimer = {},
             onShowShareSheet = {},
             onShowLyrics = {},
-            onShowSpeedSheet = {}
+            onShowSpeedSheet = {},
+            onShowQueue = {}
         )
     }
 }
