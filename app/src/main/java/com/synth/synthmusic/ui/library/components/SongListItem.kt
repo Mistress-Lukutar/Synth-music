@@ -88,7 +88,7 @@ fun SongListItem(
             .padding(horizontal = 8.dp, vertical = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isCurrent)
-                MaterialTheme.colorScheme.tertiaryContainer
+                MaterialTheme.colorScheme.primaryContainer
             else
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         )
