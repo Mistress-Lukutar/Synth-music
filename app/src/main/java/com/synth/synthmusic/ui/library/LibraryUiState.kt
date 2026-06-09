@@ -8,8 +8,7 @@ import com.synth.synthmusic.domain.model.Song
  * UI state for the library screen.
  */
 data class LibraryUiState(
-    val selectedTab: LibraryTab = LibraryTab.Queue,
-    val queueSongs: List<Song> = emptyList(),
+    val selectedTab: LibraryTab = LibraryTab.Home,
     val artists: List<Artist> = emptyList(),
     val genres: List<String> = emptyList(),
     val searchQuery: String = "",
@@ -20,5 +19,5 @@ data class LibraryUiState(
 )
 
 enum class LibraryTab {
-    Queue, Artists, Genres, Search
+    Home, Artists, Genres, Search
 }

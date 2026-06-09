@@ -7,7 +7,6 @@ import com.synth.synthmusic.domain.repository.ArtistRepository
 import com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,10 +49,6 @@ class LibraryViewModel(
             .onEach { list -> _uiState.update { it.copy(recentCollections = list) } }
             .launchIn(viewModelScope)
 
-        playbackRepository.currentQueue
-            .onEach { list -> _uiState.update { it.copy(queueSongs = list) } }
-            .launchIn(viewModelScope)
-
         songRepository.observeGenres()
             .onEach { genres -> _uiState.update { it.copy(genres = genres) } }
             .launchIn(viewModelScope)
@@ -80,7 +75,6 @@ class LibraryViewModel(
             }
             is LibraryEvent.ScanLibrary -> scanLibrary()
             is LibraryEvent.PlaySong -> playSong(event.songId)
-            is LibraryEvent.ClearQueue -> playbackRepository.clearQueue()
             is LibraryEvent.SearchQueryChanged -> {
                 _uiState.update { it.copy(searchQuery = event.query) }
             }
@@ -99,10 +93,6 @@ class LibraryViewModel(
             val song = songRepository.getSongById(songId) ?: return@launch
             playbackRepository.addToQueue(song)
         }
-    }
-
-    fun playQueueItem(index: Int) {
-        playbackRepository.playQueueItem(index)
     }
 
     private fun playSong(songId: String) {

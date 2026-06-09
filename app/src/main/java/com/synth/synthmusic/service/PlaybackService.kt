@@ -2,8 +2,14 @@ package com.synth.synthmusic.service
 
 import android.app.Notification
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.core.net.toUri
 import androidx.core.app.NotificationCompat
@@ -75,11 +81,37 @@ class PlaybackService : MediaSessionService() {
     private var settingsJob: Job? = null
     private var endOfTrackJob: Job? = null
 
+    /**
+     * Pauses playback when a headset or Bluetooth device is disconnected.
+     * This is more reliable than manifest-registered [AudioBecomingNoisyReceiver]
+     * on modern OEM devices.
+     */
+    private val audioDeviceCallback = object : AudioDeviceCallback() {
+        override fun onAudioDevicesRemoved(removedDevices: Array<AudioDeviceInfo>) {
+            val wasPrivateOutput = removedDevices.any {
+                it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                    it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                    it.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                    it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                    it.type == AudioDeviceInfo.TYPE_USB_HEADSET
+            }
+            Log.d(TAG, "AudioDeviceCallback.onAudioDevicesRemoved: wasPrivateOutput=$wasPrivateOutput")
+            if (wasPrivateOutput && exoPlayer?.isPlaying == true) {
+                Log.d(TAG, "Pausing because private audio output was removed")
+                exoPlayer?.pause()
+            }
+        }
+    }
+
     private val playerListener = object : Player.Listener {
 
         override fun onPlaybackStateChanged(state: Int) {
             updateDuration()
             persistStateImmediate()
+            if (state == Player.STATE_IDLE && exoPlayer?.playWhenReady == false) {
+                Log.d(TAG, "Player is idle and not playing, stopping service")
+                stopSelf()
+            }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -136,6 +168,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onCreate() {
+        Log.d(TAG, "onCreate")
         // Promote to foreground immediately so the system does not kill us
         // before Media3 posts a playback notification.
         startForeground(NOTIFICATION_ID, createIdleNotification())
@@ -176,6 +209,10 @@ class PlaybackService : MediaSessionService() {
 
             restoreState()
             collectPlaybackSettings()
+
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            audioManager.registerAudioDeviceCallback(audioDeviceCallback, Handler(Looper.getMainLooper()))
+            Log.d(TAG, "AudioDeviceCallback registered")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize playback service", e)
             stopSelf()
@@ -187,18 +224,25 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(TAG, "onStartCommand: action=${intent?.action}, flags=$flags, startId=$startId")
         if (intent?.action == AudioBecomingNoisyReceiver.ACTION_PAUSE) {
+            Log.d(TAG, "Received ACTION_PAUSE, calling exoPlayer.pause()")
             exoPlayer?.pause()
         }
         return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onDestroy() {
+        Log.d(TAG, "onDestroy")
         stopEndOfTrackMonitor()
         settingsJob?.cancel()
         fadeManager?.cancel()
 
-        persistStateBlocking()
+        persistStateAsync()
+
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
+        Log.d(TAG, "AudioDeviceCallback unregistered")
 
         mediaSession?.let { removeSession(it) }
         mediaSession?.release()
@@ -213,12 +257,13 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        Log.d(TAG, "onTaskRemoved")
         val player = exoPlayer ?: run {
             stopSelf()
             return
         }
         if (!player.playWhenReady || player.playbackState == Player.STATE_ENDED) {
-            persistStateBlocking()
+            persistStateAsync()
             stopSelf()
         }
     }
@@ -323,8 +368,14 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    private fun persistStateBlocking() {
-        runBlocking(serviceScope.coroutineContext) {
+    /**
+     * Fires a best-effort state persist without blocking the caller thread.
+     * Used in lifecycle callbacks (onTaskRemoved/onDestroy) where blocking
+     * the main thread causes ANRs.
+     */
+    private fun persistStateAsync() {
+        if (!serviceScope.isActive) return
+        serviceScope.launch {
             writePlaybackState()
         }
     }

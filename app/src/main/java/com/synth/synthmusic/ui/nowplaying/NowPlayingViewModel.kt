@@ -134,6 +134,11 @@ class NowPlayingViewModel(
                 _uiState.update { it.copy(waveformAmplitudes = amplitudes) }
             }
             .launchIn(viewModelScope)
+
+        // Observe playback queue
+        playbackRepository.currentQueue
+            .onEach { list -> _uiState.update { it.copy(queueSongs = list) } }
+            .launchIn(viewModelScope)
     }
 
     fun onEvent(event: NowPlayingEvent) {
@@ -209,6 +214,18 @@ class NowPlayingViewModel(
             val song = _uiState.value.song ?: return@launch
             writeArtworkUseCase.removeArtwork(song)
         }
+    }
+
+    fun playQueueItem(index: Int) {
+        playbackRepository.playQueueItem(index)
+    }
+
+    fun removeFromQueue(index: Int) {
+        playbackRepository.removeFromQueue(index)
+    }
+
+    fun clearQueue() {
+        playbackRepository.clearQueue()
     }
 
     private fun buildAudioQualityLabel(song: com.synth.synthmusic.domain.model.Song?): String {

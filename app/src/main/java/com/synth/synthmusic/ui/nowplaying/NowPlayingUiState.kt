@@ -19,5 +19,6 @@ data class NowPlayingUiState(
     val playbackPitch: Float = 1.0f,
     val audioSessionId: Int = 0,
     val hasRecordAudioPermission: Boolean = false,
-    val audioQualityLabel: String = ""
+    val audioQualityLabel: String = "",
+    val queueSongs: List<Song> = emptyList()
 )

@@ -53,17 +53,18 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.synth.synthmusic.R
+import com.synth.synthmusic.domain.model.CollectionType
+import com.synth.synthmusic.domain.model.RecentlyPlayedCollection
 import com.synth.synthmusic.ui.components.CollectionCard
 import com.synth.synthmusic.ui.components.CollectionCardStyle
 import com.synth.synthmusic.ui.components.SongList
 import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
 import com.synth.synthmusic.ui.library.components.ArtistListItem
-import com.synth.synthmusic.ui.library.components.SongListItem
 import com.synth.synthmusic.ui.share.ShareSongSheet
 import org.koin.androidx.compose.koinViewModel
 
 /**
- * Main library screen with tabs for Queue, Artists, Genres, and Search.
+ * Main library screen with tabs for Home, Artists, Genres, and Search.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -172,72 +173,12 @@ fun LibraryScreen(
             }
             Box(modifier = Modifier.fillMaxSize()) {
                 when (uiState.selectedTab) {
-                    LibraryTab.Queue -> {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(vertical = 8.dp)
-                        ) {
-                            if (uiState.recentCollections.isNotEmpty()) {
-                                item {
-                                    SectionHeader(title = "Recently Played")
-                                }
-                                item {
-                                    LazyRow(
-                                        contentPadding = PaddingValues(horizontal = 16.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                        modifier = Modifier.padding(bottom = 8.dp)
-                                    ) {
-                                        itemsIndexed(
-                                            uiState.recentCollections,
-                                            key = { _, collection -> collection.id }
-                                        ) { _, collection ->
-                                            CollectionCard(
-                                                imageModel = collection.artworkUri,
-                                                title = collection.name,
-                                                style = CollectionCardStyle.Compact,
-                                                onClick = {
-                                                    when (collection.type) {
-                                                        com.synth.synthmusic.domain.model.CollectionType.ALBUM ->
-                                                            onNavigateToAlbumDetail(collection.name, collection.extra ?: "")
-                                                        com.synth.synthmusic.domain.model.CollectionType.ARTIST ->
-                                                            onNavigateToArtistDetail(collection.name)
-                                                        com.synth.synthmusic.domain.model.CollectionType.PLAYLIST ->
-                                                            onNavigateToPlaylistDetail(collection.identifier.toLong())
-                                                    }
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (uiState.queueSongs.isNotEmpty()) {
-                                item {
-                                    SectionHeader(
-                                        title = "Queue",
-                                        actionLabel = "Clear",
-                                        onAction = { viewModel.onEvent(LibraryEvent.ClearQueue) }
-                                    )
-                                }
-                                itemsIndexed(
-                                    items = uiState.queueSongs,
-                                    key = { _, song -> song.id }
-                                ) { index, song ->
-                                    SongListItem(
-                                        song = song,
-                                        onClick = { viewModel.playQueueItem(index) },
-                                        onNavigateToSongInfo = onNavigateToSongInfo,
-                                        onNavigateToEditMetadata = onNavigateToEditMetadata,
-                                        onAddToPlaylist = { selectedSongForPlaylist = it },
-                                        onPlayNext = { viewModel.playNext(it) },
-                                        onAddToQueue = { viewModel.addToQueue(it) },
-                                        onShare = { selectedSongForShare = it },
-                                        isCurrent = song.id == playback.currentSongId
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    LibraryTab.Home -> HomeTab(
+                        recentCollections = uiState.recentCollections,
+                        onNavigateToAlbumDetail = onNavigateToAlbumDetail,
+                        onNavigateToArtistDetail = onNavigateToArtistDetail,
+                        onNavigateToPlaylistDetail = onNavigateToPlaylistDetail
+                    )
 
                     LibraryTab.Artists -> ArtistsTab(
                         artists = uiState.artists,
@@ -275,12 +216,111 @@ fun LibraryScreen(
     }
 
     selectedSongForShare?.let { songId ->
-        val song = uiState.queueSongs.find { it.id == songId }
-            ?: uiState.searchResults.find { it.id == songId }
+        val song = uiState.searchResults.find { it.id == songId }
         ShareSongSheet(
             song = song,
             onDismiss = { selectedSongForShare = null }
         )
+    }
+}
+
+@Composable
+private fun HomeTab(
+    recentCollections: List<RecentlyPlayedCollection>,
+    onNavigateToAlbumDetail: (String, String) -> Unit,
+    onNavigateToArtistDetail: (String) -> Unit,
+    onNavigateToPlaylistDetail: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val grouped = remember(recentCollections) {
+        recentCollections.groupBy { it.type }
+    }
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(vertical = 8.dp)
+    ) {
+        grouped[CollectionType.ARTIST]?.let { artists ->
+            item {
+                SectionHeader(title = "Recent Artists")
+            }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    itemsIndexed(
+                        items = artists,
+                        key = { _, collection -> collection.id }
+                    ) { _, collection ->
+                        CollectionCard(
+                            imageModel = collection.artworkUri,
+                            title = collection.name,
+                            style = CollectionCardStyle.Compact,
+                            onClick = { onNavigateToArtistDetail(collection.name) }
+                        )
+                    }
+                }
+            }
+        }
+
+        grouped[CollectionType.ALBUM]?.let { albums ->
+            item {
+                SectionHeader(title = "Recent Albums")
+            }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    itemsIndexed(
+                        items = albums,
+                        key = { _, collection -> collection.id }
+                    ) { _, collection ->
+                        CollectionCard(
+                            imageModel = collection.artworkUri,
+                            title = collection.name,
+                            style = CollectionCardStyle.Compact,
+                            onClick = {
+                                onNavigateToAlbumDetail(
+                                    collection.name,
+                                    collection.extra ?: ""
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        grouped[CollectionType.PLAYLIST]?.let { playlists ->
+            item {
+                SectionHeader(title = "Recent Playlists")
+            }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    itemsIndexed(
+                        items = playlists,
+                        key = { _, collection -> collection.id }
+                    ) { _, collection ->
+                        CollectionCard(
+                            imageModel = collection.artworkUri,
+                            title = collection.name,
+                            style = CollectionCardStyle.Compact,
+                            onClick = {
+                                onNavigateToPlaylistDetail(collection.identifier.toLong())
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
