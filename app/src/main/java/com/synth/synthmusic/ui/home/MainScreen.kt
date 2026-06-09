@@ -57,16 +57,21 @@ fun MainScreen(
 
             1 -> PlaylistsScreen(
                 onNavigateToPlaylistDetail = onNavigateToPlaylistDetail,
+                onNavigateToSettings = onNavigateToSettings,
                 modifier = Modifier.fillMaxSize()
             )
 
-            2 -> AiScreen(modifier = Modifier.fillMaxSize())
+            2 -> AiScreen(
+                onNavigateToSettings = onNavigateToSettings,
+                modifier = Modifier.fillMaxSize()
+            )
 
             3 -> SearchScreen(
                 onNavigateToSongInfo = onNavigateToSongInfo,
                 onNavigateToEditMetadata = onNavigateToEditMetadata,
                 onNavigateToAlbumDetail = onNavigateToAlbumDetail,
                 onNavigateToArtistDetail = onNavigateToArtistDetail,
+                onNavigateToSettings = onNavigateToSettings,
                 modifier = Modifier.fillMaxSize()
             )
         }
