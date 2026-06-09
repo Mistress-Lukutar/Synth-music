@@ -81,6 +81,9 @@ dependencies {
     // JAudioTagger (metadata / ReplayGain)
     implementation(libs.jaudiotagger)
 
+    // MaterialKolor — tone-based Material 3 palette generation
+    implementation(libs.material.kolor)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockito.core)
