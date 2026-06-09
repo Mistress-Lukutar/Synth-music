@@ -5,7 +5,5 @@ package com.synth.synthmusic.ui.library
  */
 sealed class LibraryEvent {
     data class SelectTab(val tab: LibraryTab) : LibraryEvent()
-    data object ScanLibrary : LibraryEvent()
     data class PlaySong(val songId: String) : LibraryEvent()
-    data class SearchQueryChanged(val query: String) : LibraryEvent()
 }

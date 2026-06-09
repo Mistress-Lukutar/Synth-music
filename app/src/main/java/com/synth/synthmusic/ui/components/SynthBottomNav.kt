@@ -4,7 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -41,7 +41,7 @@ fun SynthBottomNav(
         BottomNavItem("Home", Icons.Default.Home),
         BottomNavItem("Playlists", Icons.AutoMirrored.Default.PlaylistPlay),
         BottomNavItem("Ai", Icons.Default.AutoAwesome),
-        BottomNavItem("Settings", Icons.Default.Settings)
+        BottomNavItem("Search", Icons.Default.Search)
     )
 
     NavigationBar(
