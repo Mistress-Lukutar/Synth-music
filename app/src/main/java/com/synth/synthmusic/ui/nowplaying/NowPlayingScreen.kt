@@ -31,12 +31,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import android.content.res.Configuration
+import androidx.compose.runtime.mutableFloatStateOf
 import com.synth.synthmusic.ui.theme.SynthMusicTheme
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
@@ -61,6 +64,8 @@ import java.util.Locale
  * Stateless content composable for the Now Playing screen.
  *
  * @param uiState Current UI state including song metadata and playback info.
+ * @param artworkCenterY Vertical center of the disc in window coordinates, used to align the background artwork.
+ * @param onArtworkCenterMeasured Callback invoked when the disc center is measured.
  * @param onNavigateBack Callback to collapse the player.
  * @param onNavigateToVisualizer Callback to open the visualizer screen.
  * @param onToggleFavorite Callback to toggle the favorite status of the current song.
@@ -81,6 +86,8 @@ import java.util.Locale
 @Composable
 fun NowPlayingContent(
     uiState: NowPlayingUiState,
+    artworkCenterY: Float,
+    onArtworkCenterMeasured: (Float) -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToVisualizer: () -> Unit,
     onToggleFavorite: () -> Unit,
@@ -100,7 +107,10 @@ fun NowPlayingContent(
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         // Background layer
-        BlurredArtworkBackground(artworkUri = uiState.song?.artworkUri)
+        BlurredArtworkBackground(
+            artworkUri = uiState.song?.artworkUri,
+            artworkCenterY = artworkCenterY
+        )
 
         // Content layer
         Column(
@@ -138,7 +148,11 @@ fun NowPlayingContent(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .weight(1f)
+                    .onGloballyPositioned { coordinates ->
+                        val bounds = coordinates.boundsInWindow()
+                        onArtworkCenterMeasured(bounds.top + bounds.height / 2f)
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 val context = LocalContext.current
@@ -304,9 +318,12 @@ fun NowPlayingScreen(
     var showLyrics by remember { mutableStateOf(false) }
     var showSpeedSheet by remember { mutableStateOf(false) }
     var showQueue by remember { mutableStateOf(false) }
+    var artworkCenterY by remember { mutableFloatStateOf(0f) }
 
     NowPlayingContent(
         uiState = uiState,
+        artworkCenterY = artworkCenterY,
+        onArtworkCenterMeasured = { artworkCenterY = it },
         onNavigateBack = onNavigateBack,
         onNavigateToVisualizer = onNavigateToVisualizer,
         onToggleFavorite = { viewModel.onEvent(NowPlayingEvent.ToggleFavorite) },
@@ -417,6 +434,8 @@ private fun NowPlayingContentPreview() {
                 hasRecordAudioPermission = false,
                 audioQualityLabel = "320 kbps"
             ),
+            artworkCenterY = 0f,
+            onArtworkCenterMeasured = {},
             onNavigateBack = {},
             onNavigateToVisualizer = {},
             onToggleFavorite = {},

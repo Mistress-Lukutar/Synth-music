@@ -84,6 +84,9 @@ dependencies {
     // MaterialKolor — tone-based Material 3 palette generation
     implementation(libs.material.kolor)
 
+    // Palette — extract cover colors for the vinyl glow / border gradient
+    implementation(libs.androidx.palette.ktx)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockito.core)

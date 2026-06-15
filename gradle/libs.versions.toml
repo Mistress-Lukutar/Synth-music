@@ -19,6 +19,7 @@ koin = "4.2.1"
 jaudiotagger = "3.0.1"
 ksp = "2.3.7"
 materialKolor = "2.1.1"
+palette = "1.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -71,6 +72,10 @@ koin-compose = { group = "io.insert-koin", name = "koin-androidx-compose", versi
 # JAudioTagger (metadata / ReplayGain)
 jaudiotagger = { group = "net.jthink", name = "jaudiotagger", version.ref = "jaudiotagger" }
 material-kolor = { group = "com.materialkolor", name = "material-kolor", version.ref = "materialKolor" }
+
+# Palette (cover color extraction)
+androidx-palette-ktx = { group = "androidx.palette", name = "palette-ktx", version.ref = "palette" }
+
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 
 [plugins]
