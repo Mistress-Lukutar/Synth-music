@@ -122,6 +122,14 @@ class NowPlayingViewModel(
             }
             .launchIn(viewModelScope)
 
+        // Observe audio session id independently so the visualizer is wired up
+        // as soon as ExoPlayer reports a session id.
+        playbackRepository.audioSessionId
+            .onEach { sessionId ->
+                _uiState.update { it.copy(audioSessionId = sessionId) }
+            }
+            .launchIn(viewModelScope)
+
         // Load waveform when song changes; cancel previous generation on rapid skips
         playbackRepository.playbackState
             .map { it.currentSongId }

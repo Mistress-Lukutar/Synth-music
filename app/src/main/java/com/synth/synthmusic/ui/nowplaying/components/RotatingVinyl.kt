@@ -1,6 +1,5 @@
 package com.synth.synthmusic.ui.nowplaying.components
 
-import android.content.Context
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -12,10 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,73 +27,16 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.drawable.toBitmap
-import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
-import coil.imageLoader
-import coil.request.ErrorResult
 import coil.request.ImageRequest
-import coil.request.SuccessResult
 import com.synth.synthmusic.R
 import com.synth.synthmusic.ui.theme.SynthMusicTheme
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.withContext
 
 private val VinylGlowWidth = 4.dp
 private val VinylBorderWidth = 2.dp
 private val VinylArtworkPadding = 8.dp
 private val VinylInnerRimWidth = 2.dp
-
-/**
- * Extracts a small palette from the given artwork URI.
- *
- * The result is returned on a best-effort basis; if the image cannot be loaded
- * or no colors can be extracted an empty list is returned and the caller should
- * fall back to the theme accent colors.
- */
-private suspend fun extractCoverColors(context: Context, artworkUri: String?): List<Color> =
-    withContext(Dispatchers.IO) {
-        val request = ImageRequest.Builder(context)
-            .data(artworkUri)
-            .placeholder(R.drawable.ic_placeholder_artwork)
-            .error(R.drawable.ic_placeholder_artwork)
-            .allowHardware(false)
-            .build()
-
-        val drawable = try {
-            when (val result = context.imageLoader.execute(request)) {
-                is SuccessResult -> result.drawable
-                is ErrorResult -> result.drawable
-            }
-        } catch (_: Exception) {
-            null
-        } ?: return@withContext emptyList()
-
-        val bitmap = drawable.toBitmap()
-        val palette = Palette.from(bitmap).generate()
-
-        listOfNotNull(
-            palette.vibrantSwatch,
-            palette.lightVibrantSwatch,
-            palette.darkVibrantSwatch,
-            palette.mutedSwatch
-        )
-            .map { Color(it.rgb) }
-            .ifEmpty { emptyList() }
-    }
-
-@Composable
-private fun rememberCoverColors(artworkUri: String?): List<Color> {
-    val context = LocalContext.current
-    var colors by remember(artworkUri) { mutableStateOf(emptyList<Color>()) }
-
-    LaunchedEffect(artworkUri) {
-        colors = extractCoverColors(context, artworkUri)
-    }
-
-    return colors
-}
 
 /**
  * A circular artwork disc styled like a vinyl record.
@@ -111,13 +50,16 @@ private fun rememberCoverColors(artworkUri: String?): List<Color> {
  * @param isPlaying Whether the disc should animate rotation.
  * @param modifier Modifier for layout.
  * @param size Diameter of the disc.
+ * @param coverColors Optional pre-extracted cover palette. When empty the disc
+ *        extracts the palette itself.
  */
 @Composable
 fun RotatingVinyl(
     artworkUri: String?,
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
-    size: Dp = 280.dp
+    size: Dp = 280.dp,
+    coverColors: List<Color> = emptyList()
 ) {
     val context = LocalContext.current
     val imageRequest = remember(artworkUri) {
@@ -128,13 +70,13 @@ fun RotatingVinyl(
             .build()
     }
 
-    val coverColors = rememberCoverColors(artworkUri)
+    val resolvedCoverColors = coverColors.takeIf { it.isNotEmpty() } ?: rememberCoverColors(artworkUri)
     val fallbackColors = listOf(
         MaterialTheme.colorScheme.primary,
         MaterialTheme.colorScheme.tertiary
     )
-    val gradientColors = remember(coverColors) {
-        coverColors.ifEmpty { fallbackColors }
+    val gradientColors = remember(resolvedCoverColors) {
+        resolvedCoverColors.ifEmpty { fallbackColors }
     }
 
     val rotation = remember { Animatable(0f) }

@@ -116,9 +116,19 @@ class PlaybackRepository(
             }
         }
 
-        override fun onAudioSessionIdChanged(audioSessionId: Int) {
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
             _audioSessionId.value = audioSessionId
         }
+    }
+
+    /**
+     * Allows the service to report the ExoPlayer audio session id directly.
+     *
+     * This is a fallback because the [MediaController] wrapper may dispatch
+     * [Player.Listener.onAudioSessionIdChanged] unreliably.
+     */
+    fun setAudioSessionId(audioSessionId: Int) {
+        _audioSessionId.value = audioSessionId
     }
 
     /**

@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -41,13 +42,18 @@ import androidx.core.content.ContextCompat
 import android.content.res.Configuration
 import androidx.compose.runtime.mutableFloatStateOf
 import com.synth.synthmusic.ui.theme.SynthMusicTheme
+import kotlin.math.sin
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.ui.nowplaying.components.ActionBar
 import com.synth.synthmusic.ui.nowplaying.components.AudioQualityLabel
-import com.synth.synthmusic.ui.nowplaying.components.AudioVisualizerRing
 import com.synth.synthmusic.ui.nowplaying.components.BlurredArtworkBackground
+import com.synth.synthmusic.ui.nowplaying.components.DefaultBarCount
+import com.synth.synthmusic.ui.nowplaying.components.DefaultSegmentsPerBar
+import com.synth.synthmusic.ui.nowplaying.components.RadialBarVisualizer
+import com.synth.synthmusic.ui.nowplaying.components.RadialBarVisualizerCanvas
+import com.synth.synthmusic.ui.nowplaying.components.rememberCoverColors
 import com.synth.synthmusic.ui.nowplaying.components.LyricsBottomSheet
 import com.synth.synthmusic.ui.nowplaying.components.PlaybackControls
 import com.synth.synthmusic.ui.nowplaying.components.PlaybackSpeedBottomSheet
@@ -172,19 +178,40 @@ fun NowPlayingContent(
                     }
                 }
 
-                AudioVisualizerRing(
-                    audioSessionId = uiState.audioSessionId,
-                    isPlaying = uiState.isPlaying,
-                    dotColor = MaterialTheme.colorScheme.primary,
-                    hasRecordAudioPermission = uiState.hasRecordAudioPermission,
-                    modifier = Modifier
-                        .fillMaxWidth(0.92f)
-                        .aspectRatio(1f)
-                )
+                val coverColors = rememberCoverColors(uiState.song?.artworkUri)
+                val isPreview = LocalInspectionMode.current
+
+                if (isPreview) {
+                    val previewBarHeights = remember {
+                        List(DefaultBarCount) { index ->
+                            val wave = (sin(index * 0.35f) + 1f)
+                            0.05f + wave * 0.7f
+                        }
+                    }
+                    RadialBarVisualizerCanvas(
+                        barHeights = previewBarHeights,
+                        barColors = coverColors,
+                        segmentsPerBar = DefaultSegmentsPerBar,
+                        modifier = Modifier
+                            .fillMaxWidth(1f)
+                            .aspectRatio(1f)
+                    )
+                } else {
+                    RadialBarVisualizer(
+                        audioSessionId = uiState.audioSessionId,
+                        isPlaying = uiState.isPlaying,
+                        hasRecordAudioPermission = uiState.hasRecordAudioPermission,
+                        barColors = coverColors,
+                        modifier = Modifier
+                            .fillMaxWidth(1f)
+                            .aspectRatio(1f)
+                    )
+                }
                 RotatingVinyl(
                     artworkUri = uiState.song?.artworkUri,
                     isPlaying = uiState.isPlaying,
-                    size = 280.dp
+                    size = 230.dp,
+                    coverColors = coverColors
                 )
             }
 
