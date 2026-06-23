@@ -18,7 +18,6 @@ class SettingsRepositoryImpl(
 
     override suspend fun updateTheme(theme: ThemeMode) = dataStore.updateTheme(theme)
     override suspend fun updateAccentColor(color: AccentColor) = dataStore.updateAccentColor(color)
-    override suspend fun updateFadeDuration(durationMs: Int) = dataStore.updateFadeDuration(durationMs)
     override suspend fun updateAutoRescan(enabled: Boolean) = dataStore.updateAutoRescan(enabled)
     override suspend fun updatePlaybackSpeed(speed: Float) = dataStore.updatePlaybackSpeed(speed)
     override suspend fun updatePlaybackPitch(pitch: Float) = dataStore.updatePlaybackPitch(pitch)

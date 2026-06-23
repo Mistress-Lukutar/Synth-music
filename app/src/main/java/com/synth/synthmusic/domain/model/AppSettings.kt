@@ -9,19 +9,14 @@ enum class AccentColor { YELLOW, GREEN, BLUE, RED, PURPLE, ORANGE }
  *
  * @param theme UI theme mode.
  * @param accentColor Accent color for the app.
- * @param fadeDurationMs Fade duration in milliseconds for crossfade, fade in, and fade out (0 = disabled).
  * @param autoRescan Whether to automatically rescan library on startup.
- */
-/**
- * AppSettings class.
- */
-/**
- * AppSettings class.
+ * @param playbackSpeed Current playback speed.
+ * @param playbackPitch Current playback pitch.
+ * @param skipSilence Whether to skip silent parts during playback.
  */
 data class AppSettings(
     val theme: ThemeMode = ThemeMode.DARK,
     val accentColor: AccentColor = AccentColor.YELLOW,
-    val fadeDurationMs: Int = 300,
     val autoRescan: Boolean = true,
     val playbackSpeed: Float = 1.0f,
     val playbackPitch: Float = 1.0f,

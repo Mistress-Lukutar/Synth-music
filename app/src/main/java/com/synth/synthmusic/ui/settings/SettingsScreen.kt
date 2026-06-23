@@ -41,7 +41,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -167,35 +166,6 @@ fun SettingsScreen(
                 title = "Playback",
                 icon = Icons.Default.GraphicEq
             ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Crossfade",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Text(
-                            text = "${settings.fadeDurationMs} ms",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    Slider(
-                        value = settings.fadeDurationMs.toFloat(),
-                        onValueChange = { viewModel.updateFadeDuration(it.toInt()) },
-                        valueRange = 0f..2000f,
-                        steps = 19,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                HorizontalDivider()
-
                 SettingSwitch(
                     title = "Skip Silence",
                     description = "Automatically skip silent parts during playback",

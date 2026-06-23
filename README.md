@@ -10,7 +10,7 @@ An offline-first Android music player for local MP3 files. Built with modern And
 - **Queue Management** — Add, remove, reorder, play-next, and shuffle queue items
 - **Audio Effects** — 5-band equalizer, bass boost, loudness enhancement, and virtualizer
 - **ReplayGain Support** — Automatic per-track volume adjustment based on ID3 ReplayGain tags
-- **Crossfade & Gapless** — Seamless transitions between tracks
+- **Gapless Playback** — Seamless transitions between tracks
 - **Playback Speed & Pitch** — Independent speed and pitch control with skip silence
 - **Audio Visualizer** — Real-time FFT frequency-bar visualization
 - **Waveform Seekbar** — Amplitude envelope seekbar for the currently playing track

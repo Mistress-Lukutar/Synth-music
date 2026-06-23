@@ -185,7 +185,7 @@ Type-safe routes are defined in `navigation/Routes.kt` using Kotlin Serializatio
 
 - Backed by `preferencesDataStore(name = "settings")`.
 - Exposes `Flow<AppSettings>`.
-- Contains theme, accent color, fade duration, replay gain, EQ, playback speed/pitch, etc.
+- Contains theme, accent color, replay gain, EQ, playback speed/pitch, etc.
 
 ---
 
@@ -195,7 +195,7 @@ Type-safe routes are defined in `navigation/Routes.kt` using Kotlin Serializatio
 
 - Wraps Media3 `ExoPlayer`.
 - Manages queue as `StateFlow<List<Song>>`.
-- Handles play/pause, seek, shuffle, repeat, fade (volume ramping), playback speed/pitch.
+- Handles play/pause, seek, shuffle, repeat, playback speed/pitch.
 - Reads `ReplayGain` tags and adjusts `player.volume` per track.
 - Persists playback state (current song, position, queue, repeat/shuffle) to Room `PlaybackStateEntity` for process-death recovery.
 - **Do not release the player in `ViewModel.onCleared()`** — lifecycle is managed by `PlaybackService`.
