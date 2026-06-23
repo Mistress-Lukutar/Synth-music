@@ -40,10 +40,6 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.updateAccentColor(color) }
     }
 
-    fun updateFadeDuration(durationMs: Int) {
-        viewModelScope.launch { settingsRepository.updateFadeDuration(durationMs) }
-    }
-
     fun updateAutoRescan(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.updateAutoRescan(enabled) }
     }

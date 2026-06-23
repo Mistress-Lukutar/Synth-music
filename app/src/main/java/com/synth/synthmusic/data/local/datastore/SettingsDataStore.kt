@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
-import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.synth.synthmusic.domain.model.AccentColor
@@ -20,12 +19,6 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 /**
  * DataStore-backed storage for user application settings.
  */
-/**
- * SettingsDataStore class.
- */
-/**
- * SettingsDataStore class.
- */
 class SettingsDataStore(
     private val context: Context
 ) {
@@ -34,7 +27,6 @@ class SettingsDataStore(
     companion object {
         private val THEME = stringPreferencesKey("theme")
         private val ACCENT_COLOR = stringPreferencesKey("accent_color")
-        private val FADE_DURATION = intPreferencesKey("fade_duration_ms")
         private val AUTO_RESCAN = booleanPreferencesKey("auto_rescan")
         private val PLAYBACK_SPEED = floatPreferencesKey("playback_speed")
         private val PLAYBACK_PITCH = floatPreferencesKey("playback_pitch")
@@ -45,7 +37,6 @@ class SettingsDataStore(
         AppSettings(
             theme = prefs[THEME]?.let { ThemeMode.valueOf(it) } ?: ThemeMode.DARK,
             accentColor = prefs[ACCENT_COLOR]?.let { AccentColor.valueOf(it) } ?: AccentColor.YELLOW,
-            fadeDurationMs = prefs[FADE_DURATION] ?: 300,
             autoRescan = prefs[AUTO_RESCAN] ?: true,
             playbackSpeed = prefs[PLAYBACK_SPEED] ?: 1.0f,
             playbackPitch = prefs[PLAYBACK_PITCH] ?: 1.0f,
@@ -59,10 +50,6 @@ class SettingsDataStore(
 
     suspend fun updateAccentColor(color: AccentColor) {
         dataStore.edit { it[ACCENT_COLOR] = color.name }
-    }
-
-    suspend fun updateFadeDuration(durationMs: Int) {
-        dataStore.edit { it[FADE_DURATION] = durationMs }
     }
 
     suspend fun updateAutoRescan(enabled: Boolean) {

@@ -15,7 +15,6 @@ import androidx.core.net.toUri
 import androidx.core.app.NotificationCompat
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
-import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -30,7 +29,6 @@ import com.synth.synthmusic.data.local.database.PlaybackQueueItemEntity
 import com.synth.synthmusic.data.local.database.PlaybackStateEntity
 import com.synth.synthmusic.data.local.database.SongDao
 import com.synth.synthmusic.data.local.database.toDomain
-import com.synth.synthmusic.data.media.AudioFadeManager
 import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
@@ -41,7 +39,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
 import java.util.concurrent.atomic.AtomicBoolean
@@ -56,7 +53,7 @@ import kotlin.math.pow
  *
  * The service handles:
  * - Audio focus and wake lock.
- * - Volume fade in/out via [AudioFadeManager].
+ * - Per-track volume adjustment based on ReplayGain tags.
  * - Process-death recovery (restore queue and position from Room).
  * - Persisting playback state on graceful shutdown.
  */
@@ -66,20 +63,17 @@ class PlaybackService : MediaSessionService() {
     private val songDao: SongDao by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val playlistRepository: PlaylistRepository by inject()
+    private val playbackRepository: com.synth.synthmusic.data.media.PlaybackRepository by inject()
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private var exoPlayer: ExoPlayer? = null
     private var mediaSession: MediaSession? = null
-    private var fadeManager: AudioFadeManager? = null
 
     private val isRestoring = AtomicBoolean(false)
     private var currentTargetVolume: Float = 1f
-    private var fadeDurationMs: Int = 300
 
-    private var positionUpdateJob: Job? = null
     private var settingsJob: Job? = null
-    private var endOfTrackJob: Job? = null
 
     /**
      * Pauses playback when a headset or Bluetooth device is disconnected.
@@ -116,16 +110,7 @@ class PlaybackService : MediaSessionService() {
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) {
-                exoPlayer?.let { player ->
-                    if (fadeDurationMs > 0) {
-                        fadeManager?.fadeIn(fadeDurationMs.toLong(), currentTargetVolume)
-                    } else {
-                        player.volume = currentTargetVolume
-                    }
-                }
-                startEndOfTrackMonitor()
-            } else {
-                stopEndOfTrackMonitor()
+                exoPlayer?.volume = currentTargetVolume
             }
             persistStateImmediate()
         }
@@ -136,16 +121,6 @@ class PlaybackService : MediaSessionService() {
                 updateTargetVolume(songId)
                 serviceScope.launch { playlistRepository.recordPlayAndSyncPlaylists(songId) }
             }
-            exoPlayer?.let { player ->
-                if (player.isPlaying && fadeDurationMs > 0) {
-                    player.volume = 0f
-                    fadeManager?.fadeIn(fadeDurationMs.toLong(), currentTargetVolume)
-                } else {
-                    player.volume = currentTargetVolume
-                }
-            }
-            stopEndOfTrackMonitor()
-            startEndOfTrackMonitor()
             persistStateImmediate()
         }
 
@@ -164,6 +139,11 @@ class PlaybackService : MediaSessionService() {
 
         override fun onRepeatModeChanged(repeatMode: Int) {
             persistStateImmediate()
+        }
+
+        override fun onAudioSessionIdChanged(audioSessionId: Int) {
+            Log.d(TAG, "ExoPlayer audioSessionId changed: $audioSessionId")
+            playbackRepository.setAudioSessionId(audioSessionId)
         }
     }
 
@@ -187,7 +167,6 @@ class PlaybackService : MediaSessionService() {
         try {
             val player = createPlayer()
             exoPlayer = player
-            fadeManager = AudioFadeManager(player, serviceScope)
             player.addListener(playerListener)
 
             val sessionActivityPendingIntent = PendingIntent.getActivity(
@@ -197,8 +176,7 @@ class PlaybackService : MediaSessionService() {
                 PendingIntent.FLAG_IMMUTABLE
             )
 
-            val sessionPlayer = FadeAwarePlayer(player)
-            mediaSession = MediaSession.Builder(this, sessionPlayer)
+            mediaSession = MediaSession.Builder(this, player)
                 .setSessionActivity(sessionActivityPendingIntent)
                 .build()
 
@@ -234,9 +212,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         Log.d(TAG, "onDestroy")
-        stopEndOfTrackMonitor()
         settingsJob?.cancel()
-        fadeManager?.cancel()
 
         persistStateAsync()
 
@@ -301,17 +277,6 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun updateTargetVolume(songId: String) {
-        val queueItem = exoPlayer?.currentTimeline?.let { timeline ->
-            val window = androidx.media3.common.Timeline.Window()
-            val currentIndex = exoPlayer?.currentMediaItemIndex ?: -1
-            if (currentIndex in 0 until timeline.windowCount) {
-                timeline.getWindow(currentIndex, window)
-                window.mediaItem.mediaId == songId
-            } else false
-        } ?: false
-
-        // Fallback: we cannot easily map MediaItem -> Song here without DB access.
-        // We look up the song in the DB for ReplayGain.
         serviceScope.launch {
             val song = songDao.getById(songId)
             val gainDb = song?.replayGainTrackDb
@@ -319,6 +284,9 @@ class PlaybackService : MediaSessionService() {
                 10.0.pow(gainDb / 20.0).toFloat().coerceIn(0f, 1f)
             } else {
                 1f
+            }
+            withContext(Dispatchers.Main) {
+                exoPlayer?.volume = currentTargetVolume
             }
         }
     }
@@ -339,7 +307,6 @@ class PlaybackService : MediaSessionService() {
                         player.skipSilenceEnabled = settings.skipSilence
                     }
                 }
-                fadeDurationMs = settings.fadeDurationMs.coerceIn(0, 2000)
             }
         }
     }
@@ -466,190 +433,6 @@ class PlaybackService : MediaSessionService() {
                 isRestoring.set(false)
             }
         }
-    }
-
-    // endregion
-
-    // region End-of-track monitor
-
-    private fun startEndOfTrackMonitor() {
-        stopEndOfTrackMonitor()
-        if (fadeDurationMs <= 0) return
-        endOfTrackJob = serviceScope.launch(Dispatchers.Main) {
-            while (isActive) {
-                exoPlayer?.let { player ->
-                    if (player.isPlaying && player.duration > 0) {
-                        val remaining = player.duration - player.currentPosition
-                        val fm = fadeManager
-                        if (remaining <= fadeDurationMs && fm != null && !fm.isFading && player.volume > 0f) {
-                            fm.fadeOut(fadeDurationMs.toLong())
-                        }
-                    }
-                }
-                delay(100)
-            }
-        }
-    }
-
-    private fun stopEndOfTrackMonitor() {
-        endOfTrackJob?.cancel()
-        endOfTrackJob = null
-    }
-
-    // endregion
-
-    // region FadeAwarePlayer
-
-    /**
-     * A [ForwardingPlayer] that intercepts **all** playback and queue-mutating
-     * commands so that:
-     *
-     * 1. Volume fade is applied consistently for play / pause / skip / seek.
-     * 2. External controllers cannot bypass the service's queue logic.
-     */
-    private inner class FadeAwarePlayer(
-        player: ExoPlayer
-    ) : ForwardingPlayer(player) {
-
-        override fun play() {
-            wrappedPlayer.play()
-            if (fadeDurationMs > 0) {
-                fadeManager?.fadeIn(fadeDurationMs.toLong(), currentTargetVolume)
-            } else {
-                wrappedPlayer.volume = currentTargetVolume
-            }
-        }
-
-        override fun pause() {
-            if (fadeDurationMs > 0 && wrappedPlayer.isPlaying) {
-                fadeManager?.fadeOut(fadeDurationMs.toLong()) {
-                    wrappedPlayer.pause()
-                }
-            } else {
-                wrappedPlayer.pause()
-            }
-        }
-
-        override fun stop() {
-            if (fadeDurationMs > 0 && wrappedPlayer.isPlaying) {
-                fadeManager?.fadeOut(fadeDurationMs.toLong()) {
-                    wrappedPlayer.stop()
-                }
-            } else {
-                wrappedPlayer.stop()
-            }
-        }
-
-        override fun seekTo(positionMs: Long) {
-            if (fadeDurationMs > 0) {
-                fadeManager?.fadeOut(fadeDurationMs.toLong()) {
-                    wrappedPlayer.seekTo(positionMs)
-                    fadeManager?.fadeIn(fadeDurationMs.toLong(), currentTargetVolume)
-                }
-            } else {
-                wrappedPlayer.seekTo(positionMs)
-            }
-        }
-
-        override fun seekToNext() {
-            if (fadeDurationMs > 0) {
-                fadeManager?.fadeOut(fadeDurationMs.toLong()) {
-                    wrappedPlayer.seekToNext()
-                }
-            } else {
-                wrappedPlayer.seekToNext()
-            }
-        }
-
-        override fun seekToPrevious() {
-            if (fadeDurationMs > 0) {
-                fadeManager?.fadeOut(fadeDurationMs.toLong()) {
-                    wrappedPlayer.seekToPrevious()
-                }
-            } else {
-                wrappedPlayer.seekToPrevious()
-            }
-        }
-
-        override fun seekToNextMediaItem() {
-            seekToNext()
-        }
-
-        override fun seekToPreviousMediaItem() {
-            seekToPrevious()
-        }
-
-        override fun setPlayWhenReady(playWhenReady: Boolean) {
-            if (playWhenReady) {
-                play()
-            } else {
-                pause()
-            }
-        }
-
-        override fun setShuffleModeEnabled(shuffleModeEnabled: Boolean) {
-            wrappedPlayer.shuffleModeEnabled = shuffleModeEnabled
-        }
-
-        override fun setRepeatMode(repeatMode: Int) {
-            wrappedPlayer.repeatMode = repeatMode
-        }
-
-        // region Queue overrides — ensure external controllers cannot bypass service logic
-
-        override fun setMediaItem(mediaItem: MediaItem) {
-            wrappedPlayer.setMediaItem(mediaItem)
-        }
-
-        override fun setMediaItem(mediaItem: MediaItem, startPositionMs: Long) {
-            wrappedPlayer.setMediaItem(mediaItem, startPositionMs)
-        }
-
-        override fun setMediaItems(mediaItems: MutableList<MediaItem>) {
-            wrappedPlayer.setMediaItems(mediaItems)
-        }
-
-        override fun setMediaItems(mediaItems: MutableList<MediaItem>, resetPosition: Boolean) {
-            wrappedPlayer.setMediaItems(mediaItems, resetPosition)
-        }
-
-        override fun setMediaItems(
-            mediaItems: MutableList<MediaItem>,
-            startIndex: Int,
-            startPositionMs: Long
-        ) {
-            wrappedPlayer.setMediaItems(mediaItems, startIndex, startPositionMs)
-        }
-
-        override fun addMediaItem(mediaItem: MediaItem) {
-            wrappedPlayer.addMediaItem(mediaItem)
-        }
-
-        override fun addMediaItem(index: Int, mediaItem: MediaItem) {
-            wrappedPlayer.addMediaItem(index, mediaItem)
-        }
-
-        override fun addMediaItems(mediaItems: MutableList<MediaItem>) {
-            wrappedPlayer.addMediaItems(mediaItems)
-        }
-
-        override fun addMediaItems(index: Int, mediaItems: MutableList<MediaItem>) {
-            wrappedPlayer.addMediaItems(index, mediaItems)
-        }
-
-        override fun removeMediaItem(index: Int) {
-            wrappedPlayer.removeMediaItem(index)
-        }
-
-        override fun moveMediaItem(currentIndex: Int, newIndex: Int) {
-            wrappedPlayer.moveMediaItem(currentIndex, newIndex)
-        }
-
-        override fun clearMediaItems() {
-            wrappedPlayer.clearMediaItems()
-        }
-
-        // endregion
     }
 
     // endregion
