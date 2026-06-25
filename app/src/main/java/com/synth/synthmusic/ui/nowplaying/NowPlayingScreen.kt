@@ -54,10 +54,10 @@ import com.synth.synthmusic.ui.nowplaying.components.DefaultSegmentsPerBar
 import com.synth.synthmusic.ui.nowplaying.components.RadialBarVisualizer
 import com.synth.synthmusic.ui.nowplaying.components.RadialBarVisualizerCanvas
 import com.synth.synthmusic.ui.nowplaying.components.rememberCoverColors
-import com.synth.synthmusic.ui.nowplaying.components.LyricsBottomSheet
+import com.synth.synthmusic.ui.nowplaying.components.LyricsDialog
 import com.synth.synthmusic.ui.nowplaying.components.PlaybackControls
 import com.synth.synthmusic.ui.nowplaying.components.PlaybackSpeedBottomSheet
-import com.synth.synthmusic.ui.nowplaying.components.QueueBottomSheet
+import com.synth.synthmusic.ui.nowplaying.components.QueueDialog
 import com.synth.synthmusic.ui.nowplaying.components.RotatingVinyl
 import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
 import com.synth.synthmusic.ui.nowplaying.components.WaveformSlider
@@ -380,7 +380,7 @@ fun NowPlayingScreen(
         )
     }
     if (showLyrics) {
-        LyricsBottomSheet(
+        LyricsDialog(
             song = uiState.song,
             onSave = { viewModel.onEvent(NowPlayingEvent.SaveLyrics(it)) },
             onDismiss = { showLyrics = false }
@@ -396,7 +396,7 @@ fun NowPlayingScreen(
         )
     }
     if (showQueue) {
-        QueueBottomSheet(
+        QueueDialog(
             queue = uiState.queueSongs,
             currentSongId = uiState.song?.id,
             onPlayQueueItem = { viewModel.playQueueItem(it) },
