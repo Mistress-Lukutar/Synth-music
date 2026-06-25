@@ -40,7 +40,6 @@ import com.synth.synthmusic.ui.playlists.PlaylistDetailScreen
 import com.synth.synthmusic.ui.genres.GenreDetailScreen
 import com.synth.synthmusic.ui.settings.SettingsScreen
 import com.synth.synthmusic.ui.splash.SplashScreen
-import com.synth.synthmusic.ui.visualizer.VisualizerScreen
 import org.koin.androidx.compose.koinViewModel
 
 /**
@@ -140,8 +139,7 @@ fun AppNavigation(
 
             composable<NowPlayingRoute> {
                 NowPlayingScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToVisualizer = { navController.navigate(VisualizerRoute) }
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable<GenreDetailRoute> { backStackEntry ->
@@ -197,12 +195,6 @@ fun AppNavigation(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
-            composable<VisualizerRoute> {
-                VisualizerScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
             composable<PlaylistDetailRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<PlaylistDetailRoute>()
                 PlaylistDetailScreen(
@@ -226,13 +218,12 @@ private const val SPLASH_FADE_DURATION = 400
 /**
  * Default enter transition for push navigation.
  *
- * - Modal screens ([NowPlayingRoute], [VisualizerRoute]) slide up from the bottom.
+ * - [NowPlayingRoute] slides up from the bottom.
  * - After [SplashRoute] performs a simple fade.
  * - Everything else slides in horizontally from the right with a fade.
  */
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.enterTransition() = when {
-    targetState.destination.hasRoute<NowPlayingRoute>()
-            || targetState.destination.hasRoute<VisualizerRoute>() ->
+    targetState.destination.hasRoute<NowPlayingRoute>() ->
         slideInVertically(
             animationSpec = tween(MODAL_DURATION, easing = FastOutSlowInEasing),
             initialOffsetY = { it }
@@ -256,8 +247,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.enterTransition() 
  * - Otherwise the current screen slides out slightly to the left while fading.
  */
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.exitTransition() = when {
-    targetState.destination.hasRoute<NowPlayingRoute>()
-            || targetState.destination.hasRoute<VisualizerRoute>() ->
+    targetState.destination.hasRoute<NowPlayingRoute>() ->
         fadeOut(tween(MODAL_DURATION, easing = FastOutSlowInEasing))
 
     targetState.destination.hasRoute<SplashRoute>() ->
@@ -277,8 +267,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.exitTransition() =
  * - Otherwise the previous screen slides in slightly from the left with a fade.
  */
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterTransition() = when {
-    initialState.destination.hasRoute<NowPlayingRoute>()
-            || initialState.destination.hasRoute<VisualizerRoute>() ->
+    initialState.destination.hasRoute<NowPlayingRoute>() ->
         fadeIn(tween(POP_DURATION, easing = FastOutSlowInEasing))
 
     else ->
@@ -295,8 +284,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterTransition
  * - Everything else slides out horizontally to the right while fading.
  */
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitTransition() = when {
-    initialState.destination.hasRoute<NowPlayingRoute>()
-            || initialState.destination.hasRoute<VisualizerRoute>() ->
+    initialState.destination.hasRoute<NowPlayingRoute>() ->
         slideOutVertically(
             animationSpec = tween(POP_DURATION, easing = FastOutSlowInEasing),
             targetOffsetY = { it }

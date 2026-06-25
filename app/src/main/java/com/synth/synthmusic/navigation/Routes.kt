@@ -33,9 +33,6 @@ data class AlbumDetailRoute(val albumTitle: String, val albumArtist: String)
 data class ArtistDetailRoute(val artistName: String)
 
 @Serializable
-object VisualizerRoute
-
-@Serializable
 object SettingsRoute
 
 

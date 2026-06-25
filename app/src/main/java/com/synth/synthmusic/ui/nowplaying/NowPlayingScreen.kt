@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -59,6 +59,7 @@ import com.synth.synthmusic.ui.nowplaying.components.PlaybackControls
 import com.synth.synthmusic.ui.nowplaying.components.PlaybackSpeedBottomSheet
 import com.synth.synthmusic.ui.nowplaying.components.QueueBottomSheet
 import com.synth.synthmusic.ui.nowplaying.components.RotatingVinyl
+import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
 import com.synth.synthmusic.ui.nowplaying.components.WaveformSlider
 import com.synth.synthmusic.ui.playback.PlaybackViewModel
 import com.synth.synthmusic.ui.share.ShareSongSheet
@@ -73,8 +74,8 @@ import java.util.Locale
  * @param artworkCenterY Vertical center of the disc in window coordinates, used to align the background artwork.
  * @param onArtworkCenterMeasured Callback invoked when the disc center is measured.
  * @param onNavigateBack Callback to collapse the player.
- * @param onNavigateToVisualizer Callback to open the visualizer screen.
  * @param onToggleFavorite Callback to toggle the favorite status of the current song.
+ * @param onAddToPlaylist Callback to add the current song to a playlist.
  * @param onToggleShuffle Callback to toggle shuffle mode.
  * @param onCycleRepeat Callback to cycle through repeat modes.
  * @param onPlayPause Callback to toggle playback.
@@ -95,8 +96,8 @@ fun NowPlayingContent(
     artworkCenterY: Float,
     onArtworkCenterMeasured: (Float) -> Unit,
     onNavigateBack: () -> Unit,
-    onNavigateToVisualizer: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onAddToPlaylist: () -> Unit,
     onToggleShuffle: () -> Unit,
     onCycleRepeat: () -> Unit,
     onPlayPause: () -> Unit,
@@ -251,10 +252,10 @@ fun NowPlayingContent(
                     )
                 }
 
-                IconButton(onClick = onShowQueue) {
+                IconButton(onClick = onAddToPlaylist) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.QueueMusic,
-                        contentDescription = "Queue",
+                        imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
+                        contentDescription = "Add to playlist",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -319,7 +320,7 @@ fun NowPlayingContent(
                 onTimerClick = onShowSleepTimer,
                 onShareClick = onShowShareSheet,
                 onLyricsClick = onShowLyrics,
-                onVisualizerClick = onNavigateToVisualizer
+                onQueueClick = onShowQueue
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -334,7 +335,6 @@ fun NowPlayingContent(
 @Composable
 fun NowPlayingScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToVisualizer: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: NowPlayingViewModel = koinViewModel(),
     playbackViewModel: PlaybackViewModel = koinViewModel()
@@ -345,6 +345,7 @@ fun NowPlayingScreen(
     var showLyrics by remember { mutableStateOf(false) }
     var showSpeedSheet by remember { mutableStateOf(false) }
     var showQueue by remember { mutableStateOf(false) }
+    var showAddToPlaylist by remember { mutableStateOf(false) }
     var artworkCenterY by remember { mutableFloatStateOf(0f) }
 
     NowPlayingContent(
@@ -352,7 +353,6 @@ fun NowPlayingScreen(
         artworkCenterY = artworkCenterY,
         onArtworkCenterMeasured = { artworkCenterY = it },
         onNavigateBack = onNavigateBack,
-        onNavigateToVisualizer = onNavigateToVisualizer,
         onToggleFavorite = { viewModel.onEvent(NowPlayingEvent.ToggleFavorite) },
         onToggleShuffle = { viewModel.onEvent(NowPlayingEvent.ToggleShuffle) },
         onCycleRepeat = { viewModel.onEvent(NowPlayingEvent.CycleRepeat) },
@@ -366,6 +366,7 @@ fun NowPlayingScreen(
         onShowLyrics = { showLyrics = true },
         onShowSpeedSheet = { showSpeedSheet = true },
         onShowQueue = { showQueue = true },
+        onAddToPlaylist = { showAddToPlaylist = true },
         modifier = modifier
     )
 
@@ -402,6 +403,13 @@ fun NowPlayingScreen(
             onRemoveFromQueue = { viewModel.removeFromQueue(it) },
             onClearQueue = { viewModel.clearQueue() },
             onDismiss = { showQueue = false }
+        )
+    }
+    val currentSongId = uiState.song?.id
+    if (showAddToPlaylist && currentSongId != null) {
+        AddToPlaylistDialog(
+            songId = currentSongId,
+            onDismiss = { showAddToPlaylist = false }
         )
     }
 }
@@ -464,8 +472,8 @@ private fun NowPlayingContentPreview() {
             artworkCenterY = 0f,
             onArtworkCenterMeasured = {},
             onNavigateBack = {},
-            onNavigateToVisualizer = {},
             onToggleFavorite = {},
+            onAddToPlaylist = {},
             onToggleShuffle = {},
             onCycleRepeat = {},
             onPlayPause = {},

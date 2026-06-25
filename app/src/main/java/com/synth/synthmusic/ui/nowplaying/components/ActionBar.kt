@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
-import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
@@ -23,12 +23,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * Bottom action bar with Timer, Share, Lyrics, and Visualize actions.
+ * Bottom action bar with Timer, Share, Lyrics, and Queue actions.
  *
  * @param onTimerClick Called when the timer button is pressed.
  * @param onShareClick Called when the share button is pressed.
  * @param onLyricsClick Called when the lyrics button is pressed.
- * @param onVisualizerClick Called when the visualizer button is pressed.
+ * @param onQueueClick Called when the queue button is pressed.
  * @param modifier Modifier for layout.
  */
 @Composable
@@ -36,7 +36,7 @@ fun ActionBar(
     onTimerClick: () -> Unit,
     onShareClick: () -> Unit,
     onLyricsClick: () -> Unit,
-    onVisualizerClick: () -> Unit,
+    onQueueClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -68,9 +68,9 @@ fun ActionBar(
                 onClick = onLyricsClick
             )
             ActionItem(
-                icon = Icons.Default.GraphicEq,
-                label = "Visualize",
-                onClick = onVisualizerClick
+                icon = Icons.AutoMirrored.Filled.QueueMusic,
+                label = "Queue",
+                onClick = onQueueClick
             )
         }
     }
