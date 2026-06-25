@@ -1,28 +1,27 @@
 package com.synth.synthmusic.ui.sleeptimer
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MusicOff
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.synth.synthmusic.ui.components.MenuDialog
+import com.synth.synthmusic.ui.components.MenuOptionRow
 import org.koin.androidx.compose.koinViewModel
 import java.util.Locale
 
 /**
  * Sleep timer dialog with preset duration options.
+ *
+ * Uses the shared [MenuDialog] shell so it matches the other Now Playing menus.
  */
 @Composable
 fun SleepTimerDialog(
@@ -30,7 +29,6 @@ fun SleepTimerDialog(
     viewModel: SleepTimerViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var selected by remember { mutableStateOf<Int?>(null) }
 
     val options = listOf(
         10 to "10 minutes",
@@ -40,73 +38,57 @@ fun SleepTimerDialog(
         60 to "1 hour"
     )
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Sleep Timer") },
-        text = {
-            Column {
-                if (uiState.isActive) {
-                    val minutes = uiState.remainingMs / 1000 / 60
-                    val seconds = (uiState.remainingMs / 1000) % 60
-                    Text(
-                        text = if (uiState.endOfTrack) "Stopping at end of track"
-                        else String.format(Locale.US, "Remaining: %d:%02d", minutes, seconds),
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    TextButton(
-                        onClick = { viewModel.stopTimer() },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Stop Timer")
-                    }
-                } else {
-                    options.forEach { (minutes, label) ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            RadioButton(
-                                selected = selected == minutes,
-                                onClick = { selected = minutes }
-                            )
-                            Text(label)
-                        }
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        RadioButton(
-                            selected = selected == -1,
-                            onClick = { selected = -1 }
-                        )
-                        Text("End of Track")
-                    }
-                }
+    MenuDialog(
+        title = "Sleep Timer",
+        onDismiss = onDismiss
+    ) {
+        if (uiState.isActive) {
+            val statusText = if (uiState.endOfTrack) {
+                "Stopping at end of track"
+            } else {
+                val minutes = uiState.remainingMs / 1000 / 60
+                val seconds = (uiState.remainingMs / 1000) % 60
+                String.format(Locale.US, "Remaining: %d:%02d", minutes, seconds)
             }
-        },
-        confirmButton = {
-            if (!uiState.isActive) {
-                TextButton(
+            Text(
+                text = statusText,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
+            )
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+
+            MenuOptionRow(
+                icon = Icons.Default.Stop,
+                label = "Stop Timer",
+                onClick = {
+                    viewModel.stopTimer()
+                    onDismiss()
+                }
+            )
+        } else {
+            options.forEach { (minutes, label) ->
+                MenuOptionRow(
+                    icon = Icons.Default.Timer,
+                    label = label,
                     onClick = {
-                        when (selected) {
-                            -1 -> viewModel.startEndOfTrackTimer()
-                            null -> {}
-                            else -> viewModel.startTimer(selected!!)
-                        }
+                        viewModel.startTimer(minutes)
                         onDismiss()
-                    },
-                    enabled = selected != null
-                ) {
-                    Text("Start")
+                    }
+                )
+            }
+            MenuOptionRow(
+                icon = Icons.Default.MusicOff,
+                label = "End of Track",
+                onClick = {
+                    viewModel.startEndOfTrackTimer()
+                    onDismiss()
                 }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+            )
         }
-    )
+    }
 }
