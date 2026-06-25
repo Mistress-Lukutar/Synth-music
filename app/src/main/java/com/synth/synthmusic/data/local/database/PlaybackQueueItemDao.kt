@@ -6,7 +6,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 
 /**
- * DAO for the transient playback queue persisted across process death.
+ * DAO for the active (display) playback queue persisted across process death.
  */
 @Dao
 interface PlaybackQueueItemDao {

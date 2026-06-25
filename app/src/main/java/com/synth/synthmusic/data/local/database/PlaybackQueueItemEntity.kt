@@ -5,10 +5,11 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /**
- * Represents a single item in the current playback queue.
+ * Represents a single item in the active (display) playback queue.
  *
- * Stored as a normalized table so that queue order is guaranteed
- * and individual items can be updated efficiently.
+ * The active queue reflects the order currently handed to ExoPlayer, which may
+ * be shuffled. It is stored without a stable position id because process-death
+ * recovery only needs the playback order, not runtime identity.
  */
 @Entity(tableName = "playback_queue_items")
 data class PlaybackQueueItemEntity(

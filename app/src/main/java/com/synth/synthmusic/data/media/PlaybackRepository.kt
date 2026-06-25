@@ -10,6 +10,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import com.synth.synthmusic.domain.model.QueueItem
 import com.synth.synthmusic.domain.model.PlaybackState
 import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.domain.repository.SongRepository
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Adapts Media3 [MediaController] into the application's existing [StateFlow]-based
@@ -35,6 +37,15 @@ import kotlinx.coroutines.withContext
  * observe playback state or issue playback commands. It maintains a [MediaController]
  * connection to [PlaybackService] and mirrors the player's state into hot [StateFlow]s
  * so that Jetpack Compose screens can collect them with [collectAsStateWithLifecycle].
+ *
+ * The queue is represented by two internal lists:
+ * - `_originalQueue` — the user-defined order (album/playlist order + append/next operations).
+ * - `_activeQueue` — the order actually handed to ExoPlayer. When shuffle is enabled
+ *   this list is a shuffled view of `_originalQueue`.
+ *
+ * ExoPlayer's built-in shuffle is disabled; shuffle is implemented manually by
+ * rebuilding `_activeQueue`, which guarantees that the on-screen queue matches the
+ * real playback order and that `play next` always inserts right after the current item.
  *
  * @param context application context used to build the [SessionToken].
  * @param songRepository data source for resolving [Song] entities from media IDs.
@@ -54,8 +65,29 @@ class PlaybackRepository(
     private val _playbackState = MutableStateFlow(PlaybackState())
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
 
+    /**
+     * Internal active queue handed to ExoPlayer. When shuffle is on this is a shuffled
+     * view of [_originalQueue]; when shuffle is off the two lists are identical.
+     */
+    private val _activeQueue = MutableStateFlow<List<QueueItem>>(emptyList())
+
+    /**
+     * Internal source-of-truth queue. Preserves the order chosen by the user so that
+     * disabling shuffle can restore the unshuffled view.
+     */
+    private val _originalQueue = MutableStateFlow<List<QueueItem>>(emptyList())
+
+    /**
+     * UI-facing queue. Always reflects the active playback order.
+     */
     private val _currentQueue = MutableStateFlow<List<Song>>(emptyList())
     val currentQueue: StateFlow<List<Song>> = _currentQueue.asStateFlow()
+
+    /**
+     * Exposes the original (unshuffled) queue. Used by [PlaybackService]
+     * for persistence across process death.
+     */
+    val originalQueue: StateFlow<List<QueueItem>> = _originalQueue.asStateFlow()
 
     private val _currentPositionMs = MutableStateFlow(0L)
     val currentPositionMs: StateFlow<Long> = _currentPositionMs.asStateFlow()
@@ -68,6 +100,14 @@ class PlaybackRepository(
 
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
+
+    /**
+     * Generator of stable queue position ids. Starts at 1 and is initialized from
+     * the max persisted id on restore so that new items never collide with restored ones.
+     */
+    private val nextQueueId = AtomicLong(1L)
+
+    private fun generateQueueId(): Long = nextQueueId.getAndIncrement()
 
     /**
      * Listener attached to the connected [MediaController] to pump player events
@@ -109,14 +149,19 @@ class PlaybackRepository(
             // reconcile so that external controllers (e.g. Android Auto) are reflected.
             val controller = mediaController ?: return
             val timelineSize = timeline.windowCount
-            if (timelineSize != _currentQueue.value.size) {
+            if (timelineSize != _activeQueue.value.size) {
                 scope.launch {
                     syncQueueFromTimeline(controller, timeline)
                 }
             }
         }
 
-            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+            // Shuffle is managed manually by rebuilding the active queue. Ignore
+            // ExoPlayer's own shuffle flag changes.
+        }
+
+        override fun onAudioSessionIdChanged(audioSessionId: Int) {
             _audioSessionId.value = audioSessionId
         }
     }
@@ -188,11 +233,12 @@ class PlaybackRepository(
 
     private fun updatePlaybackState() {
         val controller = mediaController ?: return
-        _playbackState.value = PlaybackState(
+        // Shuffle is managed manually by rebuilding the active queue; do not mirror
+        // ExoPlayer's shuffle flag here because it is kept disabled.
+        _playbackState.value = _playbackState.value.copy(
             currentSongId = controller.currentMediaItem?.mediaId,
             isPlaying = controller.isPlaying,
-            repeatMode = controller.repeatMode,
-            shuffleEnabled = controller.shuffleModeEnabled
+            repeatMode = controller.repeatMode
         )
     }
 
@@ -212,15 +258,22 @@ class PlaybackRepository(
             mediaIds.add(window.mediaItem.mediaId)
         }
         if (mediaIds.isEmpty()) {
-            _currentQueue.value = emptyList()
+            setQueues(emptyList(), emptyList())
             return
         }
         val songs = withContext(Dispatchers.IO) {
             songRepository.getSongsByIds(mediaIds)
         }
-        // Preserve timeline order
         val songMap = songs.associateBy { it.id }
-        _currentQueue.value = mediaIds.mapNotNull { songMap[it] }
+        val activeItems = mediaIds.mapNotNull { songMap[it] }
+            .map { QueueItem(generateQueueId(), it) }
+        setQueues(active = activeItems, original = if (_playbackState.value.shuffleEnabled) _originalQueue.value else activeItems)
+    }
+
+    private fun setQueues(active: List<QueueItem>, original: List<QueueItem>) {
+        _activeQueue.value = active
+        _originalQueue.value = original
+        _currentQueue.value = active.map { it.song }
     }
 
     private fun startPositionUpdates() {
@@ -253,9 +306,20 @@ class PlaybackRepository(
      */
     fun playSongs(songs: List<Song>, startIndex: Int = 0) {
         val controller = mediaController ?: return
-        _currentQueue.value = songs
-        val mediaItems = songs.map { it.toMediaItem() }
-        controller.setMediaItems(mediaItems, startIndex, 0L)
+        if (songs.isEmpty()) return
+        val safeStartIndex = startIndex.coerceIn(0, songs.lastIndex)
+
+        val original = songs.map { QueueItem(generateQueueId(), it) }
+        val active = if (_playbackState.value.shuffleEnabled) {
+            buildShuffledQueue(original, original[safeStartIndex].id)
+        } else {
+            original
+        }
+        setQueues(active = active, original = original)
+
+        val mediaItems = active.map { it.toMediaItem() }
+        val exoStartIndex = if (_playbackState.value.shuffleEnabled) 0 else safeStartIndex
+        controller.setMediaItems(mediaItems, exoStartIndex, 0L)
         controller.prepare()
         controller.play()
     }
@@ -268,31 +332,49 @@ class PlaybackRepository(
 
     fun addToQueue(song: Song) {
         val controller = mediaController ?: return
-        _currentQueue.update { it + song }
-        controller.addMediaItem(song.toMediaItem())
+        val item = QueueItem(generateQueueId(), song)
+        _activeQueue.update { it + item }
+        _originalQueue.update { it + item }
+        _currentQueue.value = _activeQueue.value.map { it.song }
+        controller.addMediaItem(item.toMediaItem())
     }
 
     fun playNext(song: Song) {
         val controller = mediaController ?: return
         val currentIndex = controller.currentMediaItemIndex
-        val insertIndex = (currentIndex + 1).coerceAtMost(_currentQueue.value.size)
-        _currentQueue.update { queue ->
+        if (currentIndex !in _activeQueue.value.indices) {
+            // Fallback to end of queue if current index is somehow out of sync.
+            addToQueue(song)
+            return
+        }
+        val item = QueueItem(generateQueueId(), song)
+        val activeInsertIndex = (currentIndex + 1).coerceAtMost(_activeQueue.value.size)
+        _activeQueue.update { queue ->
             val mutable = queue.toMutableList()
-            mutable.add(insertIndex, song)
+            mutable.add(activeInsertIndex, item)
             mutable
         }
-        controller.addMediaItem(insertIndex, song.toMediaItem())
+        val currentActiveId = _activeQueue.value[currentIndex].id
+        val originalCurrentIndex = _originalQueue.value.indexOfFirst { it.id == currentActiveId }
+        val originalInsertIndex = (originalCurrentIndex + 1).coerceAtMost(_originalQueue.value.size)
+        _originalQueue.update { queue ->
+            val mutable = queue.toMutableList()
+            mutable.add(originalInsertIndex, item)
+            mutable
+        }
+        _currentQueue.value = _activeQueue.value.map { it.song }
+        controller.addMediaItem(activeInsertIndex, item.toMediaItem())
     }
 
     fun clearQueue() {
         val controller = mediaController ?: return
-        _currentQueue.value = emptyList()
+        setQueues(emptyList(), emptyList())
         controller.clearMediaItems()
     }
 
     fun moveQueueItem(fromIndex: Int, toIndex: Int) {
         val controller = mediaController ?: return
-        _currentQueue.update { queue ->
+        _activeQueue.update { queue ->
             if (fromIndex !in queue.indices) return@update queue
             val mutable = queue.toMutableList()
             val item = mutable.removeAt(fromIndex)
@@ -300,17 +382,26 @@ class PlaybackRepository(
             mutable.add(newIndex, item)
             mutable
         }
+        _currentQueue.value = _activeQueue.value.map { it.song }
+        if (!_playbackState.value.shuffleEnabled) {
+            _originalQueue.value = _activeQueue.value
+        }
         controller.moveMediaItem(fromIndex, toIndex)
     }
 
     fun removeFromQueue(index: Int) {
         val controller = mediaController ?: return
-        _currentQueue.update { queue ->
+        val removedId = _activeQueue.value.getOrNull(index)?.id ?: return
+        _activeQueue.update { queue ->
             if (index !in queue.indices) return@update queue
             val mutable = queue.toMutableList()
             mutable.removeAt(index)
             mutable
         }
+        _originalQueue.update { queue ->
+            queue.filter { it.id != removedId }
+        }
+        _currentQueue.value = _activeQueue.value.map { it.song }
         controller.removeMediaItem(index)
     }
 
@@ -347,9 +438,30 @@ class PlaybackRepository(
         mediaController?.seekTo(positionMs)
     }
 
+    /**
+     * Toggles shuffle mode by reordering the active queue in place.
+     *
+     * When enabled, the current track stays at its current index and the remaining
+     * tracks are shuffled around it. When disabled, the active queue is restored to
+     * the original order. Reordering uses [MediaController.moveMediaItem] instead of
+     * replacing all media items, so the current track keeps playing without a
+     * codec re-initialization gap.
+     */
     fun setShuffleEnabled(enabled: Boolean) {
         val controller = mediaController ?: return
-        controller.shuffleModeEnabled = enabled
+        val currentIndex = controller.currentMediaItemIndex
+        if (currentIndex !in _activeQueue.value.indices) return
+
+        val targetOrder = if (enabled) {
+            val others = _activeQueue.value.indices.filter { it != currentIndex }.shuffled()
+            listOf(currentIndex) + others
+        } else {
+            _originalQueue.value.map { original ->
+                _activeQueue.value.indexOfFirst { it.id == original.id }
+            }
+        }
+
+        applyQueuePermutation(targetOrder)
         _playbackState.update { it.copy(shuffleEnabled = enabled) }
     }
 
@@ -364,20 +476,70 @@ class PlaybackRepository(
         _playbackState.update { it.copy(repeatMode = next) }
     }
 
+    /**
+     * Restores both queues after process death and initializes the id generator
+     * so that newly added items never collide with restored ones.
+     */
+    fun restoreQueues(activeQueue: List<QueueItem>, originalQueue: List<QueueItem>) {
+        val maxId = (activeQueue + originalQueue).maxOfOrNull { it.id } ?: 0L
+        nextQueueId.set(maxId + 1)
+        setQueues(active = activeQueue, original = originalQueue)
+    }
+
     // endregion
 
-    private fun Song.toMediaItem(): MediaItem = MediaItem.Builder()
-        .setMediaId(id)
-        .setUri(uri)
+    // region Queue helpers
+
+    private fun buildShuffledQueue(queue: List<QueueItem>, currentItemId: Long): List<QueueItem> {
+        val current = queue.find { it.id == currentItemId }
+        if (current == null) return queue.shuffled()
+        val rest = queue.filter { it.id != currentItemId }.shuffled()
+        return listOf(current) + rest
+    }
+
+    /**
+     * Reorders the ExoPlayer timeline and the local [_activeQueue] to match
+     * [targetOrder] without recreating [MediaItem]s.
+     *
+     * [targetOrder] is a permutation of current indices: `targetOrder[i]` is the
+     * index of the item that should end up at position `i`.
+     */
+    private fun applyQueuePermutation(targetOrder: List<Int>) {
+        val controller = mediaController ?: return
+        if (targetOrder.size != _activeQueue.value.size) return
+        if (targetOrder.toSet() != _activeQueue.value.indices.toSet()) return
+
+        val currentOrder = _activeQueue.value.indices.toMutableList()
+
+        for (targetIndex in targetOrder.indices) {
+            val currentIndex = currentOrder.indexOf(targetOrder[targetIndex])
+            if (currentIndex == targetIndex) continue
+
+            controller.moveMediaItem(currentIndex, targetIndex)
+            val moved = currentOrder.removeAt(currentIndex)
+            currentOrder.add(targetIndex, moved)
+        }
+
+        val newActive = targetOrder.map { _activeQueue.value[it] }
+        _activeQueue.value = newActive
+        _currentQueue.value = newActive.map { it.song }
+    }
+
+    private fun QueueItem.toMediaItem(): MediaItem = MediaItem.Builder()
+        .setMediaId(song.id)
+        .setUri(song.uri)
+        .setTag(id)
         .setMediaMetadata(
             androidx.media3.common.MediaMetadata.Builder()
-                .setTitle(title)
-                .setArtist(artist)
-                .setAlbumTitle(album)
-                .setArtworkUri(artworkUri?.toUri())
+                .setTitle(song.title)
+                .setArtist(song.artist)
+                .setAlbumTitle(song.album)
+                .setArtworkUri(song.artworkUri?.toUri())
                 .build()
         )
         .build()
+
+    // endregion
 
     companion object {
         private const val TAG = "PlaybackRepository"

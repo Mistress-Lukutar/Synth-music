@@ -92,7 +92,9 @@ fun QueueBottomSheet(
                 ) {
                     itemsIndexed(
                         items = queue,
-                        key = { _, song -> song.id }
+                        // Use the queue position as the key because the same song
+                        // can appear multiple times in the queue (e.g. play next).
+                        key = { index, _ -> index }
                     ) { index, song ->
                         SongListItem(
                             song = song,
