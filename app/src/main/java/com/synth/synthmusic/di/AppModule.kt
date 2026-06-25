@@ -48,7 +48,13 @@ val appModule = module {
             AppDatabase::class.java,
             "synth_music.db"
         )
-            .addMigrations(AppDatabase.MIGRATION_7_8, AppDatabase.MIGRATION_8_9, AppDatabase.MIGRATION_9_10)
+            .addMigrations(
+                AppDatabase.MIGRATION_7_8,
+                AppDatabase.MIGRATION_8_9,
+                AppDatabase.MIGRATION_9_10,
+                AppDatabase.MIGRATION_10_11,
+                AppDatabase.MIGRATION_11_12
+            )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
@@ -59,6 +65,7 @@ val appModule = module {
     single { get<AppDatabase>().playlistDao() }
     single { get<AppDatabase>().playbackStateDao() }
     single { get<AppDatabase>().playbackQueueItemDao() }
+    single { get<AppDatabase>().playbackOriginalQueueItemDao() }
     single { get<AppDatabase>().waveformDataDao() }
     single { get<AppDatabase>().recentlyPlayedCollectionDao() }
 

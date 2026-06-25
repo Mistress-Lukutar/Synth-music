@@ -11,6 +11,8 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import androidx.core.app.ServiceCompat
+import android.content.pm.ServiceInfo
 import androidx.core.net.toUri
 import androidx.core.app.NotificationCompat
 import androidx.media3.common.AudioAttributes
@@ -25,10 +27,12 @@ import com.synth.synthmusic.MainActivity
 import com.synth.synthmusic.MusicApplication
 import com.synth.synthmusic.R
 import com.synth.synthmusic.data.local.database.AppDatabase
+import com.synth.synthmusic.data.local.database.PlaybackOriginalQueueItemEntity
 import com.synth.synthmusic.data.local.database.PlaybackQueueItemEntity
 import com.synth.synthmusic.data.local.database.PlaybackStateEntity
 import com.synth.synthmusic.data.local.database.SongDao
 import com.synth.synthmusic.data.local.database.toDomain
+import com.synth.synthmusic.domain.model.QueueItem
 import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
@@ -150,8 +154,18 @@ class PlaybackService : MediaSessionService() {
     override fun onCreate() {
         Log.d(TAG, "onCreate")
         // Promote to foreground immediately so the system does not kill us
-        // before Media3 posts a playback notification.
-        startForeground(NOTIFICATION_ID, createIdleNotification())
+        // before Media3 posts a playback notification. ServiceCompat is used
+        // so Android 12+ respects the declared mediaPlayback foreground type.
+        ServiceCompat.startForeground(
+            this,
+            NOTIFICATION_ID,
+            createIdleNotification(),
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+            } else {
+                0
+            }
+        )
 
         setMediaNotificationProvider(
             DefaultMediaNotificationProvider.Builder(this)
@@ -351,7 +365,7 @@ class PlaybackService : MediaSessionService() {
         val player = exoPlayer ?: return
 
         // All player reads must happen on the main thread.
-        val (currentSongId, positionMs, queueMediaIds, repeatMode, shuffleMode) = withContext(Dispatchers.Main) {
+        val (currentSongId, positionMs, activeMediaIds, repeatMode, shuffleMode) = withContext(Dispatchers.Main) {
             val songId = player.currentMediaItem?.mediaId
             val position = player.currentPosition
             val queueSize = player.currentTimeline.windowCount
@@ -365,6 +379,8 @@ class PlaybackService : MediaSessionService() {
         }
 
         withContext(Dispatchers.IO) {
+            val originalQueue = playbackRepository.originalQueue.value
+
             appDatabase.savePlaybackState(
                 PlaybackStateEntity(
                     currentSongId = currentSongId,
@@ -373,8 +389,11 @@ class PlaybackService : MediaSessionService() {
                     repeatMode = repeatMode,
                     shuffleMode = shuffleMode
                 ),
-                queueMediaIds.mapIndexed { index, songId ->
+                activeQueue = activeMediaIds.mapIndexed { index, songId ->
                     PlaybackQueueItemEntity(songId = songId, orderIndex = index)
+                },
+                originalQueue = originalQueue.mapIndexed { index, item ->
+                    PlaybackOriginalQueueItemEntity(songId = item.song.id, orderIndex = index)
                 }
             )
         }
@@ -389,45 +408,60 @@ class PlaybackService : MediaSessionService() {
             isRestoring.set(true)
             try {
                 val saved = appDatabase.playbackStateDao().get() ?: return@launch
-                val queueItems = appDatabase.playbackQueueItemDao().getAllOrdered()
-                val songs = if (queueItems.isNotEmpty()) {
-                    val songMap = queueItems.chunked(999)
-                        .flatMap { chunk ->
-                            songDao.getByIds(chunk.map { it.songId })
+                val activeItems = appDatabase.playbackQueueItemDao().getAllOrdered()
+                val originalItems = appDatabase.playbackOriginalQueueItemDao().getAllOrdered()
+
+                if (activeItems.isEmpty()) {
+                    // Fallback: at least restore the last played song if no queue was saved.
+                    saved.currentSongId?.let { songId ->
+                        val song = songDao.getById(songId)?.toDomain() ?: return@launch
+                        val item = QueueItem(id = 1L, song = song)
+                        playbackRepository.restoreQueues(listOf(item), listOf(item))
+                        withContext(Dispatchers.Main) {
+                            exoPlayer?.setMediaItems(listOf(item.toMediaItem()), 0, saved.positionMs.coerceAtLeast(0))
+                            exoPlayer?.prepare()
+                            exoPlayer?.repeatMode = saved.repeatMode
+                            exoPlayer?.shuffleModeEnabled = false
                         }
-                        .associateBy { it.id }
-                    queueItems.mapNotNull { songMap[it.songId] }
-                } else {
-                    saved.currentSongId?.let { id ->
-                        songDao.getById(id)?.let { listOf(it) } ?: emptyList()
-                    } ?: emptyList()
+                    }
+                    return@launch
                 }
-                if (songs.isEmpty()) return@launch
                 if (!isRestoring.get()) return@launch
 
-                val domainSongs = songs.map { it.toDomain() }
-                val startIndex = domainSongs.indexOfFirst { it.id == saved.currentSongId }
-                    .coerceAtLeast(0)
-                val mediaItems = domainSongs.map { song ->
-                    MediaItem.Builder()
-                        .setMediaId(song.id)
-                        .setUri(song.uri)
-                        .setMediaMetadata(
-                            androidx.media3.common.MediaMetadata.Builder()
-                                .setTitle(song.title)
-                                .setArtist(song.artist)
-                                .setAlbumTitle(song.album)
-                                .setArtworkUri(song.artworkUri?.let { it.toUri() })
-                                .build()
-                        )
-                        .build()
+                val allSongIds = (activeItems.map { it.songId } + originalItems.map { it.songId }).distinct()
+                val songMap = allSongIds.chunked(999)
+                    .flatMap { chunk -> songDao.getByIds(chunk) }
+                    .associateBy { it.id }
+
+                fun buildQueueItem(songId: String, id: Long): QueueItem? {
+                    val song = songMap[songId]?.toDomain() ?: return null
+                    return QueueItem(id = id, song = song)
                 }
 
+                val activeQueue = activeItems.mapIndexedNotNull { index, entity ->
+                    buildQueueItem(entity.songId, index + 1L)
+                }
+                val originalQueue = originalItems.mapIndexedNotNull { index, entity ->
+                    buildQueueItem(entity.songId, index + 1L)
+                }
+                if (activeQueue.isEmpty()) return@launch
+
+                val safeOriginalQueue = originalQueue.ifEmpty { activeQueue }
+                val startIndex = activeQueue.indexOfFirst { it.song.id == saved.currentSongId }
+                    .coerceAtLeast(0)
+
+                playbackRepository.restoreQueues(activeQueue, safeOriginalQueue)
+
                 withContext(Dispatchers.Main) {
-                    exoPlayer?.setMediaItems(mediaItems, startIndex, saved.positionMs.coerceAtLeast(0))
+                    exoPlayer?.setMediaItems(
+                        activeQueue.map { it.toMediaItem() },
+                        startIndex,
+                        saved.positionMs.coerceAtLeast(0)
+                    )
                     exoPlayer?.prepare()
                     exoPlayer?.repeatMode = saved.repeatMode
-                    exoPlayer?.shuffleModeEnabled = saved.shuffleMode
+                    // Shuffle is managed by the active queue order; keep ExoPlayer's flag off.
+                    exoPlayer?.shuffleModeEnabled = false
                 }
             } finally {
                 isRestoring.set(false)
@@ -436,6 +470,20 @@ class PlaybackService : MediaSessionService() {
     }
 
     // endregion
+
+    private fun QueueItem.toMediaItem(): androidx.media3.common.MediaItem =
+        androidx.media3.common.MediaItem.Builder()
+            .setMediaId(song.id)
+            .setUri(song.uri)
+            .setMediaMetadata(
+                androidx.media3.common.MediaMetadata.Builder()
+                    .setTitle(song.title)
+                    .setArtist(song.artist)
+                    .setAlbumTitle(song.album)
+                    .setArtworkUri(song.artworkUri?.let { it.toUri() })
+                    .build()
+            )
+            .build()
 
     private data class Quintuple<A, B, C, D, E>(
         val first: A,
