@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
 import com.synth.synthmusic.ui.library.components.ChangeArtworkDialog
+import com.synth.synthmusic.ui.library.components.GenerateArtworkDialog
 import com.synth.synthmusic.ui.library.components.SongListItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -68,6 +69,7 @@ fun PlaylistDetailScreen(
     val playback by viewModel.playbackState.collectAsStateWithLifecycle()
     var selectedSongForPlaylist by remember { mutableStateOf<String?>(null) }
     var showArtworkDialog by remember { mutableStateOf(false) }
+    var showGenerateDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
@@ -188,9 +190,26 @@ fun PlaylistDetailScreen(
 
     if (showArtworkDialog) {
         ChangeArtworkDialog(
+            artworkUri = playlist?.artworkUri,
+            collectionTitle = playlist?.name ?: "Playlist",
             onDismiss = { showArtworkDialog = false },
             onPick = { pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            onAuto = { viewModel.autoArtwork() },
+            onGenerate = {
+                showArtworkDialog = false
+                showGenerateDialog = true
+            },
             onRemove = { viewModel.updateArtwork(null) }
+        )
+    }
+
+    if (showGenerateDialog) {
+        GenerateArtworkDialog(
+            onGenerate = { config ->
+                viewModel.generateArtwork(config)
+                showGenerateDialog = false
+            },
+            onDismiss = { showGenerateDialog = false }
         )
     }
 

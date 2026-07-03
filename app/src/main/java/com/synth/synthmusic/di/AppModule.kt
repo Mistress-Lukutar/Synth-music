@@ -19,7 +19,9 @@ import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.domain.usecase.CheckRecordAudioPermissionUseCase
 import com.synth.synthmusic.domain.usecase.CheckWritePermissionUseCase
 import com.synth.synthmusic.domain.usecase.ExportPlaylistUseCase
+import com.synth.synthmusic.domain.usecase.GenerateArtworkUseCase
 import com.synth.synthmusic.domain.usecase.ImportPlaylistUseCase
+import com.synth.synthmusic.domain.usecase.LoadArtworkBytesUseCase
 import com.synth.synthmusic.domain.usecase.PlaySongUseCase
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
 import com.synth.synthmusic.domain.usecase.UpdateMetadataUseCase
@@ -101,6 +103,8 @@ val appModule = module {
     single { CheckRecordAudioPermissionUseCase(androidContext()) }
     single { WriteArtworkToMp3UseCase(get(), get()) }
     single { UpdateMetadataUseCase(get(), get()) }
+    single { GenerateArtworkUseCase() }
+    single { LoadArtworkBytesUseCase(androidContext()) }
     single { ExportPlaylistUseCase(androidContext(), get()) }
     single { ImportPlaylistUseCase(androidContext(), get(), get()) }
 
@@ -137,7 +141,9 @@ val appModule = module {
         PlaylistViewModel(
             playlistRepository = get(),
             songRepository = get(),
-            coverCache = get()
+            coverCache = get(),
+            generateArtworkUseCase = get(),
+            loadArtworkBytesUseCase = get()
         )
     }
 
@@ -147,7 +153,9 @@ val appModule = module {
             playlistRepository = get(),
             playbackRepository = get(),
             recentlyPlayedRepository = get(),
-            coverCache = get()
+            coverCache = get(),
+            generateArtworkUseCase = get(),
+            loadArtworkBytesUseCase = get()
         )
     }
 
@@ -159,7 +167,9 @@ val appModule = module {
             songRepository = get(),
             playbackRepository = get(),
             recentlyPlayedRepository = get(),
-            coverCache = get()
+            coverCache = get(),
+            generateArtworkUseCase = get(),
+            loadArtworkBytesUseCase = get()
         )
     }
 
@@ -171,7 +181,9 @@ val appModule = module {
             songRepository = get(),
             playbackRepository = get(),
             recentlyPlayedRepository = get(),
-            coverCache = get()
+            coverCache = get(),
+            generateArtworkUseCase = get(),
+            loadArtworkBytesUseCase = get()
         )
     }
 

@@ -1,5 +1,6 @@
 package com.synth.synthmusic.ui.playlists.components
 
+import android.content.res.Configuration
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,15 +25,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
+import com.synth.synthmusic.domain.model.GeneratedArtworkConfig
 import com.synth.synthmusic.domain.model.Playlist
 import com.synth.synthmusic.ui.components.CollectionCard
 import com.synth.synthmusic.ui.components.CollectionCardStyle
 import com.synth.synthmusic.ui.library.components.ChangeArtworkDialog
-import androidx.compose.ui.tooling.preview.Preview
-import android.content.res.Configuration
+import com.synth.synthmusic.ui.library.components.GenerateArtworkDialog
 import com.synth.synthmusic.ui.theme.SynthMusicTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+
+/**
+ * Actions that can be performed on a playlist's artwork.
+ */
+sealed interface ArtworkAction {
+    data class Picked(val bytes: ByteArray) : ArtworkAction
+    data object Auto : ArtworkAction
+    data class Generated(val config: GeneratedArtworkConfig) : ArtworkAction
+    data object Removed : ArtworkAction
+}
 
 /**
  * Grid card composable for a playlist.
@@ -44,7 +56,7 @@ import kotlinx.coroutines.launch
  * @param onClick Callback invoked when the card is clicked.
  * @param onRename Callback invoked with the new name when renamed.
  * @param onDelete Callback invoked when the delete action is confirmed.
- * @param onChangeArtwork Callback invoked with the picked image bytes, or null to remove.
+ * @param onArtworkAction Callback invoked for artwork changes.
  * @param modifier Modifier for styling.
  */
 @Composable
@@ -53,13 +65,14 @@ fun PlaylistGridCard(
     onClick: () -> Unit,
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
-    onChangeArtwork: (ByteArray?) -> Unit,
+    onArtworkAction: (ArtworkAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showRename by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showArtworkDialog by remember { mutableStateOf(false) }
+    var showGenerateDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val pickMedia = rememberLauncherForActivityResult(
@@ -68,7 +81,9 @@ fun PlaylistGridCard(
         if (uri != null) {
             scope.launch(Dispatchers.IO) {
                 val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                onChangeArtwork(bytes)
+                if (bytes != null) {
+                    onArtworkAction(ArtworkAction.Picked(bytes))
+                }
             }
         }
     }
@@ -155,9 +170,32 @@ fun PlaylistGridCard(
 
     if (showArtworkDialog) {
         ChangeArtworkDialog(
+            artworkUri = playlist.artworkUri,
+            collectionTitle = playlist.name,
             onDismiss = { showArtworkDialog = false },
             onPick = { pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-            onRemove = { onChangeArtwork(null) }
+            onAuto = {
+                showArtworkDialog = false
+                onArtworkAction(ArtworkAction.Auto)
+            },
+            onGenerate = {
+                showArtworkDialog = false
+                showGenerateDialog = true
+            },
+            onRemove = {
+                showArtworkDialog = false
+                onArtworkAction(ArtworkAction.Removed)
+            }
+        )
+    }
+
+    if (showGenerateDialog) {
+        GenerateArtworkDialog(
+            onGenerate = { config ->
+                showGenerateDialog = false
+                onArtworkAction(ArtworkAction.Generated(config))
+            },
+            onDismiss = { showGenerateDialog = false }
         )
     }
 }
@@ -179,7 +217,7 @@ private fun PlaylistGridCardPreview() {
             onClick = {},
             onRename = {},
             onDelete = {},
-            onChangeArtwork = {}
+            onArtworkAction = {}
         )
     }
 }
