@@ -4,6 +4,8 @@ import com.synth.synthmusic.data.local.cover.CoverCache
 import com.synth.synthmusic.data.repository.FakePlaylistRepository
 import com.synth.synthmusic.data.repository.FakeSongRepository
 import com.synth.synthmusic.domain.model.Playlist
+import com.synth.synthmusic.domain.usecase.GenerateArtworkUseCase
+import com.synth.synthmusic.domain.usecase.LoadArtworkBytesUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -30,7 +32,13 @@ class PlaylistViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         repository = FakePlaylistRepository()
-        viewModel = PlaylistViewModel(repository, FakeSongRepository(), mock(CoverCache::class.java))
+        viewModel = PlaylistViewModel(
+            repository,
+            FakeSongRepository(),
+            mock(CoverCache::class.java),
+            mock(GenerateArtworkUseCase::class.java),
+            mock(LoadArtworkBytesUseCase::class.java)
+        )
     }
 
     @After
