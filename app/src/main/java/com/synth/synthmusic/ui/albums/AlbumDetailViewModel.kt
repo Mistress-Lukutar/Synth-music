@@ -1,16 +1,20 @@
 package com.synth.synthmusic.ui.albums
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.synth.synthmusic.data.local.cover.CoverCache
+import com.synth.synthmusic.data.media.PlaybackRepository
 import com.synth.synthmusic.domain.model.Album
-import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.domain.model.CollectionType
+import com.synth.synthmusic.domain.model.GeneratedArtworkConfig
 import com.synth.synthmusic.domain.model.RecentlyPlayedCollection
+import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.domain.repository.AlbumRepository
 import com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository
-import com.synth.synthmusic.data.local.cover.CoverCache
 import com.synth.synthmusic.domain.repository.SongRepository
-import android.net.Uri
+import com.synth.synthmusic.domain.usecase.GenerateArtworkUseCase
+import com.synth.synthmusic.domain.usecase.LoadArtworkBytesUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,9 +31,11 @@ class AlbumDetailViewModel(
     private val albumArtist: String,
     private val albumRepository: AlbumRepository,
     private val songRepository: SongRepository,
-    private val playbackRepository: com.synth.synthmusic.data.media.PlaybackRepository,
+    private val playbackRepository: PlaybackRepository,
     private val recentlyPlayedRepository: RecentlyPlayedCollectionRepository,
-    private val coverCache: CoverCache
+    private val coverCache: CoverCache,
+    private val generateArtworkUseCase: GenerateArtworkUseCase,
+    private val loadArtworkBytesUseCase: LoadArtworkBytesUseCase
 ) : ViewModel() {
 
     private val _album = MutableStateFlow<Album?>(null)
@@ -78,6 +84,9 @@ class AlbumDetailViewModel(
         playbackRepository.addToQueue(song)
     }
 
+    /**
+     * Updates the album artwork with the given image bytes, or removes it when null.
+     */
     fun updateArtwork(bytes: ByteArray?) {
         viewModelScope.launch {
             val album = _album.value ?: return@launch
@@ -88,6 +97,27 @@ class AlbumDetailViewModel(
                 coverCache.deleteCover(CoverCache.Type.ALBUM, album.id)
                 albumRepository.updateAlbumArtwork(album.id, null)
             }
+        }
+    }
+
+    /**
+     * Uses the first track's artwork as the album cover.
+     */
+    fun autoArtwork() {
+        viewModelScope.launch {
+            val firstArtworkUri = _songs.value.firstOrNull()?.artworkUri ?: return@launch
+            val bytes = loadArtworkBytesUseCase(firstArtworkUri) ?: return@launch
+            updateArtwork(bytes)
+        }
+    }
+
+    /**
+     * Generates an abstract cover from [config] and applies it to the album.
+     */
+    fun generateArtwork(config: GeneratedArtworkConfig) {
+        viewModelScope.launch {
+            val bytes = generateArtworkUseCase(config)
+            updateArtwork(bytes)
         }
     }
 

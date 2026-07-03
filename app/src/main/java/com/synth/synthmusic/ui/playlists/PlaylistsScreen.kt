@@ -44,6 +44,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.synth.synthmusic.R
+import com.synth.synthmusic.ui.playlists.components.ArtworkAction
 import com.synth.synthmusic.ui.playlists.components.PlaylistGridCard
 import org.koin.androidx.compose.koinViewModel
 
@@ -110,7 +111,14 @@ fun PlaylistsScreen(
                         onClick = { onNavigateToPlaylistDetail(playlist.id) },
                         onRename = { viewModel.renamePlaylist(playlist.id, it) },
                         onDelete = { viewModel.deletePlaylist(playlist.id) },
-                        onChangeArtwork = { bytes -> viewModel.updateArtwork(playlist.id, bytes) }
+                        onArtworkAction = { action ->
+                            when (action) {
+                                is ArtworkAction.Picked -> viewModel.updateArtwork(playlist.id, action.bytes)
+                                ArtworkAction.Auto -> viewModel.autoArtwork(playlist.id)
+                                is ArtworkAction.Generated -> viewModel.generateArtwork(playlist.id, action.config)
+                                ArtworkAction.Removed -> viewModel.updateArtwork(playlist.id, null)
+                            }
+                        }
                     )
                 }
             }

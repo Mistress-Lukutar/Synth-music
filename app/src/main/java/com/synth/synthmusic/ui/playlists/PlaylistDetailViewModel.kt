@@ -1,16 +1,19 @@
 package com.synth.synthmusic.ui.playlists
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.synth.synthmusic.data.local.cover.CoverCache
 import com.synth.synthmusic.data.media.PlaybackRepository
 import com.synth.synthmusic.domain.model.CollectionType
+import com.synth.synthmusic.domain.model.GeneratedArtworkConfig
 import com.synth.synthmusic.domain.model.Playlist
 import com.synth.synthmusic.domain.model.RecentlyPlayedCollection
 import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.domain.repository.PlaylistRepository
-import com.synth.synthmusic.data.local.cover.CoverCache
 import com.synth.synthmusic.domain.repository.RecentlyPlayedCollectionRepository
-import android.net.Uri
+import com.synth.synthmusic.domain.usecase.GenerateArtworkUseCase
+import com.synth.synthmusic.domain.usecase.LoadArtworkBytesUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,7 +29,9 @@ class PlaylistDetailViewModel(
     private val playlistRepository: PlaylistRepository,
     private val playbackRepository: PlaybackRepository,
     private val recentlyPlayedRepository: RecentlyPlayedCollectionRepository,
-    private val coverCache: CoverCache
+    private val coverCache: CoverCache,
+    private val generateArtworkUseCase: GenerateArtworkUseCase,
+    private val loadArtworkBytesUseCase: LoadArtworkBytesUseCase
 ) : ViewModel() {
 
     private val _playlist = MutableStateFlow<Playlist?>(null)
@@ -105,6 +110,9 @@ class PlaylistDetailViewModel(
         }
     }
 
+    /**
+     * Updates the playlist artwork with the given image bytes, or removes it when null.
+     */
     fun updateArtwork(bytes: ByteArray?) {
         viewModelScope.launch {
             val playlist = _playlist.value ?: return@launch
@@ -115,6 +123,27 @@ class PlaylistDetailViewModel(
                 coverCache.deleteCover(CoverCache.Type.PLAYLIST, playlist.id.toString())
                 playlistRepository.updatePlaylistArtwork(playlist.id, null)
             }
+        }
+    }
+
+    /**
+     * Uses the first track's artwork as the playlist cover.
+     */
+    fun autoArtwork() {
+        viewModelScope.launch {
+            val firstArtworkUri = _songs.value.firstOrNull()?.artworkUri ?: return@launch
+            val bytes = loadArtworkBytesUseCase(firstArtworkUri) ?: return@launch
+            updateArtwork(bytes)
+        }
+    }
+
+    /**
+     * Generates an abstract cover from [config] and applies it to the playlist.
+     */
+    fun generateArtwork(config: GeneratedArtworkConfig) {
+        viewModelScope.launch {
+            val bytes = generateArtworkUseCase(config)
+            updateArtwork(bytes)
         }
     }
 
