@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.synth.synthmusic.ui.theme.SynthMusicTheme
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -57,7 +56,10 @@ private const val Part2EndRatio = 0.8f
 private const val Part3EndRatio = 1.0f
 
 // How much of the accent color is mixed into the bright Part 2 tint.
-private const val BrightTintMix = 0.3f
+private const val BrightTintMix = 0.5f
+
+// How much of the accent color is mixed into the inner and outer ring tints.
+private const val RingTintMix = 0.8f
 
 // How far the bright Part 2 bars can extend beyond their ring bounds.
 // 1.0f fills the ring exactly; values > 1.0f let the bars overlap neighbors.
@@ -73,6 +75,10 @@ private val SegmentGap = 1.dp
  * 1. An inner static ring with a radial transparency gradient.
  * 2. A middle bright ring whose bars pulse with the per-bar energy.
  * 3. An outer animated ring using the original stacked-segment logic.
+ *
+ * All rings are tinted by mixing white with the accent color. The inner and
+ * outer rings use a heavier accent mix, while the middle bright ring uses a
+ * lighter mix so it pops more.
  *
  * Only the first color from [barColors] is used as the accent color; when the
  * list is empty the theme primary color is used.
@@ -332,6 +338,10 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
  * 2. Bright energy ring whose bars scale with per-bar magnitude.
  * 3. Animated stacked-segment ring.
  *
+ * All rings are tinted by mixing white with the saturated accent color. The
+ * inner and outer rings use a heavier accent mix ([RingTintMix]), while the
+ * middle bright ring uses a lighter accent mix ([BrightTintMix]).
+ *
  * @param barHeights Per-bar magnitude values in the range [0, 1].
  * @param barColors Optional palette used to tint the bars. Only the first color
  *        is used; falls back to the theme primary color when empty.
@@ -353,6 +363,7 @@ internal fun RadialBarVisualizerCanvas(
 
     val accentColor = saturateColor(barColors.firstOrNull() ?: themePrimary, SaturationBoost)
     val brightTint = lerpColor(Color.White, accentColor, BrightTintMix)
+    val ringTint = lerpColor(Color.White, accentColor, RingTintMix)
 
     Canvas(modifier = modifier) {
         val center = Offset(size.width / 2f, size.height / 2f)
@@ -373,7 +384,7 @@ internal fun RadialBarVisualizerCanvas(
             segmentsPerBar = segmentsPerBar,
             segmentHeightPx = segmentHeightPx,
             segmentGapPx = segmentGapPx,
-            color = accentColor
+            color = ringTint
         )
 
         drawAnimatedRing(
@@ -384,7 +395,7 @@ internal fun RadialBarVisualizerCanvas(
             segmentsPerBar = segmentsPerBar,
             segmentHeightPx = segmentHeightPx,
             segmentGapPx = segmentGapPx,
-            color = accentColor
+            color = ringTint
         )
 
         drawBrightEnergyRing(
