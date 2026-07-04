@@ -1,6 +1,8 @@
 package com.synth.synthmusic.ui.nowplaying.components
 
+import android.graphics.Bitmap
 import android.graphics.BlurMaskFilter
+import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.media.audiofx.Visualizer
@@ -37,6 +39,8 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.withRotation
 
 internal const val DefaultBarCount = 120
 
@@ -47,10 +51,11 @@ private const val OuterSegmentMaxAlpha = 0.55f
 private const val SaturationBoost = 1.5f
 
 // Glow constants.
-private const val GlowSizeMultiplier = 4f
+private const val GlowSizeMultiplier = 5.5f
 private const val GlowAlpha = 0.5f
-private const val GlowBlurRatio = 8f
 private const val GlowAlphaThreshold = 0.05f
+private const val GlowBitmapScale = 0.5f
+private const val GlowBlurRadiusPx = 15f
 
 // Motion analysis constants.
 private const val AttackFactor = 0.45f
@@ -78,6 +83,23 @@ private const val Part2OverlapFactor = 5f
 
 private val SegmentHeight = 4.dp
 private val SegmentGap = 1.dp
+
+// Reusable offscreen bitmap for glow, keyed by scaled dimensions.
+private val glowBitmapCache = mutableMapOf<Pair<Int, Int>, Bitmap>()
+
+/**
+ * Returns a reusable Bitmap for the glow layer at the requested full-size
+ * dimensions. The bitmap is created at [GlowBitmapScale] resolution and cached
+ * by its scaled size to avoid allocations on every frame.
+ */
+private fun obtainGlowBitmap(fullWidth: Int, fullHeight: Int): Bitmap {
+    val scaledWidth = (fullWidth * GlowBitmapScale).toInt().coerceAtLeast(1)
+    val scaledHeight = (fullHeight * GlowBitmapScale).toInt().coerceAtLeast(1)
+    val key = scaledWidth to scaledHeight
+    return glowBitmapCache.getOrPut(key) {
+        createBitmap(scaledWidth, scaledHeight)
+    }
+}
 
 /**
  * A circular stacked-bar audio visualizer that wraps around the vinyl disc.
@@ -385,6 +407,48 @@ internal fun RadialBarVisualizerCanvas(
         val part2Outer = halfMin * Part2EndRatio
         val part3Outer = halfMin * Part3EndRatio
 
+        // Draw all glow halos into a single lower-resolution offscreen bitmap,
+        // then blur that bitmap once and draw it scaled back to the main canvas.
+        val glowBitmap = obtainGlowBitmap(size.width.toInt(), size.height.toInt())
+        val glowCanvas = Canvas(glowBitmap)
+        glowBitmap.eraseColor(android.graphics.Color.TRANSPARENT)
+        val glowScale = GlowBitmapScale
+
+        drawStaticRing(
+            targetCanvas = glowCanvas,
+            scale = glowScale,
+            center = center,
+            innerRadius = part1Inner,
+            outerRadius = part1Outer,
+            barCount = barCount,
+            segmentsPerBar = segmentsPerBar,
+            segmentHeightPx = segmentHeightPx,
+            segmentGapPx = segmentGapPx,
+            color = ringTint
+        )
+
+        drawAnimatedRing(
+            barHeights = barHeights,
+            targetCanvas = glowCanvas,
+            scale = glowScale,
+            center = center,
+            innerRadius = part2Outer,
+            outerRadius = part3Outer,
+            segmentsPerBar = segmentsPerBar,
+            segmentHeightPx = segmentHeightPx,
+            segmentGapPx = segmentGapPx,
+            color = ringTint
+        )
+
+        drawIntoCanvas { mainCanvas ->
+            mainCanvas.nativeCanvas.drawBitmap(
+                glowBitmap,
+                null,
+                RectF(0f, 0f, size.width, size.height),
+                null
+            )
+        }
+
         // Order matters: Part 2 is drawn last so it can visually overlap
         // Part 1 and Part 3 when its bars grow symmetrically.
         drawStaticRing(
@@ -428,6 +492,8 @@ internal fun RadialBarVisualizerCanvas(
  * to [outerRadius].
  */
 private fun DrawScope.drawStaticRing(
+    targetCanvas: Canvas? = null,
+    scale: Float = 1f,
     center: Offset,
     innerRadius: Float,
     outerRadius: Float,
@@ -456,6 +522,8 @@ private fun DrawScope.drawStaticRing(
             val radius = innerRadius + segmentHeightPx / 2f + segment * spacing
             val alpha = (segment + 1).toFloat() / effectiveSegments
             drawRadialSegment(
+                targetCanvas = targetCanvas,
+                scale = scale,
                 center = center,
                 radius = radius,
                 angleDeg = angleDeg,
@@ -463,8 +531,7 @@ private fun DrawScope.drawStaticRing(
                 height = segmentHeightPx,
                 cornerRadius = cornerRadius,
                 color = color,
-                alpha = alpha,
-                drawGlow = true
+                alpha = alpha
             )
         }
     }
@@ -523,6 +590,8 @@ private fun DrawScope.drawBrightEnergyRing(
  */
 private fun DrawScope.drawAnimatedRing(
     barHeights: List<Float>,
+    targetCanvas: Canvas? = null,
+    scale: Float = 1f,
     center: Offset,
     innerRadius: Float,
     outerRadius: Float,
@@ -560,6 +629,8 @@ private fun DrawScope.drawAnimatedRing(
 
             val radius = innerRadius + segmentHeightPx / 2f + segment * spacing
             drawRadialSegment(
+                targetCanvas = targetCanvas,
+                scale = scale,
                 center = center,
                 radius = radius,
                 angleDeg = angleDeg,
@@ -567,21 +638,21 @@ private fun DrawScope.drawAnimatedRing(
                 height = segmentHeightPx,
                 cornerRadius = cornerRadius,
                 color = color,
-                alpha = alpha,
-                drawGlow = true
+                alpha = alpha
             )
         }
     }
 }
 
 /**
- * Draws a single rounded radial segment with an optional soft glow halo.
- *
- * The glow is rendered first with a blurred round rect so the solid segment
- * drawn on top appears to emit light. It is skipped for very transparent
- * segments to avoid wasting GPU time.
+ * Draws a single rounded radial segment. When [targetCanvas] is provided,
+ * the segment is drawn on that canvas using the given [scale] instead of
+ * the current [DrawScope]. This is used to render the glow layer at a lower
+ * resolution before applying a single blur pass.
  */
 private fun DrawScope.drawRadialSegment(
+    targetCanvas: Canvas? = null,
+    scale: Float = 1f,
     center: Offset,
     radius: Float,
     angleDeg: Float,
@@ -589,22 +660,29 @@ private fun DrawScope.drawRadialSegment(
     height: Float,
     cornerRadius: Float,
     color: Color,
-    alpha: Float,
-    drawGlow: Boolean = false
+    alpha: Float
 ) {
     if (alpha <= 0.01f || width <= 0f || height <= 0f) return
 
-    if (drawGlow && alpha > GlowAlphaThreshold) {
-        drawRadialGlow(
-            center = center,
-            radius = radius,
+    val scaledCenter = center * scale
+    val scaledRadius = radius * scale
+    val scaledWidth = width * scale
+    val scaledHeight = height * scale
+    val scaledCornerRadius = cornerRadius * scale
+
+    if (targetCanvas != null) {
+        drawRadialSegmentOnCanvas(
+            canvas = targetCanvas,
+            center = scaledCenter,
+            radius = scaledRadius,
             angleDeg = angleDeg,
-            width = width,
-            height = height,
-            cornerRadius = cornerRadius,
+            width = scaledWidth,
+            height = scaledHeight,
+            cornerRadius = scaledCornerRadius,
             color = color,
             alpha = alpha
         )
+        return
     }
 
     val topLeft = Offset(center.x - width / 2f, center.y - radius - height / 2f)
@@ -620,9 +698,13 @@ private fun DrawScope.drawRadialSegment(
 }
 
 /**
- * Draws a blurred glow halo behind a radial segment using the same color.
+ * Draws a scaled radial segment onto the offscreen [canvas] used for the glow
+ * layer. A [BlurMaskFilter] is applied to the paint so each segment produces a
+ * soft halo. Rendering at [GlowBitmapScale] resolution keeps the blur cost
+ * much lower than drawing full-size on the main canvas.
  */
-private fun DrawScope.drawRadialGlow(
+private fun drawRadialSegmentOnCanvas(
+    canvas: Canvas,
     center: Offset,
     radius: Float,
     angleDeg: Float,
@@ -632,27 +714,28 @@ private fun DrawScope.drawRadialGlow(
     color: Color,
     alpha: Float
 ) {
+    if (alpha <= GlowAlphaThreshold) return
+
     val glowWidth = width * GlowSizeMultiplier
     val glowHeight = height * GlowSizeMultiplier
     val glowCornerRadius = cornerRadius * GlowSizeMultiplier
     val topLeft = Offset(center.x - glowWidth / 2f, center.y - radius - glowHeight / 2f)
 
-    rotate(degrees = angleDeg, pivot = center) {
-        drawIntoCanvas { canvas ->
-            val paint = Paint().apply {
-                isAntiAlias = true
-                this.color = color.toArgb()
-                this.alpha = (alpha * 255 * GlowAlpha).toInt().coerceIn(0, 255)
-                maskFilter = BlurMaskFilter(width * GlowBlurRatio, BlurMaskFilter.Blur.NORMAL)
-            }
-            val rect = RectF(
-                topLeft.x,
-                topLeft.y,
-                topLeft.x + glowWidth,
-                topLeft.y + glowHeight
-            )
-            canvas.nativeCanvas.drawRoundRect(rect, glowCornerRadius, glowCornerRadius, paint)
-        }
+    val paint = Paint().apply {
+        isAntiAlias = true
+        this.color = color.toArgb()
+        this.alpha = (alpha * 255 * GlowAlpha).toInt().coerceIn(0, 255)
+        maskFilter = BlurMaskFilter(GlowBlurRadiusPx, BlurMaskFilter.Blur.NORMAL)
+    }
+    val rect = RectF(
+        topLeft.x,
+        topLeft.y,
+        topLeft.x + glowWidth,
+        topLeft.y + glowHeight
+    )
+
+    canvas.withRotation(angleDeg, center.x, center.y) {
+        drawRoundRect(rect, glowCornerRadius, glowCornerRadius, paint)
     }
 }
 
