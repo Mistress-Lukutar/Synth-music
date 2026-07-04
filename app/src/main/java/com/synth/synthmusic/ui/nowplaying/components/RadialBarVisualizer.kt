@@ -1,5 +1,8 @@
 package com.synth.synthmusic.ui.nowplaying.components
 
+import android.graphics.BlurMaskFilter
+import android.graphics.Paint
+import android.graphics.RectF
 import android.media.audiofx.Visualizer
 import android.util.Log
 import androidx.compose.foundation.Canvas
@@ -17,7 +20,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
@@ -40,6 +45,12 @@ private const val BarWidthRatio = 0.22f
 private const val FirstSegmentBrightness = 1.0f
 private const val OuterSegmentMaxAlpha = 0.55f
 private const val SaturationBoost = 1.5f
+
+// Glow constants.
+private const val GlowSizeMultiplier = 4f
+private const val GlowAlpha = 0.5f
+private const val GlowBlurRatio = 8f
+private const val GlowAlphaThreshold = 0.05f
 
 // Motion analysis constants.
 private const val AttackFactor = 0.45f
@@ -555,14 +566,19 @@ private fun DrawScope.drawAnimatedRing(
                 height = segmentHeightPx,
                 cornerRadius = cornerRadius,
                 color = color,
-                alpha = alpha
+                alpha = alpha,
+                drawGlow = true
             )
         }
     }
 }
 
 /**
- * Draws a single rounded radial segment with a solid color.
+ * Draws a single rounded radial segment with an optional soft glow halo.
+ *
+ * The glow is rendered first with a blurred round rect so the solid segment
+ * drawn on top appears to emit light. It is skipped for very transparent
+ * segments to avoid wasting GPU time.
  */
 private fun DrawScope.drawRadialSegment(
     center: Offset,
@@ -572,9 +588,23 @@ private fun DrawScope.drawRadialSegment(
     height: Float,
     cornerRadius: Float,
     color: Color,
-    alpha: Float
+    alpha: Float,
+    drawGlow: Boolean = false
 ) {
     if (alpha <= 0.01f || width <= 0f || height <= 0f) return
+
+    if (drawGlow && alpha > GlowAlphaThreshold) {
+        drawRadialGlow(
+            center = center,
+            radius = radius,
+            angleDeg = angleDeg,
+            width = width,
+            height = height,
+            cornerRadius = cornerRadius,
+            color = color,
+            alpha = alpha
+        )
+    }
 
     val topLeft = Offset(center.x - width / 2f, center.y - radius - height / 2f)
 
@@ -585,6 +615,43 @@ private fun DrawScope.drawRadialSegment(
             size = Size(width, height),
             cornerRadius = CornerRadius(cornerRadius, cornerRadius)
         )
+    }
+}
+
+/**
+ * Draws a blurred glow halo behind a radial segment using the same color.
+ */
+private fun DrawScope.drawRadialGlow(
+    center: Offset,
+    radius: Float,
+    angleDeg: Float,
+    width: Float,
+    height: Float,
+    cornerRadius: Float,
+    color: Color,
+    alpha: Float
+) {
+    val glowWidth = width * GlowSizeMultiplier
+    val glowHeight = height * GlowSizeMultiplier
+    val glowCornerRadius = cornerRadius * GlowSizeMultiplier
+    val topLeft = Offset(center.x - glowWidth / 2f, center.y - radius - glowHeight / 2f)
+
+    rotate(degrees = angleDeg, pivot = center) {
+        drawIntoCanvas { canvas ->
+            val paint = Paint().apply {
+                isAntiAlias = true
+                this.color = color.toArgb()
+                this.alpha = (alpha * 255 * GlowAlpha).toInt().coerceIn(0, 255)
+                maskFilter = BlurMaskFilter(width * GlowBlurRatio, BlurMaskFilter.Blur.NORMAL)
+            }
+            val rect = RectF(
+                topLeft.x,
+                topLeft.y,
+                topLeft.x + glowWidth,
+                topLeft.y + glowHeight
+            )
+            canvas.nativeCanvas.drawRoundRect(rect, glowCornerRadius, glowCornerRadius, paint)
+        }
     }
 }
 
