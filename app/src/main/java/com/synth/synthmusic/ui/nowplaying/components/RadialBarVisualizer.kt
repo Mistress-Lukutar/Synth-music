@@ -463,7 +463,8 @@ private fun DrawScope.drawStaticRing(
                 height = segmentHeightPx,
                 cornerRadius = cornerRadius,
                 color = color,
-                alpha = alpha
+                alpha = alpha,
+                drawGlow = true
             )
         }
     }
