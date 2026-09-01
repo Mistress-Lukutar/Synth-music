@@ -48,7 +48,7 @@ fun BlurredArtworkBackground(
     modifier: Modifier = Modifier,
     artworkUri: String?,
     artworkCenterY: Float = 0f,
-    overlayStrength: Float = 0.5f
+    overlayStrength: Float = 0.8f
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
