@@ -435,7 +435,10 @@ class PlaybackRepository(
     }
 
     fun seekTo(positionMs: Long) {
-        mediaController?.seekTo(positionMs)
+        val controller = mediaController ?: return
+        controller.seekTo(positionMs)
+        // Reflect the target position immediately instead of waiting for the next poll.
+        _currentPositionMs.value = positionMs
     }
 
     /**

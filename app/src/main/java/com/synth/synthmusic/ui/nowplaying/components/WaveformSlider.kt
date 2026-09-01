@@ -6,6 +6,11 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -16,9 +21,15 @@ import androidx.compose.ui.unit.dp
 /**
  * A seek-bar styled as a waveform amplitude envelope.
  *
+ * While the user drags, the highlighted portion follows the finger via local state
+ * and the seek is committed on drag end; taps seek immediately. Gesture detectors
+ * are keyed on [Unit] and read the latest callback through [rememberUpdatedState],
+ * because the caller recomposes (and recreates [onSeek]) on every position poll —
+ * keying `pointerInput` on the lambda would cancel in-flight gestures.
+ *
  * @param amplitudes Normalized amplitude list (0..1) representing the track envelope.
  * @param progress Current playback progress in the range 0..1.
- * @param onSeek Callback invoked when user drags or taps to seek.
+ * @param onSeek Callback invoked with the target fraction when the user seeks.
  * @param playedColor Color for the already-played portion.
  * @param remainingColor Color for the remaining portion.
  * @param modifier Modifier for layout.
@@ -32,24 +43,40 @@ fun WaveformSlider(
     playedColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
     remainingColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
 ) {
-    val safeProgress = progress.coerceIn(0f, 1f)
+    val currentOnSeek by rememberUpdatedState(onSeek)
+    var dragProgress by remember { mutableStateOf<Float?>(null) }
+
+    val safeProgress = (dragProgress ?: progress).coerceIn(0f, 1f)
+
+    fun fractionAt(x: Float, width: Int): Float =
+        if (width > 0) (x / width).coerceIn(0f, 1f) else 0f
 
     Canvas(
         modifier = modifier
             .fillMaxWidth()
             .height(48.dp)
-            .pointerInput(amplitudes, onSeek) {
+            .pointerInput(Unit) {
                 detectTapGestures { offset ->
-                    val p = if (size.width > 0f) (offset.x / size.width).coerceIn(0f, 1f) else 0f
-                    onSeek(p)
+                    currentOnSeek(fractionAt(offset.x, size.width))
                 }
             }
-            .pointerInput(amplitudes, onSeek) {
-                detectDragGestures { change, _ ->
-                    val p = if (size.width > 0f) (change.position.x / size.width).coerceIn(0f, 1f) else 0f
-                    onSeek(p)
-                    change.consume()
-                }
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        dragProgress = fractionAt(offset.x, size.width)
+                    },
+                    onDrag = { change, _ ->
+                        dragProgress = fractionAt(change.position.x, size.width)
+                        change.consume()
+                    },
+                    onDragEnd = {
+                        dragProgress?.let { currentOnSeek(it) }
+                        dragProgress = null
+                    },
+                    onDragCancel = {
+                        dragProgress = null
+                    }
+                )
             }
     ) {
         if (amplitudes.isEmpty() || size.width <= 0f || size.height <= 0f) return@Canvas
