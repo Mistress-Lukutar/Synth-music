@@ -41,6 +41,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -201,6 +204,7 @@ class PlaybackService : MediaSessionService() {
 
             restoreState()
             collectPlaybackSettings()
+            collectShuffleChanges()
 
             val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
             audioManager.registerAudioDeviceCallback(audioDeviceCallback, Handler(Looper.getMainLooper()))
@@ -327,6 +331,27 @@ class PlaybackService : MediaSessionService() {
 
     // endregion
 
+    /**
+     * Persists playback state whenever the manual shuffle flag changes.
+     *
+     * Toggling shuffle only reorders the queue via [PlaybackRepository] and fires no
+     * ExoPlayer listener callback, so without this the flag would only reach the
+     * database on the next unrelated player event.
+     */
+    private fun collectShuffleChanges() {
+        serviceScope.launch {
+            playbackRepository.playbackState
+                .map { it.shuffleEnabled }
+                .distinctUntilChanged()
+                .drop(1)
+                .collect {
+                    // Skip the emission produced by state restore; the database
+                    // already holds the restored value at that point.
+                    if (!isRestoring.get()) persistStateImmediate()
+                }
+        }
+    }
+
     // region State persistence
 
     private var persistJob: Job? = null
@@ -375,7 +400,7 @@ class PlaybackService : MediaSessionService() {
                 player.currentTimeline.getWindow(i, window)
                 mediaIds.add(window.mediaItem.mediaId)
             }
-            Quintuple(songId, position, mediaIds, player.repeatMode, player.shuffleModeEnabled)
+            Quintuple(songId, position, mediaIds, player.repeatMode, playbackRepository.playbackState.value.shuffleEnabled)
         }
 
         withContext(Dispatchers.IO) {
@@ -416,7 +441,7 @@ class PlaybackService : MediaSessionService() {
                     saved.currentSongId?.let { songId ->
                         val song = songDao.getById(songId)?.toDomain() ?: return@launch
                         val item = QueueItem(id = 1L, song = song)
-                        playbackRepository.restoreQueues(listOf(item), listOf(item))
+                        playbackRepository.restoreQueues(listOf(item), listOf(item), saved.shuffleMode)
                         withContext(Dispatchers.Main) {
                             exoPlayer?.setMediaItems(listOf(item.toMediaItem()), 0, saved.positionMs.coerceAtLeast(0))
                             exoPlayer?.prepare()
@@ -450,7 +475,7 @@ class PlaybackService : MediaSessionService() {
                 val startIndex = activeQueue.indexOfFirst { it.song.id == saved.currentSongId }
                     .coerceAtLeast(0)
 
-                playbackRepository.restoreQueues(activeQueue, safeOriginalQueue)
+                playbackRepository.restoreQueues(activeQueue, safeOriginalQueue, saved.shuffleMode)
 
                 withContext(Dispatchers.Main) {
                     exoPlayer?.setMediaItems(

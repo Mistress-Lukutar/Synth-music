@@ -479,11 +479,19 @@ class PlaybackRepository(
     /**
      * Restores both queues after process death and initializes the id generator
      * so that newly added items never collide with restored ones.
+     *
+     * The restored [activeQueue] is already in shuffled order when [shuffleEnabled]
+     * was persisted as true, so only the flag needs to be re-applied here.
      */
-    fun restoreQueues(activeQueue: List<QueueItem>, originalQueue: List<QueueItem>) {
+    fun restoreQueues(
+        activeQueue: List<QueueItem>,
+        originalQueue: List<QueueItem>,
+        shuffleEnabled: Boolean = false
+    ) {
         val maxId = (activeQueue + originalQueue).maxOfOrNull { it.id } ?: 0L
         nextQueueId.set(maxId + 1)
         setQueues(active = activeQueue, original = originalQueue)
+        _playbackState.update { it.copy(shuffleEnabled = shuffleEnabled) }
     }
 
     // endregion
