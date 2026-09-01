@@ -20,6 +20,8 @@ data class PlaylistEntity(
     val songCount: Int,
     @ColumnInfo(name = "artwork_uri")
     val artworkUri: String?,
+    @ColumnInfo(name = "has_custom_artwork")
+    val hasCustomArtwork: Boolean = false,
     @ColumnInfo(name = "is_fixed")
     val isFixed: Boolean = false
 )

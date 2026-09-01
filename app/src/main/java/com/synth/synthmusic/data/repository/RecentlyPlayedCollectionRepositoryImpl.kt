@@ -25,7 +25,9 @@ class RecentlyPlayedCollectionRepositoryImpl(
                 existing.copy(
                     name = collection.name,
                     extra = collection.extra,
-                    artworkUri = collection.artworkUri,
+                    // Keep the previously recorded artwork when the caller has none,
+                    // so a later play does not wipe a collection's cover.
+                    artworkUri = collection.artworkUri ?: existing.artworkUri,
                     playedAt = collection.playedAt
                 )
             )

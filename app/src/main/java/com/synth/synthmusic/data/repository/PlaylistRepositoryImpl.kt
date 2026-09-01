@@ -78,7 +78,11 @@ class PlaylistRepositoryImpl(
 
         val currentSongs = playlistDao.observeSongs(playlistId).first()
         val entity = playlistDao.getById(playlistId) ?: return
-        val newArtwork = if (currentSongs.isNotEmpty()) {
+        // A user-picked cover survives song removals; only auto-derived artwork
+        // is recomputed from the remaining first track.
+        val newArtwork = if (entity.hasCustomArtwork) {
+            entity.artworkUri
+        } else if (currentSongs.isNotEmpty()) {
             songDao.getById(currentSongs.first().songId)?.artworkUri
         } else null
 
@@ -95,7 +99,7 @@ class PlaylistRepositoryImpl(
     }
 
     override suspend fun updatePlaylistArtwork(playlistId: Long, artworkUri: String?) {
-        playlistDao.updateArtworkUri(playlistId, artworkUri)
+        playlistDao.updateArtworkUri(playlistId, artworkUri, hasCustomArtwork = artworkUri != null)
     }
 
     override suspend fun ensureFavoritesPlaylist(): Long {
@@ -166,13 +170,18 @@ class PlaylistRepositoryImpl(
             )
         }
 
-        // Update playlist metadata
+        // Update playlist metadata. Custom covers are never overwritten by the
+        // per-play sync; auto artwork follows the newest first track.
         val historyEntity = playlistDao.getById(historyId)
         if (historyEntity != null) {
             playlistDao.update(
                 historyEntity.copy(
                     songCount = historySongs.size,
-                    artworkUri = historySongs.firstOrNull()?.artworkUri ?: historyEntity.artworkUri
+                    artworkUri = if (historyEntity.hasCustomArtwork) {
+                        historyEntity.artworkUri
+                    } else {
+                        historySongs.firstOrNull()?.artworkUri ?: historyEntity.artworkUri
+                    }
                 )
             )
         }
@@ -182,7 +191,11 @@ class PlaylistRepositoryImpl(
             playlistDao.update(
                 topEntity.copy(
                     songCount = topSongs.size,
-                    artworkUri = topSongs.firstOrNull()?.artworkUri ?: topEntity.artworkUri
+                    artworkUri = if (topEntity.hasCustomArtwork) {
+                        topEntity.artworkUri
+                    } else {
+                        topSongs.firstOrNull()?.artworkUri ?: topEntity.artworkUri
+                    }
                 )
             )
         }
@@ -200,5 +213,6 @@ private fun PlaylistEntity.toDomain(): Playlist = Playlist(
     createdAt = createdAt,
     songCount = songCount,
     artworkUri = artworkUri,
+    hasCustomArtwork = hasCustomArtwork,
     isFixed = isFixed
 )
