@@ -87,7 +87,7 @@ class PlaylistDetailViewModel(
                     identifier = pl.id.toString(),
                     name = pl.name,
                     extra = null,
-                    artworkUri = _songs.value.firstOrNull()?.artworkUri,
+                    artworkUri = pl.artworkUri ?: _songs.value.firstOrNull()?.artworkUri,
                     playedAt = System.currentTimeMillis()
                 )
             )

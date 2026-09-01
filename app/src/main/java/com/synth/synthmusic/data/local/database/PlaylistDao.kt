@@ -76,6 +76,6 @@ interface PlaylistDao {
         songs.forEach { insertSong(it) }
     }
 
-    @Query("UPDATE playlists SET artwork_uri = :artworkUri WHERE id = :playlistId")
-    suspend fun updateArtworkUri(playlistId: Long, artworkUri: String?)
+    @Query("UPDATE playlists SET artwork_uri = :artworkUri, has_custom_artwork = :hasCustomArtwork WHERE id = :playlistId")
+    suspend fun updateArtworkUri(playlistId: Long, artworkUri: String?, hasCustomArtwork: Boolean)
 }

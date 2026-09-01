@@ -23,7 +23,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         WaveformDataEntity::class,
         RecentlyPlayedCollectionEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -97,6 +97,12 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 db.execSQL("DROP TABLE playback_queue_items")
                 db.execSQL("ALTER TABLE playback_queue_items_new RENAME TO playback_queue_items")
+            }
+        }
+
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE playlists ADD COLUMN has_custom_artwork INTEGER NOT NULL DEFAULT 0")
             }
         }
     }
