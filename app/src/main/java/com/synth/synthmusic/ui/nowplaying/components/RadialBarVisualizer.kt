@@ -42,34 +42,34 @@ import kotlin.random.Random
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.withRotation
 
-internal const val DefaultBarCount = 120
+internal const val DefaultBarCount = 80
 
-internal const val DefaultSegmentsPerBar = 5
-private const val BarWidthRatio = 0.22f
+internal const val DefaultSegmentsPerBar = 10
+private const val BarWidthRatio = 0.1f
 private const val FirstSegmentBrightness = 1.0f
-private const val OuterSegmentMaxAlpha = 0.55f
+private const val OuterSegmentMaxAlpha = 0.4f
 private const val SaturationBoost = 1.5f
 
 // Glow constants.
-private const val GlowSizeMultiplier = 5.5f
-private const val GlowAlpha = 0.5f
+private const val GlowSizeMultiplier = 6.5f
+private const val GlowAlpha = 0.3f
 private const val GlowAlphaThreshold = 0.05f
 private const val GlowBitmapScale = 0.5f
-private const val GlowBlurRadiusPx = 15f
+private const val GlowBlurRadiusPx = 6f
 
 // Motion analysis constants.
-private const val AttackFactor = 0.45f
-private const val ReleaseFactor = 0.12f
-private const val BeatDecay = 0.80f
-private const val HistoryDecay = 0.995f
-private const val MinBarHeight = 0.06f
-private const val MaxBarHeight = 1.0f
+private const val AttackFactor = 0.80f
+private const val ReleaseFactor = 0.05f
+private const val BeatDecay = 0.9f
+private const val HistoryDecay = 0.992f
+private const val MinBarHeight = 0.0f
+private const val MaxBarHeight = 2.0f
 
 // Ring layout ratios, measured from the canvas center to its edge.
 private const val RingStartRatio = 0.65f
-private const val Part1EndRatio = 0.77f
-private const val Part2EndRatio = 0.8f
-private const val Part3EndRatio = 1.0f
+private const val Part1EndRatio = 0.72f
+private const val Part2EndRatio = 0.74f
+private const val Part3EndRatio = 0.95f
 
 // How much of the accent color is mixed into the bright Part 2 tint.
 private const val BrightTintMix = 0.5f
@@ -81,7 +81,7 @@ private const val RingTintMix = 0.8f
 // 1.0f fills the ring exactly; values > 1.0f let the bars overlap neighbors.
 private const val Part2OverlapFactor = 5f
 
-private val SegmentHeight = 4.dp
+private val SegmentHeight = 2.dp
 private val SegmentGap = 1.dp
 
 // Reusable offscreen bitmap for glow, keyed by scaled dimensions.
@@ -230,8 +230,8 @@ fun RadialBarVisualizer(
 private class AudioMotionAnalyzer(private val barCount: Int) {
     private val lock = Any()
 
-    private val heights = FloatArray(barCount) { MinBarHeight }
-    private val targets = FloatArray(barCount) { MinBarHeight }
+    private val heights = FloatArray(barCount)
+    private val targets = FloatArray(barCount)
     private val historyMax = FloatArray(barCount) { 0.01f }
     private val noisePhase = FloatArray(barCount) { Random.nextFloat() * 1000f }
 
@@ -301,10 +301,10 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
                 val beatEffect = beatPulse * (0.55f + beatWave * 0.45f)
 
                 val target = MinBarHeight +
-                    normalized * 0.35f +
-                    wave * 0.22f +
-                    beatEffect * 0.40f +
-                    noise * 0.12f
+                    normalized * 0.45f +
+                    wave * 0.25f +
+                    beatEffect * 0.55f +
+                    noise * 0.10f
                 targets[i] = target.coerceIn(MinBarHeight, MaxBarHeight)
             }
 
