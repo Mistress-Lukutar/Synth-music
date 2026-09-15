@@ -32,6 +32,7 @@ import com.synth.synthmusic.data.local.database.PlaybackQueueItemEntity
 import com.synth.synthmusic.data.local.database.PlaybackStateEntity
 import com.synth.synthmusic.data.local.database.SongDao
 import com.synth.synthmusic.data.local.database.toDomain
+import com.synth.synthmusic.data.media.ReplayGainReader
 import com.synth.synthmusic.domain.model.QueueItem
 import com.synth.synthmusic.domain.repository.PlaylistRepository
 import com.synth.synthmusic.domain.repository.SettingsRepository
@@ -297,7 +298,16 @@ class PlaybackService : MediaSessionService() {
     private fun updateTargetVolume(songId: String) {
         serviceScope.launch {
             val song = songDao.getById(songId)
-            val gainDb = song?.replayGainTrackDb
+            var gainDb = song?.replayGainTrackDb
+            if (gainDb == null && song != null) {
+                // ReplayGain tags are not read during the library scan; extract them lazily
+                // on first playback and persist so the next lookup is a plain DB read.
+                val values = ReplayGainReader.read(song.path)
+                if (!values.isEmpty) {
+                    songDao.updateReplayGain(songId, values.trackDb, values.albumDb)
+                    gainDb = values.trackDb
+                }
+            }
             currentTargetVolume = if (gainDb != null) {
                 10.0.pow(gainDb / 20.0).toFloat().coerceIn(0f, 1f)
             } else {

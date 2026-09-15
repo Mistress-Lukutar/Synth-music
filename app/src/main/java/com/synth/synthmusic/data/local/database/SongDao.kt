@@ -115,4 +115,7 @@ interface SongDao {
 
     @Query("UPDATE songs SET artwork_uri = :artworkUri WHERE id = :songId")
     suspend fun updateArtworkUri(songId: String, artworkUri: String?)
+
+    @Query("UPDATE songs SET replay_gain_track_db = :trackDb, replay_gain_album_db = :albumDb WHERE id = :songId")
+    suspend fun updateReplayGain(songId: String, trackDb: Float?, albumDb: Float?)
 }
