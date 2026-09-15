@@ -49,12 +49,29 @@ fun FoldersTab(
         items(folders, key = { it }) { folder ->
             FolderCard(
                 title = folder.substringAfterLast("/").ifEmpty { folder },
-                subtitle = folder,
+                subtitle = folder.toDisplayFolderPath(),
                 highlighted = false,
                 onClick = { onFolderClick(folder) }
             )
         }
     }
+}
+
+/**
+ * Strips the leading system storage prefix from an absolute folder path so it
+ * can be shown to the user, e.g. `/storage/emulated/0/Music/A` becomes `Music/A`
+ * and `/storage/0123-4567/Music` becomes `Music`.
+ */
+private fun String.toDisplayFolderPath(): String {
+    val withoutStorage = removePrefix("/storage/")
+    if (withoutStorage == this) return this
+    val withoutEmulated = withoutStorage.removePrefix("emulated/")
+    val remainder = (if (withoutEmulated != withoutStorage) {
+        withoutEmulated
+    } else {
+        withoutStorage
+    }).substringAfter('/', "")
+    return remainder.ifEmpty { this }
 }
 
 /**
