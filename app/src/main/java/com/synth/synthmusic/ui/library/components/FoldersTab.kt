@@ -2,6 +2,7 @@ package com.synth.synthmusic.ui.library.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,45 +17,86 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * Tab displaying a list of unique folders containing music files.
+ * Tab displaying music folders.
  *
- * @param folders List of folder paths.
+ * Shows a fake "All Songs" entry at the top (all tracks, newest first),
+ * followed by the device folders where music files were found.
+ *
+ * @param folders List of folder paths containing music.
+ * @param onAllClick Callback invoked when the "All Songs" entry is selected.
  * @param onFolderClick Callback invoked when a folder is selected.
  * @param modifier Modifier for styling.
  */
 @Composable
 fun FoldersTab(
     folders: List<String>,
+    onAllClick: () -> Unit,
     onFolderClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp)
+        contentPadding = PaddingValues(vertical = 8.dp)
     ) {
+        item(key = "all_songs") {
+            FolderCard(
+                title = "All Songs",
+                subtitle = "All tracks, newest first",
+                highlighted = true,
+                onClick = onAllClick
+            )
+        }
         items(folders, key = { it }) { folder ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                    .clickable { onFolderClick(folder) },
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = folder.substringAfterLast("/").ifEmpty { folder },
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = folder,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
-                }
+            FolderCard(
+                title = folder.substringAfterLast("/").ifEmpty { folder },
+                subtitle = folder,
+                highlighted = false,
+                onClick = { onFolderClick(folder) }
+            )
+        }
+    }
+}
+
+/**
+ * A single folder entry card.
+ *
+ * @param title Display name of the folder.
+ * @param subtitle Folder path or description shown below the title.
+ * @param highlighted Whether the card uses the accent container color.
+ * @param onClick Callback invoked when the card is clicked.
+ */
+@Composable
+private fun FolderCard(
+    title: String,
+    subtitle: String,
+    highlighted: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = if (highlighted) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
             }
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
         }
     }
 }

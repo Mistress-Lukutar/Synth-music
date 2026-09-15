@@ -10,9 +10,10 @@ data class LibraryUiState(
     val selectedTab: LibraryTab = LibraryTab.Home,
     val artists: List<Artist> = emptyList(),
     val genres: List<String> = emptyList(),
+    val folders: List<String> = emptyList(),
     val recentCollections: List<RecentlyPlayedCollection> = emptyList()
 )
 
 enum class LibraryTab {
-    Home, Artists, Genres
+    Home, Artists, Genres, Folders
 }

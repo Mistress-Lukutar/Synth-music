@@ -42,6 +42,10 @@ class LibraryViewModel(
         songRepository.observeGenres()
             .onEach { genres -> _uiState.update { it.copy(genres = genres) } }
             .launchIn(viewModelScope)
+
+        songRepository.observeFolders()
+            .onEach { folders -> _uiState.update { it.copy(folders = folders) } }
+            .launchIn(viewModelScope)
     }
 
     fun onEvent(event: LibraryEvent) {

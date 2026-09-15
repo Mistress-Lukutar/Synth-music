@@ -30,6 +30,7 @@ import androidx.navigation.toRoute
 import com.synth.synthmusic.ui.albums.AlbumDetailScreen
 import com.synth.synthmusic.ui.artists.ArtistDetailScreen
 import com.synth.synthmusic.ui.components.SynthBottomNav
+import com.synth.synthmusic.ui.folders.FolderDetailScreen
 import com.synth.synthmusic.ui.home.MainScreen
 import com.synth.synthmusic.ui.library.components.MiniPlayer
 import com.synth.synthmusic.ui.metadata.EditMetadataScreen
@@ -133,6 +134,9 @@ fun AppNavigation(
                     onNavigateToGenreDetail = { genre ->
                         navController.navigate(GenreDetailRoute(genre))
                     },
+                    onNavigateToFolderDetail = { path, isAll ->
+                        navController.navigate(FolderDetailRoute(path, isAll))
+                    },
                     onNavigateToSettings = { navController.navigate(SettingsRoute) }
                 )
             }
@@ -179,6 +183,17 @@ fun AppNavigation(
                     onNavigateToAlbumDetail = { title, artist ->
                         navController.navigate(AlbumDetailRoute(title, artist))
                     }
+                )
+            }
+            composable<FolderDetailRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<FolderDetailRoute>()
+                FolderDetailScreen(
+                    folderPath = route.folderPath,
+                    isAll = route.isAll,
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
+                    onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
+                    onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) }
                 )
             }
             composable<SongInfoRoute> { backStackEntry ->

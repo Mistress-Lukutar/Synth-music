@@ -42,10 +42,11 @@ import com.synth.synthmusic.domain.model.RecentlyPlayedCollection
 import com.synth.synthmusic.ui.components.CollectionCard
 import com.synth.synthmusic.ui.components.CollectionCardStyle
 import com.synth.synthmusic.ui.library.components.ArtistListItem
+import com.synth.synthmusic.ui.library.components.FoldersTab
 import org.koin.androidx.compose.koinViewModel
 
 /**
- * Main library screen with tabs for Home, Artists, and Genres.
+ * Main library screen with tabs for Home, Artists, Genres, and Folders.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,6 +57,7 @@ fun LibraryScreen(
     onNavigateToAlbumDetail: (String, String) -> Unit,
     onNavigateToArtistDetail: (String) -> Unit,
     onNavigateToGenreDetail: (String) -> Unit,
+    onNavigateToFolderDetail: (String, Boolean) -> Unit,
     onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = koinViewModel()
@@ -118,6 +120,12 @@ fun LibraryScreen(
                     LibraryTab.Genres -> GenresTab(
                         genres = uiState.genres,
                         onGenreClick = onNavigateToGenreDetail
+                    )
+
+                    LibraryTab.Folders -> FoldersTab(
+                        folders = uiState.folders,
+                        onAllClick = { onNavigateToFolderDetail("", true) },
+                        onFolderClick = { onNavigateToFolderDetail(it, false) }
                     )
                 }
             }

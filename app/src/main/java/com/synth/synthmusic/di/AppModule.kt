@@ -33,6 +33,7 @@ import com.synth.synthmusic.ui.playback.PlaybackViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistDetailViewModel
 import com.synth.synthmusic.ui.playlists.PlaylistViewModel
 import com.synth.synthmusic.ui.genres.GenreDetailViewModel
+import com.synth.synthmusic.ui.folders.FolderDetailViewModel
 import com.synth.synthmusic.ui.search.SearchViewModel
 import com.synth.synthmusic.ui.settings.SettingsViewModel
 import com.synth.synthmusic.ui.sleeptimer.SleepTimerViewModel
@@ -217,6 +218,15 @@ val appModule = module {
     viewModel { (genre: String) ->
         GenreDetailViewModel(
             genre = genre,
+            songRepository = get(),
+            playbackRepository = get()
+        )
+    }
+
+    viewModel { (folderPath: String, isAll: Boolean) ->
+        FolderDetailViewModel(
+            folderPath = folderPath,
+            isAll = isAll,
             songRepository = get(),
             playbackRepository = get()
         )

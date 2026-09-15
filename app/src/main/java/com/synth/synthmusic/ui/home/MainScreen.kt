@@ -23,6 +23,7 @@ import com.synth.synthmusic.ui.search.SearchScreen
  * @param onNavigateToAlbumDetail Navigate to album detail.
  * @param onNavigateToArtistDetail Navigate to artist detail.
  * @param onNavigateToGenreDetail Navigate to genre detail.
+ * @param onNavigateToFolderDetail Navigate to folder detail (path, isAll).
  * @param onNavigateToSettings Navigate to settings.
  * @param modifier Modifier for the root container.
  */
@@ -35,6 +36,7 @@ fun MainScreen(
     onNavigateToAlbumDetail: (String, String) -> Unit,
     onNavigateToArtistDetail: (String) -> Unit,
     onNavigateToGenreDetail: (String) -> Unit,
+    onNavigateToFolderDetail: (String, Boolean) -> Unit,
     onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -52,6 +54,7 @@ fun MainScreen(
                 onNavigateToAlbumDetail = onNavigateToAlbumDetail,
                 onNavigateToArtistDetail = onNavigateToArtistDetail,
                 onNavigateToGenreDetail = onNavigateToGenreDetail,
+                onNavigateToFolderDetail = onNavigateToFolderDetail,
                 onNavigateToSettings = onNavigateToSettings
             )
 
