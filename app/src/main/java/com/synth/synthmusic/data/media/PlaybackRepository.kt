@@ -427,11 +427,17 @@ class PlaybackRepository(
     }
 
     fun next() {
-        mediaController?.seekToNext()
+        val controller = mediaController ?: return
+        controller.seekToNext()
+        // Switching tracks while paused should start playback.
+        if (!controller.isPlaying) controller.play()
     }
 
     fun previous() {
-        mediaController?.seekToPrevious()
+        val controller = mediaController ?: return
+        controller.seekToPrevious()
+        // Switching tracks while paused should start playback.
+        if (!controller.isPlaying) controller.play()
     }
 
     fun seekTo(positionMs: Long) {
