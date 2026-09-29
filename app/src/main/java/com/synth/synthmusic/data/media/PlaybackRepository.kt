@@ -117,6 +117,7 @@ class PlaybackRepository(
 
         override fun onPlaybackStateChanged(state: Int) {
             updatePlaybackState()
+            updatePosition()
             updateDuration()
         }
 
@@ -131,7 +132,9 @@ class PlaybackRepository(
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             updatePlaybackState()
-            _currentPositionMs.value = 0L
+            // Read the actual position instead of resetting to 0: a paused track
+            // restored from the saved state starts at its persisted position.
+            updatePosition()
             updateDuration()
         }
 
@@ -140,7 +143,7 @@ class PlaybackRepository(
             newPosition: Player.PositionInfo,
             reason: Int
         ) {
-            _currentPositionMs.value = mediaController?.currentPosition ?: 0L
+            updatePosition()
             updateDuration()
         }
 
@@ -148,6 +151,9 @@ class PlaybackRepository(
             // Lightweight sync: if the timeline size diverges from our local queue,
             // reconcile so that external controllers (e.g. Android Auto) are reflected.
             val controller = mediaController ?: return
+            // The restore path can rebuild the timeline after this controller has
+            // connected; re-sync so a paused restored track is not shown at 0.
+            updatePosition()
             val timelineSize = timeline.windowCount
             if (timelineSize != _activeQueue.value.size) {
                 scope.launch {
@@ -201,6 +207,7 @@ class PlaybackRepository(
 
                         // Initial sync
                         updatePlaybackState()
+                        updatePosition()
                         updateDuration()
                         scope.launch { syncQueueFromTimeline(controller, controller.currentTimeline) }
                         startPositionUpdates()
@@ -245,6 +252,18 @@ class PlaybackRepository(
     private fun updateDuration() {
         val controller = mediaController ?: return
         _currentDurationMs.value = controller.duration.coerceAtLeast(0L)
+    }
+
+    /**
+     * Mirrors the player position into [currentPositionMs].
+     *
+     * The polling loop in [startPositionUpdates] only writes the position while
+     * playing, so paused states (in particular a track restored on app start)
+     * must be synced through this method from player events and on connect.
+     */
+    private fun updatePosition() {
+        val controller = mediaController ?: return
+        _currentPositionMs.value = controller.currentPosition
     }
 
     private suspend fun syncQueueFromTimeline(
