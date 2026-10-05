@@ -36,6 +36,8 @@ class UpdateMetadataUseCase(
      * @param trackNumber optional new track number.
      * @param comment optional new comment.
      * @param lyrics optional new lyrics.
+     * @param writeLyricsToTag when true, [lyrics] is also written to the ID3
+     * USLT tag instead of only the Room record.
      * @param artworkBytes optional new artwork image bytes to write into the MP3 file.
      */
     suspend operator fun invoke(
@@ -49,22 +51,42 @@ class UpdateMetadataUseCase(
         trackNumber: String? = null,
         comment: String? = null,
         lyrics: String? = null,
+        writeLyricsToTag: Boolean = false,
         artworkBytes: ByteArray? = null
     ) = withContext(Dispatchers.IO) {
         runCatching {
             val file = File(song.path)
             if (file.exists()) {
-                val audioFile = AudioFileIO.read(file)
-                val tag = audioFile.tagOrCreateAndSetDefault
-                title?.let { tag.setField(FieldKey.TITLE, it) }
-                artist?.let { tag.setField(FieldKey.ARTIST, it) }
-                album?.let { tag.setField(FieldKey.ALBUM, it) }
-                albumArtist?.let { tag.setField(FieldKey.ALBUM_ARTIST, it) }
-                genre?.let { tag.setField(FieldKey.GENRE, it) }
-                year?.let { tag.setField(FieldKey.YEAR, it) }
-                trackNumber?.let { tag.setField(FieldKey.TRACK, it) }
-                comment?.let { tag.setField(FieldKey.COMMENT, it) }
-                AudioFileIO.write(audioFile)
+                // Write to a temp copy in the same directory, then replace the
+                // original — in-place writes risk corrupting the MP3 on crash.
+                val tempFile = File(file.parentFile, "${file.name}.synthtmp")
+                try {
+                    file.copyTo(tempFile, overwrite = true)
+                    val audioFile = AudioFileIO.read(tempFile)
+                    val tag = audioFile.tagOrCreateAndSetDefault
+                    title?.let { tag.setField(FieldKey.TITLE, it) }
+                    artist?.let { tag.setField(FieldKey.ARTIST, it) }
+                    album?.let { tag.setField(FieldKey.ALBUM, it) }
+                    albumArtist?.let { tag.setField(FieldKey.ALBUM_ARTIST, it) }
+                    genre?.let { tag.setField(FieldKey.GENRE, it) }
+                    year?.let { tag.setField(FieldKey.YEAR, it) }
+                    trackNumber?.let { tag.setField(FieldKey.TRACK, it) }
+                    comment?.let { tag.setField(FieldKey.COMMENT, it) }
+                    if (writeLyricsToTag) {
+                        lyrics?.let { tag.setField(FieldKey.LYRICS, it) }
+                    }
+                    AudioFileIO.write(audioFile)
+                    if (!tempFile.renameTo(file)) {
+                        // Cross-device or lock fallback: copy over the original.
+                        file.delete()
+                        if (!tempFile.renameTo(file)) {
+                            tempFile.copyTo(file, overwrite = true)
+                            tempFile.delete()
+                        }
+                    }
+                } finally {
+                    tempFile.delete()
+                }
             }
         }
 

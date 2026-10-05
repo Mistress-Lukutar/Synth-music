@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
@@ -61,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.synth.synthmusic.domain.model.AccentColor
 import com.synth.synthmusic.domain.model.ThemeMode
+import com.synth.synthmusic.ui.settings.components.SettingsGroupCard
 import com.synth.synthmusic.ui.settings.components.SettingSwitch
 import com.synth.synthmusic.ui.settings.components.ThemePickerDialog
 import org.koin.androidx.compose.koinViewModel
@@ -74,6 +76,7 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     showBackButton: Boolean = true,
+    onNavigateToAiSettings: () -> Unit = {},
     viewModel: SettingsViewModel = koinViewModel()
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -158,6 +161,27 @@ fun SettingsScreen(
                         )
                     },
                     modifier = Modifier.clickable { showThemeDialog = true }
+                )
+            }
+
+            // AI
+            SettingsGroupCard(
+                title = "AI",
+                icon = Icons.Default.AutoAwesome
+            ) {
+                ListItem(
+                    headlineContent = { Text("AI Assistant") },
+                    supportingContent = { Text("Providers, models and permissions") },
+                    leadingContent = {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                    },
+                    trailingContent = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier.clickable { onNavigateToAiSettings() }
                 )
             }
 
@@ -268,42 +292,3 @@ fun SettingsScreen(
     }
 }
 
-@Composable
-private fun SettingsGroupCard(
-    title: String,
-    icon: ImageVector,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        shape = RoundedCornerShape(20.dp)
-    ) {
-        Column {
-            Row(
-                modifier = Modifier.padding(
-                    start = 16.dp,
-                    top = 16.dp,
-                    end = 16.dp,
-                    bottom = 4.dp
-                ),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-            content()
-        }
-    }
-}
