@@ -7,6 +7,7 @@
 The app follows a **single-activity, feature-first** architecture with Jetpack Compose for the UI, MVVM for state management, and type-safe navigation.
 
 - **Application ID**: `com.synth.synthmusic`
+- **AI assistant**: multi-provider chat (OpenAI-compatible / Anthropic / Gemini) with tool calling, see `di/AiModule.kt` and `.agents/ai-assistant-plan.md`
 - **Package**: `com.synth.synthmusic`
 - **Language**: Kotlin (100%)
 - **UI Language**: English
@@ -18,7 +19,7 @@ The app follows a **single-activity, feature-first** architecture with Jetpack C
 
 | Layer | Technology |
 |-------|------------|
-| Language | Kotlin 2.3.21 |
+| Language | Kotlin 2.4.0 |
 | Build System | Gradle (Kotlin DSL) |
 | Android Gradle Plugin | 9.2.1 |
 | UI Toolkit | Jetpack Compose (Material 3) |
@@ -29,6 +30,7 @@ The app follows a **single-activity, feature-first** architecture with Jetpack C
 | Audio Playback | Media3 ExoPlayer 1.10.1 + MediaSession |
 | Image Loading | Coil 2.7.0 |
 | Metadata | JAudioTagger 3.0.1 (read/write ID3), `MediaMetadataRetriever` (fallback) |
+| Networking (AI) | OkHttp 5 (`okhttp` + `okhttp-sse`), SSE streaming, kotlinx-serialization DTOs |
 | Serialization | Kotlinx Serialization 1.11.0 |
 | Coroutines | Kotlin Coroutines + Flow |
 
@@ -36,8 +38,8 @@ The app follows a **single-activity, feature-first** architecture with Jetpack C
 
 ## Build Configuration
 
-- **Compile SDK**: 36
-- **Target SDK**: 36
+- **Compile SDK**: 37
+- **Target SDK**: 37
 - **Min SDK**: 24 (Android 7.0)
 - **Java Compatibility**: VERSION_17
 - **Compose BOM**: 2026.05.01
@@ -93,6 +95,7 @@ app/src/main/java/com/synth/synthmusic/
 │   ├── repository/                 # Repository interfaces exposing Flow<T>
 │   └── usecase/                    # Use cases (ScanMusicUseCase, etc.)
 ├── data/
+│   ├── ai/                        # AI clients (OpenAI/Anthropic/Gemini + SSE), crypto, tools, attachments
 │   ├── local/
 │   │   ├── database/               # Room entities, DAOs, converters, mappers
 │   │   ├── cover/                  # Local file-system artwork cache (CoverCache)
@@ -100,6 +103,8 @@ app/src/main/java/com/synth/synthmusic/
 │   ├── repository/                 # Repository implementations
 │   └── media/                      # ExoPlayer wrapper, audio effects, waveform generator
 └── ui/
+    ├── ai/                        # AI chat home, chat screen, assistants, MarkdownText
+    ├── settings/ai/               # AI settings (providers, models, capabilities, trash, activity log)
     ├── theme/                      # Color, Typography, Theme composable
     ├── library/                    # Main screen with tabs
     ├── nowplaying/                 # Full-screen player
@@ -136,7 +141,7 @@ app/src/main/java/com/synth/synthmusic/
 
 Koin is used **instead of Hilt**.
 
-- `MusicApplication.onCreate()` calls `startKoin { modules(appModule, dataModule) }`.
+- `MusicApplication.onCreate()` calls `startKoin { modules(appModule, aiModule) }`. `di/AiModule.kt` registers all AI dependencies (crypto, OkHttp/Json singletons, repositories, chat clients, tools, AI ViewModels).
 - `AppModule.kt` defines:
   - `single` for singletons (database, DAOs, `MediaPlaybackManager`, repositories)
   - `viewModel { ... }` for ViewModel bindings; some ViewModels accept navigation arguments via parameter injection (e.g., `viewModel { (playlistId: Long) -> PlaylistDetailViewModel(...) }`).
@@ -175,10 +180,10 @@ Type-safe routes are defined in `navigation/Routes.kt` using Kotlin Serializatio
 
 ### Room Database (`AppDatabase`)
 
-- **Version**: 8
-- **Entities**: `SongEntity`, `AlbumEntity`, `ArtistEntity`, `PlaylistEntity`, `PlaylistSongEntity`, `BookmarkEntity`, `EqPresetEntity`, `PlaybackStateEntity`, `WaveformDataEntity`, `RecentlyPlayedCollectionEntity`
+- **Version**: 14 (AI tables added in migration 13→14)
+- **Entities**: `SongEntity`, `AlbumEntity`, `ArtistEntity`, `PlaylistEntity`, `PlaylistSongEntity`, `PlaybackStateEntity`, `PlaybackQueueItemEntity`, `PlaybackOriginalQueueItemEntity`, `WaveformDataEntity`, `RecentlyPlayedCollectionEntity` plus AI tables (`AiProviderEntity`, `AiModelEntity`, `AiChatEntity`, `AiChatMessageEntity`, `AiAssistantEntity`, `AiChatToolGrantEntity`, `AiActionLogEntity`)
 - **Schema export**: disabled (`exportSchema = false`)
-- **Migration strategy**: `Migration(7, 8)` adds `artwork_uri` to `ArtistEntity`; `fallbackToDestructiveMigration(dropAllTables = true)` remains as a fallback in `AppModule.kt`
+- **Migration strategy**: migrations 7→8 … 13→14 live in the `AppDatabase` companion object; `fallbackToDestructiveMigration(dropAllTables = true)` remains as a fallback. New entities MUST ship with a real migration.
 - **KSP** is used for compile-time code generation (`ksp(libs.androidx.room.compiler)`).
 
 ### DataStore (`SettingsDataStore`)
@@ -219,6 +224,7 @@ Type-safe routes are defined in `navigation/Routes.kt` using Kotlin Serializatio
 | `FOREGROUND_SERVICE` | Background playback service |
 | `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Media playback foreground type |
 | `WAKE_LOCK` | Keep CPU awake during playback |
+| `INTERNET` | AI provider requests and internet tools (iTunes/MusicBrainz/LRCLIB/web search) |
 
 ---
 
@@ -267,9 +273,9 @@ Type-safe routes are defined in `navigation/Routes.kt` using Kotlin Serializatio
 
 ## Security & Privacy Considerations
 
-- The app only reads local audio files; no network permissions are declared.
+- Network access exists for AI features only: provider chat requests and the internet tools. API keys are encrypted at rest with AndroidKeyStore (`data/ai/crypto/ApiKeyCipher`); tool calls are permission-gated, confirmation-gated and written to the `ai_action_log` audit table. Deletion via AI is trash-based (`SynthMusic/.trash/`), never irreversible.
 - JAudioTagger operates on file paths obtained from `MediaStore`. On API 30+, broad file access may require `MANAGE_EXTERNAL_STORAGE` if metadata editing across all directories is needed.
-- ID3 tag writes should operate on a file copy first, then replace atomically, to prevent corruption.
+- ID3 tag writes operate on a temp copy first, then replace the original atomically (implemented in `UpdateMetadataUseCase`).
 - Playback state is persisted locally in Room; no data leaves the device.
 
 ---
@@ -277,9 +283,9 @@ Type-safe routes are defined in `navigation/Routes.kt` using Kotlin Serializatio
 ## Development Notes for Agents
 
 - **The project uses Koin, not Hilt.** Do not add Hilt dependencies or `@HiltAndroidApp` / `@Inject` annotations.
-- **Room schema is not exported.** Migrations are not implemented; `fallbackToDestructiveMigration` is active.
+- **Room schema is not exported.** Migrations 7→14 are hand-written; `fallbackToDestructiveMigration` is a last-resort fallback — verify migration SQL column-by-column when touching entities.
 - **Player lifecycle** is tied to `PlaybackService`, not to any ViewModel or Activity.
 - **Type-safe navigation** uses Kotlin Serialization; add `@Serializable` to new routes and wire them in `AppNavigation.kt`.
 - **Feature-first packaging**: place new screens under `ui/<feature>/`, not `ui/screens/<feature>`.
-- When adding a new ViewModel, register it in `di/AppModule.kt` with `viewModel { ... }`.
+- When adding a new ViewModel, register it in `di/AppModule.kt` (core) or `di/AiModule.kt` (AI) with `viewModel { ... }`. Nav-argument VMs use `viewModel { (arg: T) -> ... }`.
 - When adding a new Room entity, add it to `AppDatabase.entities`, create a DAO, and expose it via `AppModule.kt`.
