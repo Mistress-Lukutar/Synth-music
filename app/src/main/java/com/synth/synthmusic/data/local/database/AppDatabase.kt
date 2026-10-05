@@ -21,9 +21,16 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PlaybackQueueItemEntity::class,
         PlaybackOriginalQueueItemEntity::class,
         WaveformDataEntity::class,
-        RecentlyPlayedCollectionEntity::class
+        RecentlyPlayedCollectionEntity::class,
+        AiProviderEntity::class,
+        AiModelEntity::class,
+        AiChatEntity::class,
+        AiChatMessageEntity::class,
+        AiAssistantEntity::class,
+        AiChatToolGrantEntity::class,
+        AiActionLogEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -105,6 +112,94 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE playlists ADD COLUMN has_custom_artwork INTEGER NOT NULL DEFAULT 0")
             }
         }
+
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // AI assistant feature tables. Column definitions must match the
+                // @Entity declarations exactly — a mismatch triggers destructive
+                // migration and wipes the user's library.
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS ai_providers (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "label TEXT NOT NULL, " +
+                    "protocol TEXT NOT NULL, " +
+                    "base_url TEXT NOT NULL, " +
+                    "api_key_encrypted TEXT NOT NULL, " +
+                    "created_at INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS ai_models (" +
+                    "provider_id INTEGER NOT NULL, " +
+                    "model_id TEXT NOT NULL, " +
+                    "display_name TEXT NOT NULL, " +
+                    "supports_tools INTEGER NOT NULL, " +
+                    "supports_vision INTEGER NOT NULL, " +
+                    "is_pinned INTEGER NOT NULL, " +
+                    "PRIMARY KEY(provider_id, model_id))"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS ai_chats (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "title TEXT NOT NULL, " +
+                    "assistant_id INTEGER, " +
+                    "provider_id INTEGER, " +
+                    "model_id TEXT, " +
+                    "created_at INTEGER NOT NULL, " +
+                    "updated_at INTEGER NOT NULL, " +
+                    "is_archived INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS ai_chat_messages (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "chat_id INTEGER NOT NULL, " +
+                    "role TEXT NOT NULL, " +
+                    "content_json TEXT NOT NULL, " +
+                    "status TEXT NOT NULL, " +
+                    "input_tokens INTEGER, " +
+                    "output_tokens INTEGER, " +
+                    "created_at INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_ai_chat_messages_chat_id " +
+                    "ON ai_chat_messages (chat_id)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS ai_assistants (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "builtin_key TEXT, " +
+                    "name TEXT NOT NULL, " +
+                    "description TEXT NOT NULL, " +
+                    "system_prompt TEXT NOT NULL, " +
+                    "avatar_icon TEXT NOT NULL, " +
+                    "avatar_color_index INTEGER NOT NULL, " +
+                    "default_grants_json TEXT NOT NULL, " +
+                    "is_builtin INTEGER NOT NULL, " +
+                    "sort_order INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS ai_chat_tool_grants (" +
+                    "chat_id INTEGER NOT NULL, " +
+                    "capability TEXT NOT NULL, " +
+                    "granted INTEGER NOT NULL, " +
+                    "granted_at INTEGER NOT NULL, " +
+                    "PRIMARY KEY(chat_id, capability))"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS ai_action_log (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "chat_id INTEGER, " +
+                    "timestamp INTEGER NOT NULL, " +
+                    "tool_name TEXT NOT NULL, " +
+                    "args_json TEXT NOT NULL, " +
+                    "outcome TEXT NOT NULL, " +
+                    "summary TEXT NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_ai_action_log_chat_id " +
+                    "ON ai_action_log (chat_id)"
+                )
+            }
+        }
     }
     abstract fun songDao(): SongDao
     abstract fun albumDao(): AlbumDao
@@ -115,6 +210,13 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun playbackOriginalQueueItemDao(): PlaybackOriginalQueueItemDao
     abstract fun waveformDataDao(): WaveformDataDao
     abstract fun recentlyPlayedCollectionDao(): RecentlyPlayedCollectionDao
+    abstract fun aiProviderDao(): AiProviderDao
+    abstract fun aiModelDao(): AiModelDao
+    abstract fun aiChatDao(): AiChatDao
+    abstract fun aiChatMessageDao(): AiChatMessageDao
+    abstract fun aiAssistantDao(): AiAssistantDao
+    abstract fun aiChatToolGrantDao(): AiChatToolGrantDao
+    abstract fun aiActionLogDao(): AiActionLogDao
 
     /**
      * Atomically persists playback state and both queue views as a single transaction.

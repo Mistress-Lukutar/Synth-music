@@ -97,6 +97,10 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.compose)
 
+    // OkHttp (AI provider networking)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.sse)
+
     // JAudioTagger (metadata / ReplayGain)
     implementation(libs.jaudiotagger)
 
@@ -109,6 +113,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockito.core)
+    testImplementation(libs.okhttp.mockwebserver3)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

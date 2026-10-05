@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Cleartext traffic is allowed globally so users can point AI providers at
+    plain-HTTP local endpoints (e.g. Ollama on http://10.0.2.2:11434 or a LAN
+    LM Studio host). The network security config cannot whitelist dynamic
+    user-entered hosts, so a per-host allowlist is not feasible here. Risk is
+    accepted because the only user-supplied hosts are AI provider base URLs
+    and the app performs no other sensitive network traffic.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
