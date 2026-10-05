@@ -90,8 +90,11 @@ class FetchModelsUseCase {
         } catch (e: Exception) {
             throw ModelFetchException("Unexpected response format", e)
         }
-        modelRepository.upsertModels(models)
-        models
+        // parseModels leaves providerId unset (0) for testability; scope the
+        // results to the actual provider before persisting.
+        val scoped = models.map { it.copy(providerId = provider.id) }
+        modelRepository.upsertModels(scoped)
+        scoped
     }
 
     /**
