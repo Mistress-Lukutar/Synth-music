@@ -1,14 +1,24 @@
 package com.synth.synthmusic.ui.ai.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -18,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
@@ -32,148 +43,308 @@ import com.synth.synthmusic.domain.usecase.ai.ConfirmationLevel
 import com.synth.synthmusic.domain.usecase.ai.ConfirmationRequest
 
 /**
- * Renders a single chat message: right-aligned user bubble, left-aligned
- * assistant bubble with markdown, or expandable tool-activity chips.
- *
- * @param message the message to render.
+ * One visual row of the chat transcript. Consecutive tool messages are
+ * merged so each invocation is displayed exactly once, paired with its
+ * result.
  */
-@Composable
-fun AiMessageBubble(message: AiChatMessage) {
-    when (message.role) {
-        AiRole.USER -> {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .widthIn(max = 300.dp)
-                            .padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        message.parts.forEach { part ->
-                            when (part) {
-                                is AiMessagePart.Text -> Text(part.text)
-                                is AiMessagePart.Image -> AssistChip(
-                                    onClick = {},
-                                    label = { Text(stringResource(R.string.ai_chat_image_attachment)) }
-                                )
-                                else -> Unit
-                            }
-                        }
-                    }
-                }
-            }
-        }
+sealed interface AiChatRow {
 
-        AiRole.ASSISTANT -> {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.Start
-            ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)
+    /** Stable [androidx.compose.foundation.lazy.LazyColumn] item key. */
+    val key: String
+
+    /** A right-aligned user bubble. */
+    data class User(val message: AiChatMessage) : AiChatRow {
+        override val key: String get() = "m_${message.id}"
+    }
+
+    /** A left-aligned assistant bubble with markdown text. */
+    data class Assistant(val message: AiChatMessage) : AiChatRow {
+        override val key: String get() = "m_${message.id}"
+    }
+
+    /**
+     * A compact tool-activity card anchored to the assistant message that
+     * requested the calls.
+     *
+     * @param anchorId id of the assistant message that requested the calls.
+     * @param calls one entry per requested call, paired with its result.
+     */
+    data class ToolActivity(
+        val anchorId: Long,
+        val calls: List<ToolCallUi>
+    ) : AiChatRow {
+        override val key: String get() = "t_$anchorId"
+    }
+}
+
+/**
+ * UI model pairing a requested tool call with its result; [result] is null
+ * while the call is still running.
+ */
+data class ToolCallUi(
+    val name: String,
+    val argumentsJson: String,
+    val result: AiMessagePart.ToolResult?
+)
+
+/**
+ * Groups the flat message list into visual rows: user bubbles, assistant
+ * text bubbles and tool-activity cards that merge each assistant tool-call
+ * message with the TOOL results that follow it, so a call is never rendered
+ * twice and empty bubbles disappear.
+ *
+ * @param messages the chat transcript in chronological order.
+ * @return rows ready to be rendered by [AiChatRowContent].
+ */
+fun buildChatRows(messages: List<AiChatMessage>): List<AiChatRow> {
+    val rows = mutableListOf<AiChatRow>()
+    var i = 0
+    while (i < messages.size) {
+        val message = messages[i]
+        when (message.role) {
+            AiRole.USER -> rows += AiChatRow.User(message)
+
+            AiRole.ASSISTANT -> {
+                val text = message.text
+                val calls = message.parts.filterIsInstance<AiMessagePart.ToolCall>()
+                // Render a text bubble only when there is visible content;
+                // a streaming message with no content yet shows the caret.
+                if (text.isNotBlank() ||
+                    (calls.isEmpty() && message.status == AiMessageStatus.STREAMING)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .widthIn(max = 320.dp)
-                            .padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        MarkdownText(
-                            markdown = message.text,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        message.parts.filterIsInstance<AiMessagePart.ToolCall>().forEach { call ->
-                            ToolCallChip(call)
-                        }
-                        if (message.status == AiMessageStatus.STREAMING) {
-                            Text(
-                                "▍",
-                                color = MaterialTheme.colorScheme.primary
+                    rows += AiChatRow.Assistant(message)
+                }
+                if (calls.isNotEmpty()) {
+                    val results = mutableListOf<AiMessagePart.ToolResult>()
+                    var j = i + 1
+                    while (j < messages.size && messages[j].role == AiRole.TOOL) {
+                        results += messages[j].parts.filterIsInstance<AiMessagePart.ToolResult>()
+                        j++
+                    }
+                    rows += AiChatRow.ToolActivity(
+                        anchorId = message.id,
+                        calls = calls.map { call ->
+                            ToolCallUi(
+                                name = call.name,
+                                argumentsJson = call.argumentsJson,
+                                result = results.firstOrNull { it.toolCallId == call.toolCallId }
                             )
                         }
+                    )
+                    i = j
+                    continue
+                }
+            }
+
+            AiRole.TOOL -> {
+                // Orphan results (e.g. after transcript trimming) stay visible.
+                val results = message.parts.filterIsInstance<AiMessagePart.ToolResult>()
+                if (results.isNotEmpty()) {
+                    rows += AiChatRow.ToolActivity(
+                        anchorId = message.id,
+                        calls = results.map { ToolCallUi(it.name, "", it) }
+                    )
+                }
+            }
+
+            AiRole.SYSTEM -> Unit
+        }
+        i++
+    }
+    return rows
+}
+
+/**
+ * Renders a single transcript row produced by [buildChatRows].
+ *
+ * @param row the row to render.
+ */
+@Composable
+fun AiChatRowContent(row: AiChatRow) {
+    when (row) {
+        is AiChatRow.User -> UserBubble(row.message)
+        is AiChatRow.Assistant -> AssistantBubble(row.message)
+        is AiChatRow.ToolActivity -> ToolActivityCard(row.calls)
+    }
+}
+
+/**
+ * Right-aligned user bubble with text parts and image-attachment chips.
+ *
+ * @param message the user message to render.
+ */
+@Composable
+private fun UserBubble(message: AiChatMessage) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.End
+    ) {
+        Surface(
+            color = MaterialTheme.colorScheme.primaryContainer,
+            shape = RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 300.dp)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                message.parts.forEach { part ->
+                    when (part) {
+                        is AiMessagePart.Text -> Text(part.text)
+                        is AiMessagePart.Image -> AssistChip(
+                            onClick = {},
+                            label = { Text(stringResource(R.string.ai_chat_image_attachment)) }
+                        )
+                        else -> Unit
                     }
                 }
             }
         }
+    }
+}
 
-        AiRole.TOOL -> {
-            message.parts.filterIsInstance<AiMessagePart.ToolResult>().forEach { result ->
-                ToolResultChip(result)
+/**
+ * Left-aligned assistant bubble with markdown text and a streaming caret;
+ * tool calls are rendered separately as [ToolActivityCard].
+ *
+ * @param message the assistant message to render.
+ */
+@Composable
+private fun AssistantBubble(message: AiChatMessage) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.Start
+    ) {
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 320.dp)
+                    .padding(12.dp)
+            ) {
+                MarkdownText(
+                    markdown = message.text,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (message.status == AiMessageStatus.STREAMING) {
+                    Text(
+                        "▍",
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
-
-        AiRole.SYSTEM -> Unit
     }
 }
 
 /**
- * Expandable chip describing a tool invocation made by the assistant.
+ * Compact card listing the tool calls of one assistant turn, each with a
+ * live status icon: a spinner while running, a check mark on success and a
+ * warning on error. Tapping a row expands its arguments and result content.
  *
- * @param call the tool call to render.
+ * @param calls the calls requested in one assistant message.
  */
 @Composable
-private fun ToolCallChip(call: AiMessagePart.ToolCall) {
-    var expanded by remember { mutableStateOf(false) }
-    Column {
-        AssistChip(
-            onClick = { expanded = !expanded },
-            label = { Text("🔧 ${call.name}") }
-        )
-        if (expanded) {
-            Text(
-                call.argumentsJson,
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = FontFamily.Monospace,
+private fun ToolActivityCard(calls: List<ToolCallUi>) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.Start
+    ) {
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                    .padding(8.dp)
-            )
+                    .widthIn(max = 320.dp)
+                    .padding(horizontal = 4.dp, vertical = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                calls.forEach { call -> ToolCallRow(call) }
+            }
         }
     }
 }
 
 /**
- * Expandable chip describing a finished tool run (success or error).
+ * One expandable row inside a [ToolActivityCard].
  *
- * @param result the tool result to render.
+ * @param item the call/result pair to render.
  */
 @Composable
-private fun ToolResultChip(result: AiMessagePart.ToolResult) {
+private fun ToolCallRow(item: ToolCallUi) {
     var expanded by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { expanded = !expanded }
+            .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
-        AssistChip(
-            onClick = { expanded = !expanded },
-            label = {
-                Text(
-                    if (result.isError) "⚠ ${result.name}" else "🔧 ${result.name}"
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.Build,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = item.name,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            Spacer(Modifier.width(8.dp))
+            when {
+                item.result == null -> CircularProgressIndicator(
+                    modifier = Modifier.size(12.dp),
+                    strokeWidth = 1.5.dp
+                )
+                item.result.isError -> Icon(
+                    imageVector = Icons.Default.ErrorOutline,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(14.dp)
+                )
+                else -> Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp)
                 )
             }
-        )
+        }
         if (expanded) {
-            Text(
-                result.content.take(2000),
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                    .padding(8.dp)
-            )
+            if (item.argumentsJson.isNotBlank()) {
+                Text(
+                    item.argumentsJson,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            item.result?.let { result ->
+                Text(
+                    result.content.take(2000),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (result.isError) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
         }
     }
 }

@@ -8,11 +8,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -57,6 +60,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,10 +70,11 @@ import com.synth.synthmusic.domain.model.AiAssistant
 import com.synth.synthmusic.domain.model.AiActionLogEntry
 import com.synth.synthmusic.ui.ai.components.AiChatDrawer
 import com.synth.synthmusic.ui.ai.components.AiChatInputBar
-import com.synth.synthmusic.ui.ai.components.AiMessageBubble
+import com.synth.synthmusic.ui.ai.components.AiChatRowContent
 import com.synth.synthmusic.ui.ai.components.ApprovalCard
 import com.synth.synthmusic.ui.ai.components.AssistantAvatar
 import com.synth.synthmusic.ui.ai.components.AssistantPickerSheet
+import com.synth.synthmusic.ui.ai.components.buildChatRows
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -85,7 +90,7 @@ import org.koin.androidx.compose.koinViewModel
  * @param modifier the modifier to be applied to the screen.
  * @param viewModel injected by Koin.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AiScreen(
     onNavigateToAiSettings: () -> Unit,
@@ -100,6 +105,8 @@ fun AiScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
     val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val imeVisible = WindowInsets.isImeVisible
 
     var showAgentPicker by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
@@ -110,6 +117,7 @@ fun AiScreen(
     var deleteChatId by remember { mutableStateOf<Long?>(null) }
 
     fun openDrawer() {
+        keyboardController?.hide()
         focusManager.clearFocus()
         scope.launch { drawerState.open() }
     }
@@ -125,13 +133,18 @@ fun AiScreen(
         uri?.let { viewModel.onEvent(AiUiEvent.AttachImage(it)) }
     }
 
-    // An open chat goes back to a fresh draft on system back; an open
-    // drawer simply closes.
-    BackHandler(enabled = drawerState.isOpen) {
+    // System back, most specific first: hide the keyboard, then close the
+    // drawer, then collapse an open chat to a fresh draft. None of these
+    // cancels a running generation — only the Stop button does.
+    BackHandler(enabled = !imeVisible && drawerState.isOpen) {
         scope.launch { drawerState.close() }
     }
-    BackHandler(enabled = !drawerState.isOpen && state.activeChatId != null) {
+    BackHandler(enabled = !imeVisible && !drawerState.isOpen && state.activeChatId != null) {
         viewModel.onEvent(AiUiEvent.NewChat)
+    }
+    BackHandler(enabled = imeVisible) {
+        keyboardController?.hide()
+        focusManager.clearFocus()
     }
 
     LaunchedEffect(state.error) {
@@ -141,14 +154,18 @@ fun AiScreen(
         }
     }
 
-    // Auto-scroll to the newest message as the transcript grows; an approval
-    // card sits after the last message, so scroll to it when one appears.
-    LaunchedEffect(state.messages.size, state.pendingApproval) {
-        if (state.messages.isNotEmpty()) {
+    // Group the flat transcript into visual rows (bubbles + merged tool
+    // activity cards) once per transcript emission.
+    val chatRows = remember(state.messages) { buildChatRows(state.messages) }
+
+    // Auto-scroll to the newest row as the transcript grows; an approval
+    // card sits after the last row, so scroll to it when one appears.
+    LaunchedEffect(chatRows.size, state.pendingApproval) {
+        if (chatRows.isNotEmpty()) {
             val target = if (state.pendingApproval != null) {
-                state.messages.size
+                chatRows.size
             } else {
-                state.messages.size - 1
+                chatRows.size - 1
             }
             listState.animateScrollToItem(target)
         }
@@ -346,12 +363,12 @@ fun AiScreen(
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(items = state.messages, key = { it.id }) { message ->
-                                AiMessageBubble(message = message)
+                            items(items = chatRows, key = { it.key }) { row ->
+                                AiChatRowContent(row)
                             }
 
                             state.pendingApproval?.let { request ->
-                                item("approval_${request.toolName}") {
+                                item("approval_${request.toolName}_${request.summary.hashCode()}") {
                                     ApprovalCard(
                                         request = request,
                                         onApprove = {

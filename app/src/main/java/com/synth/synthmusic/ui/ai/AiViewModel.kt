@@ -22,6 +22,7 @@ import com.synth.synthmusic.domain.usecase.ai.ApprovalBridge
 import com.synth.synthmusic.domain.usecase.ai.ChatRunEvent
 import com.synth.synthmusic.domain.usecase.ai.ConfirmationRequest
 import com.synth.synthmusic.domain.usecase.ai.RunChatUseCase
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -144,11 +145,18 @@ class AiViewModel(
     private val draftAssistantId = MutableStateFlow<Long?>(null)
 
     private val draftInput = MutableStateFlow("")
-    private val overrides = MutableStateFlow<Map<Long, AiChatMessage>>(emptyMap())
-    private val isStreaming = MutableStateFlow(false)
+
+    /** Live copies of streaming messages, keyed by chat then message id. */
+    private val overrides = MutableStateFlow<Map<Long, Map<Long, AiChatMessage>>>(emptyMap())
+
+    /** Chats whose generation is currently running. */
+    private val streamingChats = MutableStateFlow<Set<Long>>(emptySet())
     private val pendingAttachments = MutableStateFlow<List<AiMessagePart.Image>>(emptyList())
     private val error = MutableStateFlow<String?>(null)
-    private val pendingApproval = MutableStateFlow<ConfirmationRequest?>(null)
+    private val pendingApproval = MutableStateFlow<ChatApproval?>(null)
+
+    /** One run job per generating chat; runs survive leaving the surface. */
+    private val runJobs = mutableMapOf<Long, Job>()
 
     // Session-scoped "always allow" decisions; never persisted across chats.
     private val alwaysAllowed = mutableSetOf<String>()
@@ -156,29 +164,17 @@ class AiViewModel(
     // Single consumer bridges the dispatcher to the approval cards.
     private var confirmationDeferred: CompletableDeferred<Boolean>? = null
 
-    private val approvalBridge = object : ApprovalBridge {
-
-        override suspend fun requestConfirmation(request: ConfirmationRequest): Boolean {
-            val deferred = CompletableDeferred<Boolean>()
-            confirmationDeferred?.cancel()
-            confirmationDeferred = deferred
-            pendingApproval.value = request
-            try {
-                return deferred.await()
-            } finally {
-                confirmationDeferred = null
-                pendingApproval.value = null
-            }
-        }
-
-        override fun isAlwaysAllowed(toolName: String): Boolean =
-            toolName in alwaysAllowed
-    }
-
     // Guards send() against double taps while a draft chat is being created.
     private val sendGate = Mutex(locked = false)
 
-    private var runJob: Job? = null
+    /**
+     * An approval request scoped to the chat whose run raised it, so the
+     * card is only shown inside that conversation.
+     */
+    private data class ChatApproval(
+        val chatId: Long,
+        val request: ConfirmationRequest
+    )
 
     init {
         viewModelScope.launch {
@@ -239,14 +235,14 @@ class AiViewModel(
         chatFlow,
         messagesFlow,
         overrides,
-        isStreaming,
+        streamingChats,
         draftAssistantId
-    ) { chat, messages, localOverrides, streaming, draftAssistant ->
+    ) { chat, messages, allOverrides, streaming, draftAssistant ->
         ActiveSlice(
             id = chat?.id,
             chat = chat,
-            messages = messages.map { localOverrides[it.id] ?: it },
-            streaming = streaming,
+            messages = messages.map { allOverrides[chat?.id]?.get(it.id) ?: it },
+            streaming = chat?.id in streaming,
             draftAssistant = draftAssistant
         )
     }
@@ -254,7 +250,7 @@ class AiViewModel(
     private data class Extras(
         val attachments: List<AiMessagePart.Image>,
         val error: String?,
-        val approval: ConfirmationRequest?
+        val approval: ChatApproval?
     )
 
     private val extras = combine(
@@ -297,7 +293,7 @@ class AiViewModel(
             messages = active.messages,
             isStreaming = active.streaming,
             pendingAttachments = extra.attachments,
-            pendingApproval = extra.approval,
+            pendingApproval = extra.approval?.takeIf { it.chatId == active.id }?.request,
             error = extra.error
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AiUiState())
@@ -329,18 +325,21 @@ class AiViewModel(
                 chatRepository.updateTitle(event.chatId, event.title)
             }
             is AiUiEvent.DeleteChat -> viewModelScope.launch {
+                // A run writing into a deleted chat must not keep going.
+                runJobs[event.chatId]?.cancel()
                 chatRepository.deleteChat(event.chatId)
                 if (event.chatId == activeChatId.value) {
                     newChat()
                 }
             }
             AiUiEvent.ClearMessages -> activeChatId.value?.let { id ->
+                runJobs[id]?.cancel()
                 viewModelScope.launch { chatRepository.clearMessages(id) }
             }
             AiUiEvent.ConsumeError -> error.value = null
             is AiUiEvent.ResolveApproval -> {
                 if (event.approved && event.alwaysAllow) {
-                    pendingApproval.value?.toolName?.let { alwaysAllowed.add(it) }
+                    pendingApproval.value?.request?.toolName?.let { alwaysAllowed.add(it) }
                 }
                 confirmationDeferred?.complete(event.approved)
             }
@@ -372,32 +371,27 @@ class AiViewModel(
     }
 
     /**
-     * Cancels any streaming run and clears per-conversation transient state.
+     * Clears per-composer transient state. Deliberately does NOT touch
+     * running generations: they keep streaming in the background and only
+     * the Stop button (or process death) cancels them.
      */
     private fun resetConversationState() {
-        runJob?.cancel()
-        runJob = null
-        confirmationDeferred?.cancel()
-        isStreaming.value = false
-        overrides.value = emptyMap()
         pendingAttachments.value = emptyList()
         draftInput.value = ""
-        pendingApproval.value = null
     }
 
     private fun send(text: String) {
         if (text.isBlank() && pendingAttachments.value.isEmpty()) return
-        if (isStreaming.value) return
         viewModelScope.launch {
             // Serialize sends so a double tap cannot create two draft chats.
             sendGate.withLock {
-                if (isStreaming.value) return@withLock
                 val chatId = activeChatId.value ?: chatRepository.createChat(
                     title = DEFAULT_TITLE,
                     assistantId = draftAssistantId.value,
                     providerId = null,
                     modelId = null
                 ).also { activeChatId.value = it }
+                if (chatId in streamingChats.value) return@withLock
                 val parts = buildList {
                     if (text.isNotBlank()) add(AiMessagePart.Text(text))
                     addAll(pendingAttachments.value)
@@ -433,13 +427,14 @@ class AiViewModel(
         }
     }
 
+    /** Cancels the generation of the chat that is currently open. */
     private fun stop() {
-        runJob?.cancel()
+        activeChatId.value?.let { id -> runJobs[id]?.cancel() }
     }
 
     private fun regenerate() {
-        if (isStreaming.value) return
         val chatId = activeChatId.value ?: return
+        if (chatId in streamingChats.value) return
         viewModelScope.launch {
             val messages = chatRepository.getMessages(chatId)
             val lastUser = messages.lastOrNull { it.role == AiRole.USER } ?: return@launch
@@ -452,28 +447,58 @@ class AiViewModel(
     }
 
     private fun startRun(chatId: Long) {
-        if (runJob?.isActive == true) return
-        isStreaming.value = true
-        runJob = viewModelScope.launch {
+        if (runJobs[chatId]?.isActive == true) return
+        streamingChats.value = streamingChats.value + chatId
+        runJobs[chatId] = viewModelScope.launch {
             try {
-                runChatUseCase.runTurn(chatId, approvalBridge).collect { event ->
+                runChatUseCase.runTurn(chatId, approvalBridgeFor(chatId)).collect { event ->
                     when (event) {
                         is ChatRunEvent.MessageUpdated -> {
-                            overrides.value = overrides.value + (event.message.id to event.message)
+                            val forChat =
+                                overrides.value[chatId].orEmpty() + (event.message.id to event.message)
+                            overrides.value = overrides.value + (chatId to forChat)
                         }
                         is ChatRunEvent.TurnFinished -> {
                             if (event.error != null) error.value = event.error
                         }
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 error.value = e.message ?: "Stream failed"
             } finally {
-                isStreaming.value = false
+                runJobs.remove(chatId)
+                streamingChats.value = streamingChats.value - chatId
                 // Let the DB flow reconcile; drop stale local copies lazily.
-                overrides.value = emptyMap()
+                overrides.value = overrides.value - chatId
             }
         }
+    }
+
+    /**
+     * Builds an [ApprovalBridge] tagged with [chatId] so approval cards only
+     * appear inside the conversation that raised them.
+     */
+    private fun approvalBridgeFor(chatId: Long) = object : ApprovalBridge {
+
+        override suspend fun requestConfirmation(request: ConfirmationRequest): Boolean {
+            val deferred = CompletableDeferred<Boolean>()
+            confirmationDeferred?.cancel()
+            confirmationDeferred = deferred
+            pendingApproval.value = ChatApproval(chatId, request)
+            try {
+                return deferred.await()
+            } finally {
+                if (confirmationDeferred === deferred) {
+                    confirmationDeferred = null
+                    pendingApproval.value = null
+                }
+            }
+        }
+
+        override fun isAlwaysAllowed(toolName: String): Boolean =
+            toolName in alwaysAllowed
     }
 
     private suspend fun autoTitle(chatId: Long, firstUserText: String) {

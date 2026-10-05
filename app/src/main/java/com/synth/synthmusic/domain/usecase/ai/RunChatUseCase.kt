@@ -17,9 +17,11 @@ import com.synth.synthmusic.domain.repository.AiChatRepository
 import com.synth.synthmusic.domain.repository.AiProviderRepository
 import com.synth.synthmusic.domain.repository.AiSettingsRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 /** Maximum tool round-trips per user turn before the engine gives up. */
 const val MAX_TOOL_ITERATIONS = 8
@@ -89,6 +91,14 @@ class RunChatUseCase(
         )
 
         try {
+            // Recover from a previous crashed/cancelled run: a row left in
+            // STREAMING state would render as an empty "typing" bubble forever.
+            chatRepository.getMessages(chatId)
+                .filter { it.status == AiMessageStatus.STREAMING }
+                .forEach { stale ->
+                    chatRepository.updateMessage(stale.copy(status = AiMessageStatus.ERROR))
+                }
+
             var iterations = 0
             while (iterations < MAX_TOOL_ITERATIONS) {
                 iterations++
@@ -140,7 +150,11 @@ class RunChatUseCase(
                         }
                     }
                 } catch (e: CancellationException) {
-                    persistPartial(chatRepository, message.id, text.toString(), toolCalls, true)
+                    // The scope is already cancelled, so the DAO write must
+                    // run in a non-cancellable context to actually persist.
+                    withContext(NonCancellable) {
+                        persistPartial(chatRepository, message.id, text.toString(), toolCalls, true)
+                    }
                     throw e
                 }
 
