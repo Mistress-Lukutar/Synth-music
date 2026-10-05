@@ -13,9 +13,11 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.synth.synthmusic.data.local.datastore.SettingsDataStore
 import com.synth.synthmusic.data.media.waveform.WaveformPreloader
+import com.synth.synthmusic.di.aiModule
 import com.synth.synthmusic.di.appModule
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.domain.usecase.ScanMusicUseCase
+import com.synth.synthmusic.domain.usecase.ai.SeedBuiltInAssistantsUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -39,11 +41,22 @@ class MusicApplication : Application() {
         initImageLoader()
         startKoin {
             androidContext(this@MusicApplication)
-            modules(appModule)
+            modules(appModule, aiModule)
         }
         createNotificationChannel()
+        seedAssistants()
         resumeWaveformGeneration()
         maybeAutoRescan()
+    }
+
+    private fun seedAssistants() {
+        applicationScope.launch {
+            try {
+                GlobalContext.get().get<SeedBuiltInAssistantsUseCase>()()
+            } catch (e: Exception) {
+                Log.w(TAG, "Assistant seeding failed", e)
+            }
+        }
     }
 
     private fun maybeAutoRescan() {
