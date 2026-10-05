@@ -33,6 +33,8 @@ class AiSettingsDataStore(
     private companion object {
         val ACTIVE_PROVIDER_ID = longPreferencesKey("active_provider_id")
         val ACTIVE_MODEL_ID = stringPreferencesKey("active_model_id")
+        val LAST_ASSISTANT_ID = longPreferencesKey("last_assistant_id")
+        val CONFIRM_EDITS = booleanPreferencesKey("confirm_edits")
         val WEB_SEARCH_PROVIDER = stringPreferencesKey("web_search_provider")
         val WEB_SEARCH_KEY_ENCRYPTED = stringPreferencesKey("web_search_key_encrypted")
 
@@ -50,6 +52,7 @@ class AiSettingsDataStore(
             activeProviderId = prefs[ACTIVE_PROVIDER_ID],
             activeModelId = prefs[ACTIVE_MODEL_ID],
             capabilityGrants = grants,
+            confirmEdits = prefs[CONFIRM_EDITS] ?: true,
             webSearchProvider = prefs[WEB_SEARCH_PROVIDER]
                 ?.let { runCatching { WebSearchProvider.valueOf(it) }.getOrNull() }
                 ?: WebSearchProvider.NONE,
@@ -73,9 +76,28 @@ class AiSettingsDataStore(
         }
     }
 
+    /** Observes the assistant used for the last new chat (null = General). */
+    val lastAssistantId: Flow<Long?> = dataStore.data.map { it[LAST_ASSISTANT_ID] }
+
+    /** Stores the assistant pre-selected for new chats. Null resets to General. */
+    suspend fun setLastAssistantId(assistantId: Long?) {
+        dataStore.edit {
+            if (assistantId == null) {
+                it.remove(LAST_ASSISTANT_ID)
+            } else {
+                it[LAST_ASSISTANT_ID] = assistantId
+            }
+        }
+    }
+
     /** Toggles a global capability kill-switch. */
     suspend fun setCapabilityEnabled(capability: AiCapability, enabled: Boolean) {
         dataStore.edit { it[capabilityKey(capability)] = enabled }
+    }
+
+    /** Toggles whether edit tools ask for confirmation before executing. */
+    suspend fun setConfirmEdits(enabled: Boolean) {
+        dataStore.edit { it[CONFIRM_EDITS] = enabled }
     }
 
     /** Stores the optional web-search backend selection. */

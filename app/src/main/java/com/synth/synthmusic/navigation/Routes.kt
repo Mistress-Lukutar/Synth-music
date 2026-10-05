@@ -42,9 +42,6 @@ object SettingsRoute
 object AiSettingsRoute
 
 @Serializable
-data class AiChatRoute(val chatId: Long)
-
-@Serializable
 data class AssistantEditorRoute(val assistantId: Long? = null)
 
 

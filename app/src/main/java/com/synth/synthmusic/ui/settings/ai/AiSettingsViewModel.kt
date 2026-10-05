@@ -9,6 +9,7 @@ import com.synth.synthmusic.domain.model.AiModel
 import com.synth.synthmusic.domain.model.AiProtocol
 import com.synth.synthmusic.domain.model.ActiveModelRef
 import com.synth.synthmusic.domain.model.AiSettings
+import com.synth.synthmusic.domain.model.guessModelCapabilities
 import com.synth.synthmusic.domain.model.WebSearchProvider
 import com.synth.synthmusic.data.ai.tools.TrashManager
 import com.synth.synthmusic.data.ai.tools.TrashEntry
@@ -59,6 +60,7 @@ data class AiSettingsUiState(
     val models: List<ModelUi> = emptyList(),
     val activeModel: ActiveModelRef? = null,
     val capabilities: Map<AiCapability, Boolean> = AiSettings.DEFAULT_CAPABILITY_GRANTS,
+    val confirmEdits: Boolean = true,
     val webSearchProvider: WebSearchProvider = WebSearchProvider.NONE,
     val webSearchKeyConfigured: Boolean = false,
     val busyProviderId: Long? = null,
@@ -108,6 +110,9 @@ sealed class AiSettingsUiEvent {
     data class ToggleCapability(val capability: AiCapability, val enabled: Boolean) :
         AiSettingsUiEvent()
 
+    /** Toggles whether edit tools ask for confirmation before executing. */
+    data class ToggleConfirmEdits(val enabled: Boolean) : AiSettingsUiEvent()
+
     /** Selects the web-search backend. */
     data class SetWebSearchProvider(val provider: WebSearchProvider) : AiSettingsUiEvent()
 
@@ -119,6 +124,15 @@ sealed class AiSettingsUiEvent {
 
     /** Restores one trash entry. */
     data class RestoreTrashEntry(val entry: TrashEntry) : AiSettingsUiEvent()
+
+    /**
+     * Adds a model to a provider manually, without fetching the model list.
+     */
+    data class AddManualModel(
+        val providerId: Long,
+        val modelId: String,
+        val displayName: String
+    ) : AiSettingsUiEvent()
 }
 
 /**
@@ -175,6 +189,7 @@ class AiSettingsViewModel(
                 }
             },
             capabilities = settings.capabilityGrants,
+            confirmEdits = settings.confirmEdits,
             webSearchProvider = settings.webSearchProvider,
             webSearchKeyConfigured = settings.webSearchKeyEncrypted != null,
             busyProviderId = busy,
@@ -229,6 +244,9 @@ class AiSettingsViewModel(
             is AiSettingsUiEvent.ToggleCapability -> viewModelScope.launch {
                 settingsRepository.setCapabilityEnabled(event.capability, event.enabled)
             }
+            is AiSettingsUiEvent.ToggleConfirmEdits -> viewModelScope.launch {
+                settingsRepository.setConfirmEdits(event.enabled)
+            }
             is AiSettingsUiEvent.SetWebSearchProvider -> viewModelScope.launch {
                 settingsRepository.setWebSearchProvider(event.provider)
             }
@@ -247,6 +265,29 @@ class AiSettingsViewModel(
                     else "Restore failed"
                 )
                 refreshTrash()
+            }
+            is AiSettingsUiEvent.AddManualModel -> viewModelScope.launch {
+                val modelId = event.modelId.trim()
+                if (modelId.isEmpty()) {
+                    _events.value = AiSettingsEvent.Message("Model ID is required")
+                    return@launch
+                }
+                val (tools, vision) = guessModelCapabilities(modelId)
+                modelRepository.upsertModels(
+                    listOf(
+                        AiModel(
+                            providerId = event.providerId,
+                            modelId = modelId,
+                            displayName = event.displayName.trim()
+                                .ifEmpty { modelId },
+                            supportsTools = tools,
+                            supportsVision = vision,
+                            isPinned = false
+                        )
+                    )
+                )
+                refresh()
+                _events.value = AiSettingsEvent.Message("Model $modelId added")
             }
         }
     }
@@ -306,8 +347,16 @@ class AiSettingsViewModel(
     private fun fetchModels(providerId: Long) {
         viewModelScope.launch {
             try {
-                val provider = providerRepository.getProvider(providerId) ?: return@launch
-                val apiKey = providerRepository.getApiKey(providerId) ?: return@launch
+                val provider = providerRepository.getProvider(providerId)
+                    ?: run {
+                        _events.value = AiSettingsEvent.Message("Provider not found")
+                        return@launch
+                    }
+                val apiKey = providerRepository.getApiKey(providerId)
+                    ?: run {
+                        _events.value = AiSettingsEvent.Message("API key missing — re-save the key")
+                        return@launch
+                    }
                 busyProviderId.value = providerId
                 fetchModelsUseCase(provider, apiKey, httpClient, json, modelRepository)
                 refresh()
@@ -322,8 +371,16 @@ class AiSettingsViewModel(
     private fun testConnection(providerId: Long) {
         viewModelScope.launch {
             try {
-                val provider = providerRepository.getProvider(providerId) ?: return@launch
-                val apiKey = providerRepository.getApiKey(providerId) ?: return@launch
+                val provider = providerRepository.getProvider(providerId)
+                    ?: run {
+                        _events.value = AiSettingsEvent.Message("Provider not found")
+                        return@launch
+                    }
+                val apiKey = providerRepository.getApiKey(providerId)
+                    ?: run {
+                        _events.value = AiSettingsEvent.Message("API key missing — re-save the key")
+                        return@launch
+                    }
                 busyProviderId.value = providerId
                 val client = clientFactory.clientFor(provider.protocol)
                 val probeModelId = modelRepository.getModels(providerId)

@@ -255,6 +255,14 @@ fun AiSettingsScreen(
                         )
                     }
                 )
+                SettingSwitch(
+                    title = stringResource(R.string.ai_confirm_edits),
+                    description = stringResource(R.string.ai_confirm_edits_desc),
+                    checked = state.confirmEdits,
+                    onCheckedChange = { enabled ->
+                        viewModel.onEvent(AiSettingsUiEvent.ToggleConfirmEdits(enabled))
+                    }
+                )
                 Text(
                     text = stringResource(R.string.ai_capabilities_hint),
                     style = MaterialTheme.typography.bodySmall,
@@ -419,10 +427,16 @@ fun AiSettingsScreen(
     if (showModelPicker) {
         ModelPickerDialog(
             models = state.models,
+            providers = state.providers,
             active = state.activeModel,
             onSelect = { providerId, modelId ->
                 viewModel.onEvent(AiSettingsUiEvent.SetDefaultModel(providerId, modelId))
                 showModelPicker = false
+            },
+            onAddManually = { providerId, modelId, displayName ->
+                viewModel.onEvent(
+                    AiSettingsUiEvent.AddManualModel(providerId, modelId, displayName)
+                )
             },
             onDismiss = { showModelPicker = false }
         )
@@ -631,10 +645,13 @@ private fun ProviderEditorDialog(
 @Composable
 private fun ModelPickerDialog(
     models: List<ModelUi>,
+    providers: List<ProviderUi>,
     active: com.synth.synthmusic.domain.model.ActiveModelRef?,
     onSelect: (Long, String) -> Unit,
+    onAddManually: (providerId: Long, modelId: String, displayName: String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var showManualEntry by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.ai_default_model_pick)) },
@@ -643,6 +660,21 @@ private fun ModelPickerDialog(
                 modifier = Modifier.height(360.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
+                item(key = "add_manual") {
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                stringResource(R.string.ai_model_add_manual),
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        },
+                        leadingContent = {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                        },
+                        modifier = Modifier.clickable { showManualEntry = true }
+                    )
+                }
                 val grouped = models.groupBy { it.providerLabel }
                 grouped.forEach { (providerLabel, providerModels) ->
                     item(key = "header_$providerLabel") {
@@ -681,6 +713,96 @@ private fun ModelPickerDialog(
             }
         },
         confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.ai_provider_cancel))
+            }
+        }
+    )
+    if (showManualEntry) {
+        ManualModelDialog(
+            providers = providers,
+            onConfirm = { providerId, modelId, displayName ->
+                showManualEntry = false
+                onAddManually(providerId, modelId, displayName)
+            },
+            onDismiss = { showManualEntry = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ManualModelDialog(
+    providers: List<ProviderUi>,
+    onConfirm: (providerId: Long, modelId: String, displayName: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var providerId by remember { mutableStateOf(providers.firstOrNull()?.id) }
+    var modelId by remember { mutableStateOf("") }
+    var displayName by remember { mutableStateOf("") }
+    var providerExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.ai_model_add_manual)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExposedDropdownMenuBox(
+                    expanded = providerExpanded,
+                    onExpandedChange = { providerExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = providers.firstOrNull { it.id == providerId }?.label.orEmpty(),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.ai_model_provider)) },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = providerExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = providerExpanded,
+                        onDismissRequest = { providerExpanded = false }
+                    ) {
+                        providers.forEach { provider ->
+                            DropdownMenuItem(
+                                text = { Text(provider.label) },
+                                onClick = {
+                                    providerId = provider.id
+                                    providerExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = modelId,
+                    onValueChange = { modelId = it },
+                    label = { Text(stringResource(R.string.ai_model_id)) },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = displayName,
+                    onValueChange = { displayName = it },
+                    label = { Text(stringResource(R.string.ai_model_display_name)) },
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    providerId?.let { onConfirm(it, modelId, displayName) }
+                },
+                enabled = providerId != null && modelId.isNotBlank()
+            ) {
+                Text(stringResource(R.string.ai_provider_save))
+            }
+        },
+        dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.ai_provider_cancel))
             }

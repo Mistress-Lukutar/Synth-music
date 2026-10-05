@@ -26,7 +26,7 @@ import com.synth.synthmusic.ui.search.SearchScreen
  * @param onNavigateToFolderDetail Navigate to folder detail (path, isAll).
  * @param onNavigateToSettings Navigate to settings.
  * @param onNavigateToAiSettings Navigate to AI settings.
- * @param onNavigateToChat Navigate to an AI chat by id.
+ * @param onNavigateToAssistantEditor Navigate to the assistant editor.
  * @param modifier Modifier for the root container.
  */
 @Composable
@@ -41,7 +41,6 @@ fun MainScreen(
     onNavigateToFolderDetail: (String, Boolean) -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAiSettings: () -> Unit,
-    onNavigateToChat: (Long) -> Unit,
     onNavigateToAssistantEditor: (Long?) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -71,7 +70,6 @@ fun MainScreen(
 
             2 -> AiScreen(
                 onNavigateToAiSettings = onNavigateToAiSettings,
-                onOpenChat = onNavigateToChat,
                 onNavigateToAssistantEditor = onNavigateToAssistantEditor,
                 modifier = Modifier.fillMaxSize()
             )

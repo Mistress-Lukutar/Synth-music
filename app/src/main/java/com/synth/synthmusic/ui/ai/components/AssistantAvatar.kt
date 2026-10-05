@@ -43,6 +43,33 @@ fun AssistantAvatar(
     size: Dp = 40.dp,
     modifier: Modifier = Modifier
 ) {
+    AssistantAvatar(
+        iconName = assistant.avatarIcon,
+        colorIndex = assistant.avatarColorIndex,
+        contentDescription = assistant.name,
+        size = size,
+        modifier = modifier
+    )
+}
+
+/**
+ * Renders an avatar from raw persona fields, tolerating deleted assistants.
+ * A null [iconName] or [colorIndex] falls back to the neutral assistant look.
+ *
+ * @param iconName the [AiAvatarIcon] name of the persona.
+ * @param colorIndex the persona tint index.
+ * @param contentDescription accessibility label, null for decorative use.
+ * @param size the avatar diameter.
+ * @param modifier the modifier to be applied to the avatar.
+ */
+@Composable
+fun AssistantAvatar(
+    iconName: String?,
+    colorIndex: Int?,
+    contentDescription: String?,
+    size: Dp = 40.dp,
+    modifier: Modifier = Modifier
+) {
     val tints = listOf(
         MaterialTheme.colorScheme.primary,
         MaterialTheme.colorScheme.secondary,
@@ -59,7 +86,26 @@ fun AssistantAvatar(
         MaterialTheme.colorScheme.surfaceContainerHighest,
         MaterialTheme.colorScheme.surfaceContainerHigh
     )
-    val index = ((assistant.avatarColorIndex % tints.size) + tints.size) % tints.size
+    if (iconName == null || colorIndex == null) {
+        Box(
+            modifier = modifier
+                .size(size)
+                .background(
+                    MaterialTheme.colorScheme.surfaceContainerHighest,
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = neutralAssistantIcon(),
+                contentDescription = contentDescription,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(size * 0.55f)
+            )
+        }
+        return
+    }
+    val index = ((colorIndex % tints.size) + tints.size) % tints.size
     Box(
         modifier = modifier
             .size(size)
@@ -67,8 +113,8 @@ fun AssistantAvatar(
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = avatarIcon(assistant.avatarIcon),
-            contentDescription = assistant.name,
+            imageVector = avatarIcon(iconName),
+            contentDescription = contentDescription,
             tint = tints[index],
             modifier = Modifier.size(size * 0.55f)
         )

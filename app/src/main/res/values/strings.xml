@@ -29,6 +29,10 @@
     <string name="ai_default_model_none">Not set</string>
     <string name="ai_default_model_pick">Choose a model</string>
     <string name="ai_default_model_hint">Pinned and fetched models across providers</string>
+    <string name="ai_model_add_manual">Add model manually</string>
+    <string name="ai_model_provider">Provider</string>
+    <string name="ai_model_id">Model ID</string>
+    <string name="ai_model_display_name">Display name (optional)</string>
 
     <!-- AI Settings: capabilities -->
     <string name="ai_capabilities_section">Capabilities</string>
@@ -58,11 +62,37 @@
     <string name="ai_models_notools_notice">Fetched models with unknown capabilities default to tools on, vision off — adjust flags in the model list.</string>
 
     <!-- AI chat home -->
-    <string name="ai_home_search_hint">Search chats</string>
     <string name="ai_home_setup_title">Set up an AI provider</string>
     <string name="ai_home_setup_body">Add an API provider in AI settings to start chatting with your music library assistant.</string>
     <string name="ai_home_setup_action">Open AI settings</string>
-    <string name="ai_home_empty">No chats yet — tap + to start one</string>
+    <string name="ai_home_pick_assistant">Start a chat with…</string>
+    <string name="ai_home_create_assistant">Create custom assistant</string>
+
+    <!-- AI drawer -->
+    <string name="ai_drawer_new_chat">New chat</string>
+    <string name="ai_drawer_chats">Chats</string>
+    <string name="ai_drawer_no_chats">No chats yet</string>
+    <string name="ai_drawer_settings">AI settings</string>
+    <string name="ai_agent_general">General</string>
+    <string name="ai_agent_general_description">Plain assistant without a persona</string>
+
+    <!-- AI new-chat empty state -->
+    <string name="ai_empty_title">How can I help with your music?</string>
+    <string name="ai_empty_hint">Ask anything about your library — tags, artwork, playlists and more.</string>
+    <string name="ai_suggestion_missing_tags">Find songs with missing tags</string>
+    <string name="ai_suggestion_duplicates">Find duplicate tracks</string>
+    <string name="ai_suggestion_playlist">Make me a focus playlist</string>
+
+    <!-- AI accessibility -->
+    <string name="cd_open_drawer">Open menu</string>
+    <string name="cd_new_chat">New chat</string>
+    <string name="cd_chat_menu">Chat options</string>
+    <string name="cd_send">Send</string>
+    <string name="cd_stop">Stop</string>
+    <string name="cd_attach_image">Attach image</string>
+    <string name="cd_remove_attachment">Remove attachment</string>
+    <string name="cd_choose_assistant">Choose assistant</string>
+    <string name="cd_hide_assistants">Hide assistant list</string>
 
     <!-- AI chat screen -->
     <string name="ai_chat_rename">Rename chat</string>
@@ -75,8 +105,6 @@
     <string name="ai_chat_input_hint">Ask about your music…</string>
     <string name="ai_chat_image_attachment">Image attachment</string>
     <string name="ai_chat_needs_provider">No AI provider configured — add one in AI settings</string>
-    <string name="ai_home_pick_assistant">Start a chat with…</string>
-    <string name="ai_home_create_assistant">Create custom assistant</string>
 
     <!-- Assistant editor -->
     <string name="assistant_editor_title">Assistant</string>
@@ -92,16 +120,14 @@
     <string name="assistant_delete">Delete assistant</string>
     <string name="assistant_delete_confirm">Delete this assistant? Existing chats keep their history.</string>
     <string name="assistant_builtin_notice">Built-in assistants cannot be edited. Save as copy to customize.</string>
-    <string name="ai_chat_permissions">Permissions</string>
     <string name="ai_chat_activity">AI activity</string>
-    <string name="ai_chat_permissions_hint">Explicit grants for this chat only; they never exceed the global switches and are cleared when the chat is deleted.</string>
     <string name="ai_chat_activity_empty">No AI activity recorded yet.</string>
+    <string name="ai_confirm_edits">Ask for confirmation on edits</string>
+    <string name="ai_confirm_edits_desc">Show an approval card in the chat before the assistant edits metadata, files or playlists. File deletion always asks.</string>
     <string name="ai_chat_approval_title">Approval required</string>
     <string name="ai_chat_approve">Approve</string>
     <string name="ai_chat_always_allow">Always allow here</string>
     <string name="ai_chat_deny">Deny</string>
-    <string name="ai_chat_grant_title">Permission needed</string>
-    <string name="ai_chat_grant_for_chat">Grant for this chat</string>
     <string name="ai_trash_section">Trash</string>
     <string name="ai_trash_count">%1$d file(s) in trash</string>
     <string name="ai_trash_empty">Empty trash</string>

@@ -139,7 +139,6 @@ fun AppNavigation(
                     },
                     onNavigateToSettings = { navController.navigate(SettingsRoute) },
                     onNavigateToAiSettings = { navController.navigate(AiSettingsRoute) },
-                    onNavigateToChat = { chatId -> navController.navigate(AiChatRoute(chatId)) },
                     onNavigateToAssistantEditor = { assistantId ->
                         navController.navigate(AssistantEditorRoute(assistantId))
                     }
@@ -169,13 +168,6 @@ fun AppNavigation(
             }
             composable<AiSettingsRoute> {
                 com.synth.synthmusic.ui.settings.ai.AiSettingsScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable<AiChatRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<AiChatRoute>()
-                com.synth.synthmusic.ui.ai.chat.AiChatScreen(
-                    chatId = route.chatId,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
