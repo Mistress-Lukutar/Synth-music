@@ -101,6 +101,9 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.sse)
 
+    // Markdown (AI chat message rendering, GFM flavour)
+    implementation(libs.jetbrains.markdown)
+
     // JAudioTagger (metadata / ReplayGain)
     implementation(libs.jaudiotagger)
 
