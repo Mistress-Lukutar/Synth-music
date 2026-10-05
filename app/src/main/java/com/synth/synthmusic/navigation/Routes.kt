@@ -38,4 +38,13 @@ data class FolderDetailRoute(val folderPath: String, val isAll: Boolean = false)
 @Serializable
 object SettingsRoute
 
+@Serializable
+object AiSettingsRoute
+
+@Serializable
+data class AiChatRoute(val chatId: Long)
+
+@Serializable
+data class AssistantEditorRoute(val assistantId: Long? = null)
+
 
