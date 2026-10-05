@@ -7,19 +7,21 @@ import com.synth.synthmusic.domain.model.AiToolCall
 import com.synth.synthmusic.domain.model.AiToolSpec
 import com.synth.synthmusic.data.ai.client.parseArgsOrEmpty
 import com.synth.synthmusic.domain.repository.AiActionLogRepository
+import com.synth.synthmusic.domain.repository.AiSettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
  * Production [ToolDispatcher]: resolves tools from the registered set,
- * enforces the capability policy (global kill-switches are already
- * intersected into [ToolContext.grants]), executes on [Dispatchers.IO],
- * truncates oversized results and writes an audit entry for every call —
- * including denied and failed ones.
+ * enforces the capability policy (missing grants are denied — tools outside
+ * the effective grants are never advertised in the first place), executes on
+ * [Dispatchers.IO], truncates oversized results and writes an audit entry for
+ * every call — including denied and failed ones.
  */
 class ToolDispatcherImpl(
     private val tools: List<AiTool>,
-    private val actionLogRepository: AiActionLogRepository
+    private val actionLogRepository: AiActionLogRepository,
+    private val settingsRepository: AiSettingsRepository
 ) : ToolDispatcher {
 
     private val toolsByName: Map<String, AiTool> = tools.associateBy { it.name }
@@ -48,26 +50,27 @@ class ToolDispatcherImpl(
             return errorResult(call, "Unknown tool: ${call.name}")
         }
 
-        // --- Grant policy (with optional interactive grant prompt) ---
+        // --- Grant policy ---
         val missing = tool.requiredGrants.filter { it !in context.grants }
         if (missing.isNotEmpty()) {
-            val granted = context.approvalBridge
-                ?.requestPermissionGrant(missing.toSet()) ?: false
-            if (!granted) {
-                val names = missing.joinToString(", ") { it.name.lowercase() }
-                audit(context.chatId, call, AiActionOutcome.DENIED, "Missing grants: $names")
-                return errorResult(
-                    call,
-                    "User denied: this action requires the $names capability"
-                )
-            }
+            val names = missing.joinToString(", ") { it.name.lowercase() }
+            audit(context.chatId, call, AiActionOutcome.DENIED, "Missing grants: $names")
+            return errorResult(
+                call,
+                "User denied: this action requires the $names capability " +
+                    "(enable it in AI settings)"
+            )
         }
 
         // --- Confirmation policy ---
         when (tool.confirmationLevel) {
             ConfirmationLevel.NONE -> Unit
             ConfirmationLevel.CONFIRM -> {
-                val autoAllowed = context.approvalBridge?.isAlwaysAllowed(call.name) ?: false
+                val confirmEdits = runCatching {
+                    settingsRepository.current().confirmEdits
+                }.getOrDefault(true)
+                val autoAllowed = !confirmEdits ||
+                    (context.approvalBridge?.isAlwaysAllowed(call.name) ?: false)
                 if (!autoAllowed) {
                     val approved = context.approvalBridge?.requestConfirmation(
                         ConfirmationRequest(

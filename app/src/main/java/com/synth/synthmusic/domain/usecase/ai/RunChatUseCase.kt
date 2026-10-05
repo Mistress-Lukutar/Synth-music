@@ -82,6 +82,11 @@ class RunChatUseCase(
         }
         val systemPrompt = buildSystemPrompt(chat)
         val grants = chatGrants(chat)
+        val toolSpecs = toolDispatcher.specsFor(grants)
+        android.util.Log.d(
+            "SynthAI",
+            "Advertising ${toolSpecs.size} tools (grants=$grants)"
+        )
 
         try {
             var iterations = 0
@@ -93,7 +98,7 @@ class RunChatUseCase(
                     endpoint = endpoint,
                     systemPrompt = systemPrompt,
                     turns = history.map { it.toTurn() },
-                    tools = toolDispatcher.specsFor(grants)
+                    tools = toolSpecs
                 )
                 val client = clientFactory.clientFor(endpoint.protocol)
 
@@ -218,22 +223,17 @@ class RunChatUseCase(
     }
 
     /**
-     * Effective capability grants: explicit per-chat overrides when present,
-     * otherwise the assistant's defaults, always intersected with the global
-     * kill-switches so per-chat grants can never exceed them.
+     * Effective capability grants: the assistant's default grants (all
+     * capabilities for chats without an assistant) intersected with the
+     * global kill-switches, so nothing can exceed what AI settings allow.
      */
     private suspend fun chatGrants(chat: AiChat): Set<AiCapability> {
         val settings = settingsRepository.current()
         val globalEnabled = AiCapability.entries.filter { settings.isCapabilityEnabled(it) }.toSet()
-        val explicit = chatRepository.getGrants(chat.id)
-        val base = if (explicit.isEmpty()) {
-            chat.assistantId
-                ?.let { assistantRepository.getAssistant(it)?.defaultGrants }
-                ?: emptySet()
-        } else {
-            explicit.filterValues { it }.keys
-        }
-        return base intersect globalEnabled
+        val assistantDefaults = chat.assistantId
+            ?.let { assistantRepository.getAssistant(it)?.defaultGrants }
+            ?: AiCapability.entries.toSet()
+        return assistantDefaults intersect globalEnabled
     }
 
     private suspend fun createStreamingMessage(chatId: Long): AiChatMessage {

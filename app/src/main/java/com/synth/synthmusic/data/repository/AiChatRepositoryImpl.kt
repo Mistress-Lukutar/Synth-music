@@ -5,9 +5,6 @@ import com.synth.synthmusic.data.local.database.AiChatDao
 import com.synth.synthmusic.data.local.database.AiChatEntity
 import com.synth.synthmusic.data.local.database.AiChatMessageDao
 import com.synth.synthmusic.data.local.database.AiChatMessageEntity
-import com.synth.synthmusic.data.local.database.AiChatToolGrantDao
-import com.synth.synthmusic.data.local.database.AiChatToolGrantEntity
-import com.synth.synthmusic.domain.model.AiCapability
 import com.synth.synthmusic.domain.model.AiChat
 import com.synth.synthmusic.domain.model.AiChatMessage
 import com.synth.synthmusic.domain.model.AiMessagePart
@@ -27,7 +24,6 @@ import kotlinx.serialization.json.Json
 class AiChatRepositoryImpl(
     private val chatDao: AiChatDao,
     private val messageDao: AiChatMessageDao,
-    private val grantDao: AiChatToolGrantDao,
     private val actionLogDao: AiActionLogDao,
     private val json: Json
 ) : AiChatRepository {
@@ -73,7 +69,6 @@ class AiChatRepositoryImpl(
 
     override suspend fun deleteChat(chatId: Long) {
         messageDao.deleteForChat(chatId)
-        grantDao.deleteForChat(chatId)
         actionLogDao.deleteForChat(chatId)
         chatDao.deleteById(chatId)
     }
@@ -104,24 +99,6 @@ class AiChatRepositoryImpl(
 
     override suspend fun updateMessageStatus(messageId: Long, status: AiMessageStatus) {
         messageDao.updateStatus(messageId, status.name)
-    }
-
-    override suspend fun getGrants(chatId: Long): Map<AiCapability, Boolean> =
-        grantDao.getForChat(chatId).mapNotNull { entity ->
-            val capability = runCatching { AiCapability.valueOf(entity.capability) }
-                .getOrNull() ?: return@mapNotNull null
-            capability to entity.granted
-        }.toMap()
-
-    override suspend fun setGrant(chatId: Long, capability: AiCapability, granted: Boolean) {
-        grantDao.upsert(
-            AiChatToolGrantEntity(
-                chatId = chatId,
-                capability = capability.name,
-                granted = granted,
-                grantedAt = System.currentTimeMillis()
-            )
-        )
     }
 
     private fun AiChatEntity.toDomain(): AiChat = AiChat(

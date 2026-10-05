@@ -19,9 +19,9 @@ data class ConfirmationRequest(
 )
 
 /**
- * UI bridge the dispatcher consults for confirmations and missing-grant
- * prompts. Implemented by the chat ViewModel via a CompletableDeferred so
- * the engine suspends until the user resolves the card.
+ * UI bridge the dispatcher consults for confirmations. Implemented by the
+ * chat ViewModel via a CompletableDeferred so the engine suspends until the
+ * user resolves the card.
  */
 interface ApprovalBridge {
 
@@ -29,12 +29,6 @@ interface ApprovalBridge {
      * Shows an approval card and suspends until the user approves/denies.
      */
     suspend fun requestConfirmation(request: ConfirmationRequest): Boolean
-
-    /**
-     * Asks the user to grant [missing] capabilities for this chat.
-     * Implementations must persist the grant (per-chat) before returning true.
-     */
-    suspend fun requestPermissionGrant(missing: Set<AiCapability>): Boolean
 
     /** Whether [toolName] was marked "always allow in this chat". */
     fun isAlwaysAllowed(toolName: String): Boolean
@@ -44,10 +38,10 @@ interface ApprovalBridge {
  * Context passed to a tool execution.
  *
  * @property chatId the chat that triggered the call.
- * @property grants capabilities granted in this chat (already intersected
- * with the global kill-switches).
- * @property approvalBridge UI bridge for confirmations/permission prompts;
- * null in headless contexts (tests), which auto-denies interactive prompts.
+ * @property grants capabilities granted in this chat (assistant defaults
+ * intersected with the global kill-switches).
+ * @property approvalBridge UI bridge for confirmations; null in headless
+ * contexts (tests), which auto-denies interactive prompts.
  * @property imageSink sink for vision tool results; images appended here are
  * added to the next tool-result message.
  */

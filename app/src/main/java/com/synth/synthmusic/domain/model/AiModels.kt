@@ -47,8 +47,9 @@ data class AiModel(
 
 /**
  * Capabilities an assistant/chat may be granted. Tool advertisement and
- * execution are filtered through these; per-chat grants can never exceed the
- * global kill-switches in AI settings.
+ * execution are filtered through these; the effective grants are the
+ * assistant's default grants (all capabilities when no assistant) intersected
+ * with the global kill-switches in AI settings.
  */
 enum class AiCapability {
     READ_LIBRARY,
@@ -78,6 +79,12 @@ data class AiSettings(
         AiCapability.MANAGE_FILES to false,
         AiCapability.INTERNET to false
     ),
+    /**
+     * When true, edit-capable tools show an approval card in the chat before
+     * executing. When false they run silently; [ConfirmationLevel]
+     * ALWAYS_CONFIRM tools (file deletion) still ask regardless.
+     */
+    val confirmEdits: Boolean = true,
     val webSearchProvider: WebSearchProvider = WebSearchProvider.NONE,
     val webSearchKeyEncrypted: String? = null
 ) {
@@ -108,11 +115,11 @@ fun guessModelCapabilities(modelId: String): Pair<Boolean, Boolean> {
     val id = modelId.lowercase()
     val vision = listOf(
         "gpt-4o", "gpt-4.1", "gpt-4-turbo", "o3", "o4", "claude-3", "claude-4",
-        "gemini", "vision", "vl", "llama-4", "pixtral"
+        "gemini", "vision", "vl", "llama-4", "pixtral", "kimi"
     ).any { id.contains(it) }
     val tools = vision || listOf(
         "gpt", "claude", "gemini", "deepseek", "qwen", "mistral", "grok",
-        "command-r", "llama-3", "llama-4", "phi", "glm"
+        "command-r", "llama-3", "llama-4", "phi", "glm", "kimi", "k3"
     ).any { id.contains(it) }
     return tools to vision
 }

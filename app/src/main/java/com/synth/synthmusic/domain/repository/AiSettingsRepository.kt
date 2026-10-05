@@ -26,6 +26,9 @@ interface AiSettingsRepository {
     /** Toggles a global capability kill-switch. */
     suspend fun setCapabilityEnabled(capability: AiCapability, enabled: Boolean)
 
+    /** Toggles whether edit tools ask for confirmation before executing. */
+    suspend fun setConfirmEdits(enabled: Boolean)
+
     /** Stores the optional web-search backend selection. */
     suspend fun setWebSearchProvider(provider: WebSearchProvider)
 

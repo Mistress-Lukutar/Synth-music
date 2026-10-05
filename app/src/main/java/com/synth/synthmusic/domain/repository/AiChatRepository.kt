@@ -40,7 +40,7 @@ interface AiChatRepository {
     /** Bumps the chat's updated_at timestamp. */
     suspend fun touch(chatId: Long)
 
-    /** Deletes the chat with its messages, grants and audit entries. */
+    /** Deletes the chat with its messages and audit entries. */
     suspend fun deleteChat(chatId: Long)
 
     /** Clears all messages of a chat. */
@@ -68,12 +68,4 @@ interface AiChatRepository {
 
     /** Updates only the status of a message. */
     suspend fun updateMessageStatus(messageId: Long, status: AiMessageStatus)
-
-    // --- Per-chat capability grants ---
-
-    /** Returns the explicit per-chat grants (empty when never overridden). */
-    suspend fun getGrants(chatId: Long): Map<AiCapability, Boolean>
-
-    /** Stores an explicit per-chat grant. */
-    suspend fun setGrant(chatId: Long, capability: AiCapability, granted: Boolean)
 }

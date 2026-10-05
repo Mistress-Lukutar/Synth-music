@@ -27,10 +27,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AiChatEntity::class,
         AiChatMessageEntity::class,
         AiAssistantEntity::class,
-        AiChatToolGrantEntity::class,
         AiActionLogEntity::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -200,6 +199,13 @@ abstract class AppDatabase : RoomDatabase() {
                 )
             }
         }
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Per-chat tool grants were removed in favor of global AI
+                // settings toggles; the table is no longer referenced.
+                db.execSQL("DROP TABLE IF EXISTS ai_chat_tool_grants")
+            }
+        }
     }
     abstract fun songDao(): SongDao
     abstract fun albumDao(): AlbumDao
@@ -215,7 +221,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun aiChatDao(): AiChatDao
     abstract fun aiChatMessageDao(): AiChatMessageDao
     abstract fun aiAssistantDao(): AiAssistantDao
-    abstract fun aiChatToolGrantDao(): AiChatToolGrantDao
     abstract fun aiActionLogDao(): AiActionLogDao
 
     /**

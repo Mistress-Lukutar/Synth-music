@@ -50,8 +50,32 @@ class ToolDispatcherImplTest {
         }
     }
 
+    private class FakeSettings(
+        var confirmEdits: Boolean = true
+    ) : com.synth.synthmusic.domain.repository.AiSettingsRepository {
+        override val settings = kotlinx.coroutines.flow.flowOf(
+            com.synth.synthmusic.domain.model.AiSettings(confirmEdits = confirmEdits)
+        )
+        override suspend fun current() =
+            com.synth.synthmusic.domain.model.AiSettings(confirmEdits = confirmEdits)
+        override suspend fun setActiveModel(providerId: Long, modelId: String) = Unit
+        override suspend fun clearActiveModel() = Unit
+        override suspend fun setCapabilityEnabled(
+            capability: com.synth.synthmusic.domain.model.AiCapability,
+            enabled: Boolean
+        ) = Unit
+        override suspend fun setConfirmEdits(enabled: Boolean) {
+            confirmEdits = enabled
+        }
+        override suspend fun setWebSearchProvider(
+            provider: com.synth.synthmusic.domain.model.WebSearchProvider
+        ) = Unit
+        override suspend fun setWebSearchKey(plaintext: String?) = Unit
+        override suspend fun getWebSearchKey(): String? = null
+    }
+
     private fun dispatcher(vararg tools: AiTool) =
-        ToolDispatcherImpl(tools.toList(), FakeActionLog())
+        ToolDispatcherImpl(tools.toList(), FakeActionLog(), FakeSettings())
 
     private fun context(grants: Set<AiCapability>) = ToolContext(chatId = 1L, grants = grants)
 
@@ -101,7 +125,6 @@ class ToolDispatcherImplTest {
         val d = dispatcher(tool)
         val deny = object : ApprovalBridge {
             override suspend fun requestConfirmation(request: ConfirmationRequest) = false
-            override suspend fun requestPermissionGrant(missing: Set<AiCapability>) = false
             override fun isAlwaysAllowed(toolName: String) = false
         }
         val result = d.execute(call("t"), ToolContext(1L, emptySet(), deny))
@@ -118,7 +141,6 @@ class ToolDispatcherImplTest {
         val d = dispatcher(tool)
         val allow = object : ApprovalBridge {
             override suspend fun requestConfirmation(request: ConfirmationRequest) = true
-            override suspend fun requestPermissionGrant(missing: Set<AiCapability>) = true
             override fun isAlwaysAllowed(toolName: String) = true
         }
         val result = d.execute(call("t"), ToolContext(1L, emptySet(), allow))
@@ -134,11 +156,23 @@ class ToolDispatcherImplTest {
         val d = dispatcher(tool)
         val deny = object : ApprovalBridge {
             override suspend fun requestConfirmation(request: ConfirmationRequest) = false
-            override suspend fun requestPermissionGrant(missing: Set<AiCapability>) = false
             override fun isAlwaysAllowed(toolName: String) = true
         }
         val result = d.execute(call("t"), ToolContext(1L, emptySet(), deny))
         assertTrue(result.isError)
+    }
+
+    @Test
+    fun `confirm-edits off auto-approves CONFIRM tools`() = runTest {
+        val tool = FakeTool(
+            "t", requiredGrants = emptySet(),
+            confirmationLevel = ConfirmationLevel.CONFIRM
+        )
+        val settings = FakeSettings(confirmEdits = false)
+        val d = ToolDispatcherImpl(listOf(tool), FakeActionLog(), settings)
+        val result = d.execute(call("t"), context(emptySet()))
+        assertEquals("ok", result.content)
+        assertEquals(true, tool.executed)
     }
 
     @Test
@@ -156,7 +190,7 @@ class ToolDispatcherImplTest {
     fun `every call is audited`() = runTest {
         val log = FakeActionLog()
         val d = ToolDispatcherImpl(
-            listOf(FakeTool("t", requiredGrants = emptySet())), log
+            listOf(FakeTool("t", requiredGrants = emptySet())), log, FakeSettings()
         )
         d.execute(call("t"), context(emptySet()))
         d.execute(call("unknown"), context(emptySet()))

@@ -32,6 +32,10 @@ class AiSettingsRepositoryImpl(
         dataStore.setCapabilityEnabled(capability, enabled)
     }
 
+    override suspend fun setConfirmEdits(enabled: Boolean) {
+        dataStore.setConfirmEdits(enabled)
+    }
+
     override suspend fun setWebSearchProvider(provider: WebSearchProvider) {
         dataStore.setWebSearchProvider(provider)
     }

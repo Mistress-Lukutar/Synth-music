@@ -32,6 +32,7 @@ import com.synth.synthmusic.data.ai.tools.SetRatingFavoriteTool
 import com.synth.synthmusic.data.ai.tools.TrashManager
 import com.synth.synthmusic.data.ai.tools.UpdateSongsMetadataTool
 import com.synth.synthmusic.data.local.datastore.AiSettingsDataStore
+import com.synth.synthmusic.data.repository.AiActionLogRepositoryImpl
 import com.synth.synthmusic.data.repository.AiAssistantRepositoryImpl
 import com.synth.synthmusic.data.repository.AiChatRepositoryImpl
 import com.synth.synthmusic.data.repository.AiModelRepositoryImpl
@@ -60,6 +61,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
+import org.koin.dsl.bind
 import org.koin.dsl.module
 import java.util.concurrent.TimeUnit
 
@@ -91,8 +93,9 @@ val aiModule = module {
     single<AiProviderRepository> { AiProviderRepositoryImpl(get(), get(), get()) }
     single<AiModelRepository> { AiModelRepositoryImpl(get()) }
     single<AiSettingsRepository> { AiSettingsRepositoryImpl(get()) }
-    single<AiChatRepository> { AiChatRepositoryImpl(get(), get(), get(), get(), get()) }
+    single<AiChatRepository> { AiChatRepositoryImpl(get(), get(), get(), get()) }
     single<AiAssistantRepository> { AiAssistantRepositoryImpl(get()) }
+    single<AiActionLogRepository> { AiActionLogRepositoryImpl(get()) }
     single { ImageAttachmentLoader(androidContext()) }
 
     // --- Chat clients ---
@@ -105,10 +108,11 @@ val aiModule = module {
     single { FetchModelsUseCase() }
     single { TestConnectionUseCase() }
     single { SeedBuiltInAssistantsUseCase(get()) }
-    single {
+    single<ToolDispatcher> {
         ToolDispatcherImpl(
             tools = getAll(),
-            actionLogRepository = get()
+            actionLogRepository = get(),
+            settingsRepository = get()
         )
     }
     single { LibraryContextProvider(get(), get()) }
@@ -125,42 +129,38 @@ val aiModule = module {
     }
 
     // --- AI tools ---
+    // Each tool is registered under its concrete type with `bind AiTool`
+    // so all of them are discoverable via getAll<AiTool>(). Registering 20+
+    // definitions with the same primary type AiTool makes the later ones
+    // override the earlier ones, and getAll() would return a single tool.
     single { TrashManager(androidContext(), get()) }
-    single<AiTool> {
-        ListMusicFoldersTool(songRepository = get())
-    }
-    single<AiTool> {
-        RenameFileTool(appContext = androidContext(), songRepository = get())
-    }
-    single<AiTool> {
-        MoveFileTool(appContext = androidContext(), songRepository = get())
-    }
-    single<AiTool> {
+    single { ListMusicFoldersTool(songRepository = get()) } bind AiTool::class
+    single { RenameFileTool(appContext = androidContext(), songRepository = get()) } bind AiTool::class
+    single { MoveFileTool(appContext = androidContext(), songRepository = get()) } bind AiTool::class
+    single {
         DeleteFileTool(
             appContext = androidContext(),
             songRepository = get(),
             playlistRepository = get(),
             trashManager = get()
         )
-    }
-    single<AiTool> {
+    } bind AiTool::class
+    single {
         UpdateSongsMetadataTool(
             appContext = androidContext(),
             songRepository = get(),
             updateMetadata = get()
         )
-    }
-    single<AiTool> {
+    } bind AiTool::class
+    single {
         SetLyricsTool(
             appContext = androidContext(),
             songRepository = get(),
             updateMetadata = get()
         )
-    }
-    single<AiTool> {
-        SetRatingFavoriteTool(songRepository = get())
-    }
-    single<AiTool> {
+    } bind AiTool::class
+    single { SetRatingFavoriteTool(songRepository = get()) } bind AiTool::class
+    single {
         EmbedArtworkTool(
             appContext = androidContext(),
             songRepository = get(),
@@ -168,38 +168,34 @@ val aiModule = module {
             coverCache = get(),
             downloadStore = get()
         )
-    }
-    single<AiTool> {
+    } bind AiTool::class
+    single {
         RemoveArtworkTool(
             appContext = androidContext(),
             songRepository = get(),
             writeArtwork = get()
         )
-    }
-    single<AiTool> {
-        ManagePlaylistTool(playlistRepository = get())
-    }
+    } bind AiTool::class
+    single { ManagePlaylistTool(playlistRepository = get()) } bind AiTool::class
     single { DownloadStore(androidContext()) }
-    single<AiTool> { SearchMusicMetadataTool() }
-    single<AiTool> { SearchReleaseTool() }
-    single<AiTool> { GetLyricsOnlineTool() }
-    single<AiTool> { WebSearchTool(settingsRepository = get()) }
-    single<AiTool> { FetchUrlTool() }
-    single<AiTool> { DownloadImageTool(downloadStore = get()) }
-    single<AiTool> {
-        GetSongArtworkTool(appContext = androidContext(), songRepository = get())
-    }
-    single<AiTool> {
+    single { SearchMusicMetadataTool() } bind AiTool::class
+    single { SearchReleaseTool() } bind AiTool::class
+    single { GetLyricsOnlineTool() } bind AiTool::class
+    single { WebSearchTool(settingsRepository = get()) } bind AiTool::class
+    single { FetchUrlTool() } bind AiTool::class
+    single { DownloadImageTool(downloadStore = get()) } bind AiTool::class
+    single { GetSongArtworkTool(appContext = androidContext(), songRepository = get()) } bind AiTool::class
+    single {
         SearchSongsTool(searchSongs = { query ->
             get<SongRepository>().searchSongs(query).first()
         })
-    }
-    single<AiTool> {
+    } bind AiTool::class
+    single {
         GetSongsDetailsTool(getSongsByIds = { ids ->
             get<SongRepository>().getSongsByIds(ids)
         })
-    }
-    single<AiTool> {
+    } bind AiTool::class
+    single {
         val songRepository = get<SongRepository>()
         BrowseCollectionsTool(
             allSongs = { songRepository.getAllSongs() },
@@ -215,35 +211,35 @@ val aiModule = module {
                 }
             }
         )
-    }
-    single<AiTool> {
+    } bind AiTool::class
+    single {
         GetPlaylistTool(playlistSongs = { playlistId ->
             get<PlaylistRepository>().observePlaylistSongs(playlistId).first()
         })
-    }
-    single<AiTool> {
+    } bind AiTool::class
+    single {
         LibraryStatsTool(allSongs = { get<SongRepository>().getAllSongs() })
-    }
-    single<AiTool> {
+    } bind AiTool::class
+    single {
         val playbackRepository = get<PlaybackRepository>()
         GetPlaybackStateTool(playbackSnapshot = {
             val state = playbackRepository.playbackState.value
             Triple(state.currentSongId, state.isPlaying, state.shuffleEnabled)
         })
-    }
+    } bind AiTool::class
 
     // --- ViewModels ---
     viewModel { com.synth.synthmusic.ui.settings.ai.AiSettingsViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { com.synth.synthmusic.ui.ai.AiHomeViewModel(get(), get(), get()) }
-    viewModel { (chatId: Long) ->
-        com.synth.synthmusic.ui.ai.chat.AiChatViewModel(
-            chatId = chatId,
+    viewModel {
+        com.synth.synthmusic.ui.ai.AiViewModel(
             chatRepository = get(),
             assistantRepository = get(),
+            providerRepository = get(),
             modelRepository = get(),
             runChatUseCase = get(),
             imageAttachmentLoader = get(),
-            actionLogRepository = get()
+            actionLogRepository = get(),
+            aiSettingsDataStore = get()
         )
     }
     viewModel { (assistantId: Long?) ->
