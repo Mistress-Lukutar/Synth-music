@@ -12,6 +12,8 @@ import com.synth.synthmusic.domain.usecase.ai.ConfirmationLevel
 import com.synth.synthmusic.domain.usecase.ai.ToolContext
 import com.synth.synthmusic.domain.usecase.ai.ToolOutcome
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
@@ -22,6 +24,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
+import kotlin.coroutines.resume
 import java.net.URL
 
 /** Max files touched per tool call (rate limit enforced in tools). */
@@ -449,16 +452,25 @@ class ManagePlaylistTool(
 }
 
 /**
- * Fires a MediaStore rescan for the given paths so tag/file changes are
- * reflected in the system media provider.
+ * Fires a MediaStore rescan for the given paths and waits (bounded) for the
+ * scanner to finish, so a subsequent library scan reads up-to-date metadata
+ * instead of stale pre-edit MediaStore rows.
  */
-internal fun scanFiles(context: android.content.Context, paths: List<String>) {
+internal suspend fun scanFiles(context: android.content.Context, paths: List<String>) {
+    if (paths.isEmpty()) return
     runCatching {
-        MediaScannerConnection.scanFile(
-            context,
-            paths.toTypedArray(),
-            arrayOf("audio/mpeg"),
-            null
-        )
+        withTimeoutOrNull(SCAN_TIMEOUT_MS) {
+            suspendCancellableCoroutine { cont ->
+                MediaScannerConnection.scanFile(
+                    context,
+                    paths.toTypedArray(),
+                    arrayOf("audio/mpeg")
+                ) { _, _ ->
+                    if (cont.isActive) cont.resume(Unit)
+                }
+            }
+        }
     }
 }
+
+private const val SCAN_TIMEOUT_MS = 30_000L

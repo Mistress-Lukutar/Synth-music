@@ -12,7 +12,10 @@ import java.io.File
  * Use case for updating ID3 metadata of a single song.
  *
  * Writes changes to the underlying MP3 file via JAudioTagger and
- * updates the local Room database record.
+ * updates the local Room database record. When the file exists but the tag
+ * write fails, nothing is persisted so the database never diverges from the
+ * file (a divergence would be reverted by the next library scan).
+ * When the file is missing, only the Room record is updated.
  *
  * @param songRepository the repository for persisting song data.
  */
@@ -53,9 +56,9 @@ class UpdateMetadataUseCase(
         lyrics: String? = null,
         writeLyricsToTag: Boolean = false,
         artworkBytes: ByteArray? = null
-    ) = withContext(Dispatchers.IO) {
-        runCatching {
-            val file = File(song.path)
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        val file = File(song.path)
+        val tagWrite = runCatching {
             if (file.exists()) {
                 // Write to a temp copy in the same directory, then replace the
                 // original — in-place writes risk corrupting the MP3 on crash.
@@ -89,6 +92,13 @@ class UpdateMetadataUseCase(
                 }
             }
         }
+        // Never persist to the database when the file write failed: the next scan
+        // would otherwise overwrite the DB rows with the stale file tags again.
+        if (tagWrite.isFailure) {
+            return@withContext Result.failure(
+                tagWrite.exceptionOrNull() ?: IllegalStateException("Metadata write failed")
+            )
+        }
 
         if (artworkBytes != null) {
             writeArtworkUseCase(song, artworkBytes).onFailure {
@@ -107,7 +117,11 @@ class UpdateMetadataUseCase(
             trackNumber = trackNumber?.toIntOrNull() ?: song.trackNumber,
             comment = comment ?: song.comment,
             lyrics = lyrics ?: song.lyrics,
-            artworkUri = currentArtworkUri ?: song.artworkUri
+            artworkUri = currentArtworkUri ?: song.artworkUri,
+            // Refresh size/date so the next library scan recognizes the file as
+            // up-to-date instead of re-extracting possibly stale MediaStore data.
+            dateModified = if (file.exists()) (file.lastModified() / 1000) * 1000 else song.dateModified,
+            fileSize = if (file.exists()) file.length() else song.fileSize
         )
         songRepository.saveSongs(listOf(updated))
         Result.success(Unit)

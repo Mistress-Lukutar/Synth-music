@@ -42,7 +42,10 @@ class SongRepositoryImpl(
         songDao.getAll().map { it.toDomain() }
 
     override suspend fun saveSongs(songs: List<Song>) {
-        songDao.insertAll(songs.map { it.toEntity() })
+        // Must upsert, not REPLACE-insert: Room implements REPLACE as DELETE + INSERT
+        // of the parent row, which cascades into playlist_songs and silently drops
+        // the song from every playlist.
+        songDao.upsertSongs(songs.map { it.toEntity() })
     }
 
     override suspend fun upsertSongs(songs: List<Song>) {

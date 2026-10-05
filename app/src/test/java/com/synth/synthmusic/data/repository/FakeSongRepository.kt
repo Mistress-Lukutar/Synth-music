@@ -34,8 +34,12 @@ class FakeSongRepository : SongRepository {
 
     override suspend fun getAllSongs(): List<Song> = songs.value
 
-    override suspend fun saveSongs(value: List<Song>) {
-        songs.value = value
+    override suspend fun saveSongs(songs: List<Song>) {
+        // Mirrors the real upsert semantics: rows with a matching id are replaced
+        // in place, other rows are kept (no destructive list overwrite).
+        this.songs.value = this.songs.value.filter { existing ->
+            songs.none { it.id == existing.id }
+        } + songs
     }
 
     override suspend fun upsertSongs(songs: List<Song>) {

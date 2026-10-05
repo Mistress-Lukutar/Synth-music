@@ -80,14 +80,21 @@ class ScanMusicUseCase(
      * (new and modified files, processed in parallel).
      */
     private suspend fun scanSongs(): List<Song> {
-        val existingById = songRepository.getAllSongs().associateBy { it.id }
+        val existing = songRepository.getAllSongs()
+        val existingById = existing.associateBy { it.id }
+        val existingByPath = existing.associateBy { it.path }
         val entries = queryMediaStoreEntries()
 
         return coroutineScope {
             entries.map { entry ->
-                val cached = existingById[entry.id]
+                // MediaStore can reassign _ID when a file is rewritten or moved
+                // outside the app; reattach by path so playlist membership and
+                // user data (rating, play count, lyrics) survive the rescan.
+                val cached = existingById[entry.id] ?: existingByPath[entry.path]
                 if (cached != null && isUpToDate(cached, entry)) {
-                    async(Dispatchers.Default) { cached }
+                    async(Dispatchers.Default) {
+                        if (cached.uri == entry.uri) cached else cached.copy(uri = entry.uri)
+                    }
                 } else {
                     async(extractionDispatcher) { extractSong(entry, cached) }
                 }
@@ -206,7 +213,10 @@ class ScanMusicUseCase(
      * [cached] is the previous database row for the same file, if any.
      */
     private fun extractSong(entry: MediaStoreEntry, cached: Song?): Song {
-        var artworkUri = resolveArtwork(entry)
+        // Keep the cached database id when MediaStore reassigned _ID for the same
+        // file: the id is referenced by playlists, bookmarks and playback state.
+        val id = cached?.id ?: entry.id
+        var artworkUri = resolveArtwork(id)
         var bitrate = 0
         var sampleRate = 0
         var genre = ""
@@ -225,7 +235,7 @@ class ScanMusicUseCase(
             ) ?: ""
             if (artworkUri == null) {
                 artworkUri = retriever.embeddedPicture?.let { bytes ->
-                    Uri.fromFile(coverCache.saveSongArtwork(entry.id, bytes)).toString()
+                    Uri.fromFile(coverCache.saveSongArtwork(id, bytes)).toString()
                 }
             }
         } catch (_: Exception) {
@@ -235,11 +245,11 @@ class ScanMusicUseCase(
         }
 
         if (artworkUri == null) {
-            artworkUri = extractMediaStoreThumbnail(entry) ?: cached?.artworkUri
+            artworkUri = extractMediaStoreThumbnail(id, entry.mediaStoreId) ?: cached?.artworkUri
         }
 
         return Song(
-            id = entry.id,
+            id = id,
             title = entry.title,
             artist = entry.artist,
             album = entry.album,
@@ -267,25 +277,26 @@ class ScanMusicUseCase(
     }
 
     /**
-     * Returns the URI of an already-cached artwork for [entry], or null when no
-     * cached cover file exists.
+     * Returns the URI of an already-cached artwork for the song with [id],
+     * or null when no cached cover file exists.
      */
-    private fun resolveArtwork(entry: MediaStoreEntry): String? {
-        val file = coverCache.getCoverFile(CoverCache.Type.SONG, entry.id) ?: return null
+    private fun resolveArtwork(id: String): String? {
+        val file = coverCache.getCoverFile(CoverCache.Type.SONG, id) ?: return null
         return Uri.fromFile(file).toString()
     }
 
     /**
-     * Reads the MediaStore album art thumbnail for [entry] and stores it in [CoverCache].
-     * Returns the cached file URI, or null when MediaStore has no thumbnail.
+     * Reads the MediaStore album art thumbnail for the song with [mediaStoreId]
+     * and stores it in [CoverCache] under [id]. Returns the cached file URI,
+     * or null when MediaStore has no thumbnail.
      */
-    private fun extractMediaStoreThumbnail(entry: MediaStoreEntry): String? {
+    private fun extractMediaStoreThumbnail(id: String, mediaStoreId: Long): String? {
         return try {
             val mediaStoreUri =
-                "content://media/external/audio/media/${entry.mediaStoreId}/albumart".toUri()
+                "content://media/external/audio/media/$mediaStoreId/albumart".toUri()
             context.contentResolver.openInputStream(mediaStoreUri)?.use { input ->
                 val bytes = input.readBytes()
-                val file = coverCache.saveSongArtwork(entry.id, bytes)
+                val file = coverCache.saveSongArtwork(id, bytes)
                 Uri.fromFile(file).toString()
             }
         } catch (_: Exception) {
