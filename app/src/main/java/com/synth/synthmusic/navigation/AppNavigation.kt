@@ -137,7 +137,12 @@ fun AppNavigation(
                     onNavigateToFolderDetail = { path, isAll ->
                         navController.navigate(FolderDetailRoute(path, isAll))
                     },
-                    onNavigateToSettings = { navController.navigate(SettingsRoute) }
+                    onNavigateToSettings = { navController.navigate(SettingsRoute) },
+                    onNavigateToAiSettings = { navController.navigate(AiSettingsRoute) },
+                    onNavigateToChat = { chatId -> navController.navigate(AiChatRoute(chatId)) },
+                    onNavigateToAssistantEditor = { assistantId ->
+                        navController.navigate(AssistantEditorRoute(assistantId))
+                    }
                 )
             }
 
@@ -158,6 +163,26 @@ fun AppNavigation(
             }
             composable<SettingsRoute> {
                 SettingsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToAiSettings = { navController.navigate(AiSettingsRoute) }
+                )
+            }
+            composable<AiSettingsRoute> {
+                com.synth.synthmusic.ui.settings.ai.AiSettingsScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable<AiChatRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<AiChatRoute>()
+                com.synth.synthmusic.ui.ai.chat.AiChatScreen(
+                    chatId = route.chatId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable<AssistantEditorRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<AssistantEditorRoute>()
+                com.synth.synthmusic.ui.ai.assistant.AssistantEditorScreen(
+                    assistantId = route.assistantId,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
