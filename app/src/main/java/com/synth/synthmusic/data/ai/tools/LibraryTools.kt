@@ -49,16 +49,18 @@ object ToolSchemas {
 }
 
 /**
- * `search_songs` — text match across title/artist/album.
+ * `search_songs` — fuzzy, punctuation-tolerant match across title/artist/album.
  */
 class SearchSongsTool(
-    private val searchSongs: suspend (String) -> List<Song>
+    private val allSongs: suspend () -> List<Song>
 ) : AiTool {
 
     override val name = "search_songs"
     override val description = "Search the music library for songs matching a text query " +
-        "across title, artist and album. Returns compact results (id, title, artist, album, " +
-        "duration). Use get_songs_details for full metadata of specific songs."
+        "across title, artist and album. Tolerates filename-style punctuation " +
+        "(\"rush e\" finds \"RUSH_E\") and small typos; results are ranked by similarity. " +
+        "Returns compact results (id, title, artist, album, duration). " +
+        "Use get_songs_details for full metadata of specific songs."
     override val paramsSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") {
@@ -76,17 +78,27 @@ class SearchSongsTool(
         }
         val limit = (args["limit"]?.toString()?.toIntOrNull() ?: DEFAULT_LIMIT)
             .coerceIn(1, MAX_LIMIT)
-        val results = searchSongs(query)
-            .filter { song ->
-                song.title.contains(query, ignoreCase = true) ||
-                    song.artist.contains(query, ignoreCase = true) ||
-                    song.album.contains(query, ignoreCase = true)
+        val songs = allSongs()
+        val matcher = SongSearchMatcher(query)
+        // Strict pass: one field covers every query token. Only when nothing
+        // matches, fall back to the relaxed pass and flag partial matches so
+        // the model knows results may be approximations.
+        val strict = songs.mapNotNull { song ->
+            matcher.strictScore(song.title, song.artist, song.album)?.let { song to it }
+        }
+        val partial = strict.isEmpty()
+        val results = (if (partial) {
+            songs.mapNotNull { song ->
+                matcher.partialScore(song.title, song.artist, song.album)?.let { song to it }
             }
-            .take(limit)
+        } else {
+            strict
+        }).sortedByDescending { it.second }.take(limit)
         return ToolOutcome(
             buildJsonObject {
                 put("count", results.size)
-                put("songs", buildJsonArray { results.forEach { add(songSummary(it)) } })
+                if (partial) put("partial_match", true)
+                put("songs", buildJsonArray { results.forEach { add(songSummary(it.first)) } })
             }.toString()
         )
     }
@@ -319,12 +331,15 @@ class LibraryStatsTool(
  * `get_playback_state` — what the user is hearing right now (read-only).
  */
 class GetPlaybackStateTool(
-    private val playbackSnapshot: () -> Triple<String?, Boolean, Boolean>
+    private val playbackSnapshot: () -> Triple<String?, Boolean, Boolean>,
+    private val getSongById: suspend (String) -> Song?
 ) : AiTool {
 
     override val name = "get_playback_state"
-    override val description = "Return the current playback state: now-playing song, " +
-        "playing/paused and shuffle state. Read-only."
+    override val description = "Return the current playback state: the now-playing song " +
+        "(id, title, artist, album, duration), playing/paused and shuffle state. " +
+        "Use this instead of search_songs whenever the user refers to the current " +
+        "or now-playing track."
     override val paramsSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") { }
@@ -333,9 +348,11 @@ class GetPlaybackStateTool(
 
     override suspend fun execute(args: JsonObject, context: ToolContext): ToolOutcome {
         val (songId, isPlaying, shuffle) = playbackSnapshot()
+        val song = songId?.let { getSongById(it) }
         return ToolOutcome(
             buildJsonObject {
                 put("current_song_id", songId)
+                song?.let { put("song", songSummary(it)) }
                 put("is_playing", isPlaying)
                 put("shuffle", shuffle)
             }.toString()

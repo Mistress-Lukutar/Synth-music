@@ -59,7 +59,8 @@ val appModule = module {
                 AppDatabase.MIGRATION_11_12,
                 AppDatabase.MIGRATION_12_13,
                 AppDatabase.MIGRATION_13_14,
-                AppDatabase.MIGRATION_14_15
+                AppDatabase.MIGRATION_14_15,
+                AppDatabase.MIGRATION_15_16
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
@@ -80,6 +81,7 @@ val appModule = module {
     single { get<AppDatabase>().aiChatMessageDao() }
     single { get<AppDatabase>().aiAssistantDao() }
     single { get<AppDatabase>().aiActionLogDao() }
+    single { get<AppDatabase>().coverBlacklistDao() }
 
     single { SettingsDataStore(androidContext()) }
     single<SongRepository> { SongRepositoryImpl(get()) }

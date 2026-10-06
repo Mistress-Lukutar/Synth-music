@@ -27,9 +27,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AiChatEntity::class,
         AiChatMessageEntity::class,
         AiAssistantEntity::class,
-        AiActionLogEntity::class
+        AiActionLogEntity::class,
+        CoverBlacklistEntity::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -206,6 +207,23 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("DROP TABLE IF EXISTS ai_chat_tool_grants")
             }
         }
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Content-addressed blacklist of garbage embedded covers
+                // (site banners etc.) used by the AI cover-cleaning tools.
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS cover_blacklist (" +
+                    "hash TEXT NOT NULL, " +
+                    "width INTEGER NOT NULL, " +
+                    "height INTEGER NOT NULL, " +
+                    "byte_size INTEGER NOT NULL, " +
+                    "source_song_id TEXT, " +
+                    "reason TEXT NOT NULL, " +
+                    "blacklisted_at INTEGER NOT NULL, " +
+                    "PRIMARY KEY(hash))"
+                )
+            }
+        }
     }
     abstract fun songDao(): SongDao
     abstract fun albumDao(): AlbumDao
@@ -222,6 +240,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun aiChatMessageDao(): AiChatMessageDao
     abstract fun aiAssistantDao(): AiAssistantDao
     abstract fun aiActionLogDao(): AiActionLogDao
+    abstract fun coverBlacklistDao(): CoverBlacklistDao
 
     /**
      * Atomically persists playback state and both queue views as a single transaction.

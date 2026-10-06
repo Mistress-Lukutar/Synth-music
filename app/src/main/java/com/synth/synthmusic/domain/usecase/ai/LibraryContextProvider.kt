@@ -32,6 +32,7 @@ class LibraryContextProvider(
             currentSong?.let {
                 add(
                     "Now playing: \"${it.title}\" by ${it.artist} " +
+                        "(song id: ${it.id}) " +
                         if (playback.isPlaying) "(playing)" else "(paused)"
                 )
             }

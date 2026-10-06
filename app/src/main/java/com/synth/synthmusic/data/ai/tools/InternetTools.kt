@@ -204,13 +204,14 @@ class SearchReleaseTool : AiTool {
 }
 
 /**
- * `get_lyrics_online` — LRCLIB lyrics search (plain + synced).
+ * `get_lyrics_online` — LRCLIB lyrics search with lyrics.ovh fallback.
  */
 class GetLyricsOnlineTool : AiTool {
 
     override val name = "get_lyrics_online"
-    override val description = "Fetch lyrics for a track from LRCLIB. Returns plain lyrics and " +
-        "optionally synced lyrics with [mm:ss.xx] timestamps; feed the result to set_lyrics."
+    override val description = "Fetch lyrics for a track from LRCLIB, falling back to " +
+        "lyrics.ovh. Returns clean plain lyrics; [mm:ss.xx] timestamps from synced " +
+        "(LRC) sources are stripped. Feed the result to set_lyrics."
     override val paramsSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") {
@@ -229,39 +230,80 @@ class GetLyricsOnlineTool : AiTool {
                 ?: return@withContext ToolOutcome("Missing track", isError = true)
             val artist = args["artist"]?.jsonPrimitive?.content
                 ?: return@withContext ToolOutcome("Missing artist", isError = true)
-            val url = "https://lrclib.net/api/search?track=${urlEncode(track)}" +
-                "&artist=${urlEncode(artist)}"
-            if (isBlockedHost(url)) {
-                return@withContext ToolOutcome("Blocked host", isError = true)
-            }
-            val (code, body, _) = httpGet(url)
-            if (code != 200) {
-                return@withContext ToolOutcome("LRCLIB returned HTTP $code", isError = true)
-            }
-            val records = runCatching {
-                Json { ignoreUnknownKeys = true }.parseToJsonElement(body).jsonArray
-                    .map { it.jsonObject }
-            }.getOrDefault(emptyList())
-            val best = records.firstOrNull {
-                !it["plainLyrics"]?.jsonPrimitive?.content.isNullOrBlank()
-            }
-            if (best == null) {
-                return@withContext ToolOutcome("No lyrics found for \"$track\" by \"$artist\"")
-            }
-            ToolOutcome(
-                buildJsonObject {
-                    best["trackName"]?.let { put("track", it.jsonPrimitive.content) }
-                    best["artistName"]?.let { put("artist", it.jsonPrimitive.content) }
-                    best["plainLyrics"]?.let { put("plain", it.jsonPrimitive.content) }
-                    best["syncedLyrics"]?.let {
-                        if (!it.jsonPrimitive.content.isBlank()) {
-                            put("synced", it.jsonPrimitive.content)
-                        }
-                    }
-                }.toString()
-            )
+            fetchFromLrcLib(track, artist)
+                ?: fetchFromLyricsOvh(track, artist)
+                ?: ToolOutcome("No lyrics found for \"$track\" by \"$artist\"")
         }
+
+    /**
+     * Queries LRCLIB; prefers records with plain lyrics and falls back to
+     * synced-only ones (timestamps stripped). Returns null when the request
+     * fails or nothing matches, so the caller can try the next source.
+     */
+    private fun fetchFromLrcLib(track: String, artist: String): ToolOutcome? {
+        val url = "https://lrclib.net/api/search?track=${urlEncode(track)}" +
+            "&artist=${urlEncode(artist)}"
+        if (isBlockedHost(url)) {
+            return ToolOutcome("Blocked host", isError = true)
+        }
+        val (code, body, _) = httpGet(url)
+        if (code != 200) return null
+        val records = runCatching {
+            Json { ignoreUnknownKeys = true }.parseToJsonElement(body).jsonArray
+                .map { it.jsonObject }
+        }.getOrDefault(emptyList())
+        val best = records.firstOrNull {
+            !it["plainLyrics"]?.jsonPrimitive?.content.isNullOrBlank()
+        } ?: records.firstOrNull {
+            !it["syncedLyrics"]?.jsonPrimitive?.content.isNullOrBlank()
+        } ?: return null
+        val plain = best["plainLyrics"]?.jsonPrimitive?.content
+            ?.takeIf { it.isNotBlank() }
+            ?: stripSyncedTimestamps(best["syncedLyrics"]!!.jsonPrimitive.content)
+        return ToolOutcome(
+            buildJsonObject {
+                best["trackName"]?.let { put("track", it.jsonPrimitive.content) }
+                best["artistName"]?.let { put("artist", it.jsonPrimitive.content) }
+                put("plain", plain)
+                put("source", "lrclib")
+            }.toString()
+        )
+    }
+
+    /** Queries the keyless lyrics.ovh API as a second chance. */
+    private fun fetchFromLyricsOvh(track: String, artist: String): ToolOutcome? {
+        val url = "https://api.lyrics.ovh/v1/${urlEncode(artist)}/${urlEncode(track)}"
+        if (isBlockedHost(url)) {
+            return ToolOutcome("Blocked host", isError = true)
+        }
+        val (code, body, _) = httpGet(url)
+        if (code != 200) return null
+        val lyrics = runCatching {
+            Json { ignoreUnknownKeys = true }.parseToJsonElement(body)
+                .jsonObject["lyrics"]?.jsonPrimitive?.content
+        }.getOrNull()
+        if (lyrics.isNullOrBlank()) return null
+        return ToolOutcome(
+            buildJsonObject {
+                put("track", track)
+                put("artist", artist)
+                put("plain", lyrics.trim())
+                put("source", "lyrics.ovh")
+            }.toString()
+        )
+    }
 }
+
+/**
+ * Converts LRC content to plain text: drops the leading `[mm:ss.xx]`-style
+ * tags (any count per line, including `[ar:]`-style metadata tags) and
+ * removes lines that carried nothing but tags.
+ */
+internal fun stripSyncedTimestamps(lrc: String): String =
+    lrc.lineSequence()
+        .map { it.replace(Regex("^(\\s*\\[[^\\]]*\\])+\\s*"), "").trim() }
+        .filter { it.isNotEmpty() }
+        .joinToString("\n")
 
 /**
  * `web_search` — Brave/Tavily with a user-configured key; not advertised

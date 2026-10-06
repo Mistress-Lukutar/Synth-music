@@ -6,10 +6,17 @@ import com.synth.synthmusic.data.ai.client.GeminiClient
 import com.synth.synthmusic.data.ai.client.OpenAiClient
 import com.synth.synthmusic.data.ai.ImageAttachmentLoader
 import com.synth.synthmusic.data.ai.crypto.ApiKeyCipher
+import com.synth.synthmusic.data.local.database.CoverBlacklistDao
+import com.synth.synthmusic.domain.usecase.WriteArtworkToMp3UseCase
 import com.synth.synthmusic.data.ai.tools.BrowseCollectionsTool
+import com.synth.synthmusic.data.ai.tools.ManageCoverBlacklistTool
+import com.synth.synthmusic.data.ai.tools.PurgeCoversTool
+import com.synth.synthmusic.data.ai.tools.readEmbeddedCover
+import com.synth.synthmusic.data.ai.tools.sha256Hex
 import com.synth.synthmusic.data.ai.tools.GetPlaybackStateTool
 import com.synth.synthmusic.data.ai.tools.GetPlaylistTool
 import com.synth.synthmusic.data.ai.tools.GetSongsDetailsTool
+import com.synth.synthmusic.data.ai.tools.AuditTracksTool
 import com.synth.synthmusic.data.ai.tools.LibraryStatsTool
 import com.synth.synthmusic.data.ai.tools.DownloadImageTool
 import com.synth.synthmusic.data.ai.tools.DownloadStore
@@ -186,9 +193,7 @@ val aiModule = module {
     single { DownloadImageTool(downloadStore = get()) } bind AiTool::class
     single { GetSongArtworkTool(appContext = androidContext(), songRepository = get()) } bind AiTool::class
     single {
-        SearchSongsTool(searchSongs = { query ->
-            get<SongRepository>().searchSongs(query).first()
-        })
+        SearchSongsTool(allSongs = { get<SongRepository>().getAllSongs() })
     } bind AiTool::class
     single {
         GetSongsDetailsTool(getSongsByIds = { ids ->
@@ -221,11 +226,54 @@ val aiModule = module {
         LibraryStatsTool(allSongs = { get<SongRepository>().getAllSongs() })
     } bind AiTool::class
     single {
+        val songRepository = get<SongRepository>()
+        AuditTracksTool(
+            allSongs = { songRepository.getAllSongs() },
+            playlistSongs = { playlistId ->
+                get<PlaylistRepository>().observePlaylistSongs(playlistId).first()
+            },
+            embeddedCoverHash = { song ->
+                readEmbeddedCover(song)?.let { sha256Hex(it.bytes) }
+            },
+            isCoverBlacklisted = { hash ->
+                get<CoverBlacklistDao>().exists(hash)
+            }
+        )
+    } bind AiTool::class
+    single {
+        ManageCoverBlacklistTool(
+            blacklistDao = get(),
+            readCover = { song -> readEmbeddedCover(song) },
+            getSongById = { id ->
+                get<SongRepository>().getSongById(id)
+            }
+        )
+    } bind AiTool::class
+    single {
+        val songRepository = get<SongRepository>()
+        PurgeCoversTool(
+            blacklistDao = get(),
+            allSongs = { songRepository.getAllSongs() },
+            playlistSongs = { playlistId ->
+                get<PlaylistRepository>().observePlaylistSongs(playlistId).first()
+            },
+            readCover = { song -> readEmbeddedCover(song) },
+            removeCover = { song ->
+                get<WriteArtworkToMp3UseCase>().removeArtwork(song)
+            }
+        )
+    } bind AiTool::class
+    single {
         val playbackRepository = get<PlaybackRepository>()
-        GetPlaybackStateTool(playbackSnapshot = {
-            val state = playbackRepository.playbackState.value
-            Triple(state.currentSongId, state.isPlaying, state.shuffleEnabled)
-        })
+        GetPlaybackStateTool(
+            playbackSnapshot = {
+                val state = playbackRepository.playbackState.value
+                Triple(state.currentSongId, state.isPlaying, state.shuffleEnabled)
+            },
+            getSongById = { id ->
+                get<SongRepository>().getSongById(id)
+            }
+        )
     } bind AiTool::class
 
     // --- ViewModels ---

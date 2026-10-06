@@ -62,7 +62,10 @@ class UpdateMetadataUseCase(
             if (file.exists()) {
                 // Write to a temp copy in the same directory, then replace the
                 // original — in-place writes risk corrupting the MP3 on crash.
-                val tempFile = File(file.parentFile, "${file.name}.synthtmp")
+                // The temp name must keep the real audio extension: JAudioTagger
+                // selects its reader/writer by extension and rejects unknown ones.
+                val extension = file.extension.ifBlank { "mp3" }
+                val tempFile = File(file.parentFile, "${file.nameWithoutExtension}.synthtmp.$extension")
                 try {
                     file.copyTo(tempFile, overwrite = true)
                     val audioFile = AudioFileIO.read(tempFile)
