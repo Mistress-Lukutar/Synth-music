@@ -456,7 +456,7 @@ private fun ASTNode.textIn(source: String): String =
 /**
  * Renders a list of AST nodes into an [AnnotatedString] with inline styling.
  */
-private fun annotateNodes(
+internal fun annotateNodes(
     nodes: List<ASTNode>,
     source: String,
     styles: InlineStyles
@@ -490,17 +490,23 @@ private fun appendNode(
         MarkdownElementTypes.STRONG -> builder.withStyle(
             SpanStyle(fontWeight = FontWeight.Bold)
         ) {
-            node.children.forEach { appendNode(it, source, builder, styles) }
+            node.children
+                .filter { it.type != MarkdownTokenTypes.EMPH }
+                .forEach { appendNode(it, source, builder, styles) }
         }
         MarkdownElementTypes.EMPH -> builder.withStyle(
             SpanStyle(fontStyle = FontStyle.Italic)
         ) {
-            node.children.forEach { appendNode(it, source, builder, styles) }
+            node.children
+                .filter { it.type != MarkdownTokenTypes.EMPH }
+                .forEach { appendNode(it, source, builder, styles) }
         }
         GFMElementTypes.STRIKETHROUGH -> builder.withStyle(
             SpanStyle(textDecoration = TextDecoration.LineThrough)
         ) {
-            node.children.forEach { appendNode(it, source, builder, styles) }
+            node.children
+                .filter { it.type != GFMTokenTypes.TILDE }
+                .forEach { appendNode(it, source, builder, styles) }
         }
         MarkdownElementTypes.CODE_SPAN -> builder.withStyle(styles.code) {
             builder.append(
