@@ -68,6 +68,14 @@ sealed interface AiMessagePart {
         val content: String,
         val isError: Boolean = false
     ) : AiMessagePart
+
+    /**
+     * Model reasoning (thinking) content. Displayed as a collapsed spoiler in
+     * the chat transcript and never sent back to the provider.
+     */
+    @Serializable
+    @SerialName("reasoning")
+    data class Reasoning(val text: String) : AiMessagePart
 }
 
 /**
@@ -153,6 +161,9 @@ sealed interface ChatStreamEvent {
 
     /** Incremental text output. */
     data class TextDelta(val text: String) : ChatStreamEvent
+
+    /** Incremental reasoning (thinking) output. */
+    data class ReasoningDelta(val text: String) : ChatStreamEvent
 
     /** The model requested a tool call (models may batch several). */
     data class ToolCallReceived(val call: AiToolCall) : ChatStreamEvent

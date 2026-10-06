@@ -93,6 +93,38 @@ class ChatClientSupportTest {
     }
 
     @Test
+    fun `openai chunk parses reasoning_content delta`() {
+        val events = parseOpenAiChunk(
+            """
+            {"choices":[{"delta":{"reasoning_content":"thinking...","content":"Hi"}}]}
+            """.trimIndent(),
+            json
+        )
+        assertTrue(events.contains(ChatStreamEvent.ReasoningDelta("thinking...")))
+        assertTrue(events.contains(ChatStreamEvent.TextDelta("Hi")))
+    }
+
+    @Test
+    fun `openai chunk parses openrouter reasoning delta`() {
+        val events = parseOpenAiChunk(
+            """
+            {"choices":[{"delta":{"reasoning":"pondering"}}]}
+            """.trimIndent(),
+            json
+        )
+        assertTrue(events.contains(ChatStreamEvent.ReasoningDelta("pondering")))
+    }
+
+    @Test
+    fun `openai chunk without reasoning emits no reasoning delta`() {
+        val events = parseOpenAiChunk(
+            """{"choices":[{"delta":{"content":"Hi"}}]}""",
+            json
+        )
+        assertTrue(events.none { it is ChatStreamEvent.ReasoningDelta })
+    }
+
+    @Test
     fun `openai error chunk surfaces failure`() {
         val events = parseOpenAiChunk(
             """{"error":{"message":"Incorrect API key"}}""",

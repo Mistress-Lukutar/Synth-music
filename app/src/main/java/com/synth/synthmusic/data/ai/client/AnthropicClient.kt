@@ -117,6 +117,9 @@ class AnthropicClient(
                     "text_delta" -> delta["text"]?.jsonPrimitive?.content?.let { text ->
                         if (text.isNotEmpty()) events.add(ChatStreamEvent.TextDelta(text))
                     }
+                    "thinking_delta" -> delta["thinking"]?.jsonPrimitive?.content?.let { text ->
+                        if (text.isNotEmpty()) events.add(ChatStreamEvent.ReasoningDelta(text))
+                    }
                     "input_json_delta" -> {
                         val pending = state[KEY_PENDING_TOOL] as? PendingToolCall
                         pending?.json?.append(
@@ -217,6 +220,8 @@ class AnthropicClient(
                             put("content", part.content)
                         }
                     )
+                    // Reasoning is display-only and never replayed to the API.
+                    is AiMessagePart.Reasoning -> Unit
                 }
             }
         }

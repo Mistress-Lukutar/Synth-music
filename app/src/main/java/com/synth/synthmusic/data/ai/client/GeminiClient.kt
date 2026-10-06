@@ -111,8 +111,15 @@ class GeminiClient(
             ?.get("parts")?.jsonArray
             ?.forEach { rawPart ->
                 val part = rawPart.jsonObject
+                val isThought = (part["thought"] as? kotlinx.serialization.json.JsonPrimitive)
+                    ?.content == "true"
                 part["text"]?.jsonPrimitive?.content?.let { text ->
-                    if (text.isNotEmpty()) events.add(ChatStreamEvent.TextDelta(text))
+                    if (text.isNotEmpty()) {
+                        events.add(
+                            if (isThought) ChatStreamEvent.ReasoningDelta(text)
+                            else ChatStreamEvent.TextDelta(text)
+                        )
+                    }
                 }
                 part["functionCall"]?.jsonObject?.let { call ->
                     val name = call["name"]?.jsonPrimitive?.content ?: return@forEach
@@ -174,6 +181,8 @@ class GeminiClient(
                             }
                         }
                     )
+                    // Reasoning is display-only and never replayed to the API.
+                    is AiMessagePart.Reasoning -> Unit
                 }
             }
         }

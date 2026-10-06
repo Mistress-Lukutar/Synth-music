@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -16,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -105,13 +108,15 @@ fun buildChatRows(messages: List<AiChatMessage>): List<AiChatRow> {
             AiRole.USER -> rows += AiChatRow.User(message)
 
             AiRole.ASSISTANT -> {
-                val text = message.text
                 val calls = message.parts.filterIsInstance<AiMessagePart.ToolCall>()
                 // Render a text bubble only when there is visible content;
-                // a streaming message with no content yet shows the caret.
-                if (text.isNotBlank() ||
-                    (calls.isEmpty() && message.status == AiMessageStatus.STREAMING)
-                ) {
+                // streaming progress is signaled by the input bar and, once
+                // reasoning starts, by the reasoning spoiler.
+                val hasContent = message.parts.any { part ->
+                    (part is AiMessagePart.Text && part.text.isNotBlank()) ||
+                        (part is AiMessagePart.Reasoning && part.text.isNotBlank())
+                }
+                if (hasContent) {
                     rows += AiChatRow.Assistant(message)
                 }
                 if (calls.isNotEmpty()) {
@@ -207,8 +212,9 @@ private fun UserBubble(message: AiChatMessage) {
 }
 
 /**
- * Left-aligned assistant bubble with markdown text and a streaming caret;
- * tool calls are rendered separately as [ToolActivityCard].
+ * Left-aligned assistant bubble with markdown text and a collapsible
+ * reasoning spoiler; tool calls are rendered separately as
+ * [ToolActivityCard].
  *
  * @param message the assistant message to render.
  */
@@ -229,17 +235,77 @@ private fun AssistantBubble(message: AiChatMessage) {
                     .widthIn(max = 320.dp)
                     .padding(12.dp)
             ) {
-                MarkdownText(
-                    markdown = message.text,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                if (message.status == AiMessageStatus.STREAMING) {
-                    Text(
-                        "▍",
-                        color = MaterialTheme.colorScheme.primary
+                val reasoning = message.parts
+                    .filterIsInstance<AiMessagePart.Reasoning>()
+                    .joinToString("") { it.text }
+                if (reasoning.isNotBlank()) {
+                    ReasoningSection(
+                        reasoning = reasoning,
+                        isStreaming = message.status == AiMessageStatus.STREAMING
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+                if (message.text.isNotBlank()) {
+                    MarkdownText(
+                        markdown = message.text,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Collapsed-by-default spoiler showing the model's reasoning trace. While
+ * the message is still streaming the header shows a spinner.
+ *
+ * @param reasoning the concatenated reasoning text.
+ * @param isStreaming whether the owning message is still being generated.
+ */
+@Composable
+private fun ReasoningSection(reasoning: String, isStreaming: Boolean) {
+    var expanded by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clickable { expanded = !expanded }
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = if (expanded) {
+                    Icons.Default.KeyboardArrowUp
+                } else {
+                    Icons.Default.KeyboardArrowDown
+                },
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = stringResource(R.string.ai_chat_reasoning),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            if (isStreaming) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(12.dp),
+                    strokeWidth = 1.5.dp
+                )
+            }
+        }
+        if (expanded) {
+            Text(
+                text = reasoning,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
     }
 }

@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 /** Maximum tool round-trips per user turn before the engine gives up. */
-const val MAX_TOOL_ITERATIONS = 8
+const val MAX_TOOL_ITERATIONS = 32
 
 /** Rough char-per-token ratio used for context budgeting. */
 private const val CHARS_PER_TOKEN = 4
@@ -113,7 +113,8 @@ class RunChatUseCase(
                 val client = clientFactory.clientFor(endpoint.protocol)
 
                 val message = createStreamingMessage(chatId)
-                var text = StringBuilder()
+                val text = StringBuilder()
+                val reasoning = StringBuilder()
                 var tokensIn: Int? = null
                 var tokensOut: Int? = null
                 val toolCalls = mutableListOf<AiToolCall>()
@@ -126,17 +127,30 @@ class RunChatUseCase(
                         when (event) {
                             is ChatStreamEvent.TextDelta -> {
                                 text.append(event.text)
-                                val updated = message.withParts(
-                                    listOf(AiMessagePart.Text(text.toString()))
+                                emit(
+                                    ChatRunEvent.MessageUpdated(
+                                        message.withParts(
+                                            partsFor(reasoning.toString(), text.toString(), toolCalls)
+                                        )
+                                    )
                                 )
-                                emit(ChatRunEvent.MessageUpdated(updated))
+                            }
+                            is ChatStreamEvent.ReasoningDelta -> {
+                                reasoning.append(event.text)
+                                emit(
+                                    ChatRunEvent.MessageUpdated(
+                                        message.withParts(
+                                            partsFor(reasoning.toString(), text.toString(), toolCalls)
+                                        )
+                                    )
+                                )
                             }
                             is ChatStreamEvent.ToolCallReceived -> {
                                 toolCalls.add(event.call)
                                 emit(
                                     ChatRunEvent.MessageUpdated(
                                         message.withParts(
-                                            partsFor(text.toString(), toolCalls)
+                                            partsFor(reasoning.toString(), text.toString(), toolCalls)
                                         )
                                     )
                                 )
@@ -153,20 +167,26 @@ class RunChatUseCase(
                     // The scope is already cancelled, so the DAO write must
                     // run in a non-cancellable context to actually persist.
                     withContext(NonCancellable) {
-                        persistPartial(chatRepository, message.id, text.toString(), toolCalls, true)
+                        persistPartial(
+                            chatRepository, message.id,
+                            reasoning.toString(), text.toString(), toolCalls, true
+                        )
                     }
                     throw e
                 }
 
                 if (streamError != null) {
-                    persistPartial(chatRepository, message.id, text.toString(), toolCalls, false)
+                    persistPartial(
+                        chatRepository, message.id,
+                        reasoning.toString(), text.toString(), toolCalls, false
+                    )
                     emit(ChatRunEvent.TurnFinished(streamError?.message ?: "Stream failed"))
                     return@flow
                 }
 
                 if (toolCalls.isEmpty()) {
                     finalizeMessage(
-                        message.id, text.toString(), toolCalls,
+                        message.id, reasoning.toString(), text.toString(), toolCalls,
                         tokensIn, tokensOut, stopReason
                     )
                     emit(
@@ -184,7 +204,8 @@ class RunChatUseCase(
                 // Persist the assistant message with its tool calls, execute
                 // each call, and append the tool results as a TOOL message.
                 finalizeMessage(
-                    message.id, text.toString(), toolCalls, tokensIn, tokensOut, StopReason.TOOL_USE
+                    message.id, reasoning.toString(), text.toString(), toolCalls,
+                    tokensIn, tokensOut, StopReason.TOOL_USE
                 )
                 val imageSink = mutableListOf<AiMessagePart.Image>()
                 val results = toolCalls.map { call ->
@@ -205,7 +226,11 @@ class RunChatUseCase(
                     )
                 )
                 chatRepository.touch(chatId)
-                emit(ChatRunEvent.MessageUpdated(message.withParts(partsFor(text.toString(), toolCalls))))
+                emit(
+                    ChatRunEvent.MessageUpdated(
+                        message.withParts(partsFor(reasoning.toString(), text.toString(), toolCalls))
+                    )
+                )
             }
             emit(
                 ChatRunEvent.TurnFinished(
@@ -277,6 +302,7 @@ class RunChatUseCase(
 
     private suspend fun finalizeMessage(
         messageId: Long,
+        reasoning: String,
         text: String,
         toolCalls: List<AiToolCall>,
         tokensIn: Int?,
@@ -286,7 +312,7 @@ class RunChatUseCase(
         chatRepository.getMessage(messageId)?.let { stored ->
             chatRepository.updateMessage(
                 stored.copy(
-                    parts = partsFor(text, toolCalls),
+                    parts = partsFor(reasoning, text, toolCalls),
                     status = AiMessageStatus.COMPLETE,
                     inputTokens = tokensIn,
                     outputTokens = tokensOut
@@ -295,8 +321,13 @@ class RunChatUseCase(
         }
     }
 
-    private fun partsFor(text: String, toolCalls: List<AiToolCall>): List<AiMessagePart> =
+    private fun partsFor(
+        reasoning: String,
+        text: String,
+        toolCalls: List<AiToolCall>
+    ): List<AiMessagePart> =
         buildList {
+            if (reasoning.isNotBlank()) add(AiMessagePart.Reasoning(reasoning))
             if (text.isNotEmpty()) add(AiMessagePart.Text(text))
             toolCalls.forEach { call ->
                 add(
@@ -321,12 +352,14 @@ fun AiChatMessage.toTurn(): AiTurn = AiTurn(role, parts)
 internal suspend fun persistPartial(
     chatRepository: AiChatRepository,
     messageId: Long,
+    reasoning: String,
     text: String,
     toolCalls: List<AiToolCall>,
     stopped: Boolean
 ) {
     chatRepository.getMessage(messageId)?.let { stored ->
         val parts = buildList {
+            if (reasoning.isNotBlank()) add(AiMessagePart.Reasoning(reasoning))
             if (text.isNotEmpty()) add(AiMessagePart.Text(text + if (stopped) " (stopped)" else ""))
             toolCalls.forEach { call ->
                 add(

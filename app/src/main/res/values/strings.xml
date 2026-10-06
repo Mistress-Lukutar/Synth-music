@@ -106,6 +106,7 @@
     <string name="ai_chat_image_attachment">Image attachment</string>
     <string name="ai_chat_needs_provider">No AI provider configured — add one in AI settings</string>
     <string name="ai_message_copy_code">Copy code</string>
+    <string name="ai_chat_reasoning">Reasoning</string>
 
     <!-- Assistant editor -->
     <string name="assistant_editor_title">Assistant</string>

@@ -9,6 +9,7 @@ import com.synth.synthmusic.domain.model.ChatStreamEvent
 import com.synth.synthmusic.domain.model.StopReason
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
@@ -189,6 +190,13 @@ fun parseOpenAiChunk(data: String, json: Json): List<ChatStreamEvent> {
         ?.firstOrNull()?.jsonObject
     if (choice != null) {
         val delta = choice["delta"]?.jsonObject
+        // Reasoning models expose thinking text either as `reasoning_content`
+        // (DeepSeek-style) or `reasoning` (OpenRouter-style).
+        val reasoning = delta?.get("reasoning_content")?.jsonPrimitive?.contentOrNull
+            ?: delta?.get("reasoning")?.jsonPrimitive?.contentOrNull
+        if (!reasoning.isNullOrEmpty()) {
+            events.add(ChatStreamEvent.ReasoningDelta(reasoning))
+        }
         delta?.get("content")?.jsonPrimitive?.content?.let { text ->
             if (text.isNotEmpty()) events.add(ChatStreamEvent.TextDelta(text))
         }
