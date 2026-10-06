@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 /** Maximum tool round-trips per user turn before the engine gives up. */
-const val MAX_TOOL_ITERATIONS = 32
+const val MAX_TOOL_ITERATIONS = 100
 
 /** Rough char-per-token ratio used for context budgeting. */
 private const val CHARS_PER_TOKEN = 4
