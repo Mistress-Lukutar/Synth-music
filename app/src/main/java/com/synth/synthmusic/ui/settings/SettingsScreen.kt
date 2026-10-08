@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
@@ -84,6 +85,7 @@ fun SettingsScreen(
     val scanError by viewModel.scanError.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showThemeDialog by remember { mutableStateOf(false) }
+    var forceRefreshAfterPermission by remember { mutableStateOf(false) }
 
     val audioPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.READ_MEDIA_AUDIO
@@ -94,7 +96,9 @@ fun SettingsScreen(
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        if (isGranted) viewModel.rescanLibrary()
+        if (isGranted) {
+            if (forceRefreshAfterPermission) viewModel.forceRefreshLibrary() else viewModel.rescanLibrary()
+        }
     }
 
     LaunchedEffect(scanError) {
@@ -234,6 +238,34 @@ fun SettingsScreen(
                         }
                     },
                     modifier = Modifier.clickable {
+                        forceRefreshAfterPermission = false
+                        permissionLauncher.launch(audioPermission)
+                    }
+                )
+
+                HorizontalDivider()
+
+                ListItem(
+                    headlineContent = { Text("Force Refresh Library") },
+                    supportingContent = { Text("Rebuild all metadata, lyrics and artwork from files, ignoring cache") },
+                    leadingContent = {
+                        Icon(Icons.Default.AutoFixHigh, contentDescription = null)
+                    },
+                    trailingContent = {
+                        if (isScanning) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    modifier = Modifier.clickable {
+                        forceRefreshAfterPermission = true
                         permissionLauncher.launch(audioPermission)
                     }
                 )

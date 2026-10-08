@@ -20,7 +20,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import org.jaudiotagger.audio.AudioFileIO
+import org.jaudiotagger.tag.FieldKey
+import org.jaudiotagger.tag.Tag
 import java.io.File
+
+/** Matches metadata-write temp leftovers, both legacy and dot-prefixed names. */
+private val TEMP_FILE_REGEX = Regex(".+\\.synthtmp\\..+")
+
+/** Temps younger than this may belong to a write in progress and are never deleted. */
+private const val TEMP_GRACE_PERIOD_MS = 10 * 60_000L
 
 /**
  * Use case for scanning device storage and indexing MP3 files into the local database.
@@ -47,9 +56,17 @@ class ScanMusicUseCase(
     /** Parallelism for the heavy per-file extraction. Bounded to avoid saturating flash I/O. */
     private val extractionDispatcher = Dispatchers.IO.limitedParallelism(4)
 
-    suspend operator fun invoke(): Result<Int> = withContext(Dispatchers.IO) {
+    /**
+     * Scans device storage and indexes MP3 files into the local database.
+     *
+     * @param forceFullRefresh when true, the incremental cache is bypassed: every
+     * file is re-read from disk (duration, tags, lyrics, artwork) instead of
+     * trusting MediaStore's row or the stored artwork cache. Song ids are kept
+     * stable, so playlists, bookmarks and playback state survive the refresh.
+     */
+    suspend operator fun invoke(forceFullRefresh: Boolean = false): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {
-            val songs = scanSongs()
+            val songs = scanSongs(forceFullRefresh)
             songRepository.upsertSongs(songs)
 
             val existingSongs = songRepository.getAllSongs()
@@ -79,11 +96,14 @@ class ScanMusicUseCase(
      * the stored database row (unchanged files) or by running full metadata extraction
      * (new and modified files, processed in parallel).
      */
-    private suspend fun scanSongs(): List<Song> {
+    private suspend fun scanSongs(forceFullRefresh: Boolean): List<Song> {
         val existing = songRepository.getAllSongs()
         val existingById = existing.associateBy { it.id }
         val existingByPath = existing.associateBy { it.path }
+        cleanupOrphanedTempFiles(existing.mapNotNull { File(it.path).parentFile }.toSet())
         val entries = queryMediaStoreEntries()
+        val extractor: (MediaStoreEntry, Song?) -> Song =
+            if (forceFullRefresh) this::extractSongFull else this::extractSong
 
         return coroutineScope {
             entries.map { entry ->
@@ -91,14 +111,52 @@ class ScanMusicUseCase(
                 // outside the app; reattach by path so playlist membership and
                 // user data (rating, play count, lyrics) survive the rescan.
                 val cached = existingById[entry.id] ?: existingByPath[entry.path]
-                if (cached != null && isUpToDate(cached, entry)) {
+                if (cached != null && !forceFullRefresh && isUpToDate(cached, entry)) {
                     async(Dispatchers.Default) {
                         if (cached.uri == entry.uri) cached else cached.copy(uri = entry.uri)
                     }
                 } else {
-                    async(extractionDispatcher) { extractSong(entry, cached) }
+                    async(extractionDispatcher) { extractor(entry, cached) }
                 }
             }.map { it.await() }
+        }
+    }
+
+    /**
+     * Deletes metadata-write temp leftovers (`*.synthtmp.*`, including the older
+     * non-hidden names) from the directories of indexed songs. A temp can survive
+     * a write when the process is killed mid-write; deleting the file alone is not
+     * enough because MediaStore keeps the row, so the stale MediaStore entry is
+     * removed as well. Files written within [TEMP_GRACE_PERIOD_MS] are skipped —
+     * they may belong to a metadata write currently in progress.
+     */
+    private fun cleanupOrphanedTempFiles(directories: Set<File>) {
+        val now = System.currentTimeMillis()
+        for (dir in directories) {
+            val leftovers = dir.listFiles { file ->
+                file.isFile &&
+                    TEMP_FILE_REGEX.matches(file.name) &&
+                    now - file.lastModified() > TEMP_GRACE_PERIOD_MS
+            } ?: continue
+            for (temp in leftovers) {
+                if (temp.delete()) {
+                    removeMediaStoreEntry(temp.absolutePath)
+                }
+            }
+        }
+    }
+
+    /**
+     * Removes the MediaStore row for [path] so the library scan prunes the
+     * corresponding database row instead of resurrecting a deleted file.
+     */
+    private fun removeMediaStoreEntry(path: String) {
+        runCatching {
+            context.contentResolver.delete(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                "${MediaStore.Audio.Media.DATA} = ?",
+                arrayOf(path)
+            )
         }
     }
 
@@ -180,6 +238,10 @@ class ScanMusicUseCase(
             while (cursor.moveToNext()) {
                 val mediaStoreId = cursor.getLong(idCol)
                 val path = cursor.getString(dataCol) ?: continue
+                // MediaStore rows can outlive their file (deleted while the app was
+                // dead, pending scanner cleanup); skip them so the scan prunes the
+                // stale database row instead of keeping an unplayable entry.
+                if (!File(path).exists()) continue
                 val artist = cursor.getString(artistCol) ?: "Unknown Artist"
                 entries.add(
                     MediaStoreEntry(
@@ -275,6 +337,96 @@ class ScanMusicUseCase(
             replayGainAlbumDb = cached?.replayGainAlbumDb
         )
     }
+
+    /**
+     * Re-extracts a song entirely from the file on disk, ignoring both the stored
+     * database row and MediaStore's cached metadata. Used by the force refresh:
+     * MediaStore itself can hold stale values (duration 0 from a scan of a
+     * half-written file, outdated titles after external tag edits), so duration,
+     * tags and artwork are read fresh. Falls back to MediaStore values for fields
+     * that cannot be read from the file. User data (rating, play count, favorite)
+     * is restored by the upsert merge; ReplayGain is preserved lazily.
+     */
+    private fun extractSongFull(entry: MediaStoreEntry, cached: Song?): Song {
+        val id = cached?.id ?: entry.id
+        var durationMs = entry.durationMs
+        var bitrate = 0
+        var sampleRate = 0
+        var mediaStoreGenre = ""
+
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(entry.path)
+            durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?.toLongOrNull()?.takeIf { it > 0 } ?: entry.durationMs
+            bitrate = retriever.extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_BITRATE
+            )?.toIntOrNull()?.div(1000) ?: 0
+            sampleRate = retriever.extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_SAMPLERATE
+            )?.toIntOrNull() ?: 0
+            mediaStoreGenre = retriever.extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_GENRE
+            ) ?: ""
+        } catch (_: Exception) {
+            // ignore unreadable files; MediaStore entry values are used below
+        } finally {
+            retriever.release()
+        }
+
+        val tag: Tag? = runCatching {
+            AudioFileIO.read(File(entry.path)).tagOrCreateAndSetDefault
+        }.getOrNull()
+
+        // Artwork is re-derived from the file; a stale cached cover is dropped
+        // when the file no longer carries embedded art.
+        val artworkBytes = tag?.firstArtwork?.binaryData
+        val artworkUri: String? = if (artworkBytes != null) {
+            Uri.fromFile(coverCache.saveSongArtwork(id, artworkBytes)).toString()
+        } else {
+            coverCache.deleteCover(CoverCache.Type.SONG, id)
+            extractMediaStoreThumbnail(id, entry.mediaStoreId)
+        }
+
+        return Song(
+            id = id,
+            title = firstField(tag, FieldKey.TITLE) ?: entry.title,
+            artist = firstField(tag, FieldKey.ARTIST) ?: entry.artist,
+            album = firstField(tag, FieldKey.ALBUM) ?: entry.album,
+            albumArtist = firstField(tag, FieldKey.ALBUM_ARTIST)
+                ?: firstField(tag, FieldKey.ARTIST) ?: entry.albumArtist,
+            durationMs = durationMs,
+            trackNumber = firstField(tag, FieldKey.TRACK)
+                ?.substringBefore('/')?.trim()?.toIntOrNull() ?: entry.trackNumber,
+            year = firstField(tag, FieldKey.YEAR)?.toIntOrNull() ?: entry.year,
+            genre = firstField(tag, FieldKey.GENRE) ?: mediaStoreGenre,
+            comment = firstField(tag, FieldKey.COMMENT) ?: "",
+            path = entry.path,
+            uri = entry.uri,
+            bitrate = bitrate,
+            sampleRate = sampleRate,
+            fileSize = entry.fileSize,
+            artworkUri = artworkUri,
+            rating = 0f,
+            playCount = 0,
+            lastPlayed = null,
+            dateAdded = entry.dateAddedMs,
+            dateModified = entry.dateModifiedMs,
+            lyrics = firstField(tag, FieldKey.LYRICS),
+            replayGainTrackDb = cached?.replayGainTrackDb,
+            replayGainAlbumDb = cached?.replayGainAlbumDb
+        )
+    }
+
+    /**
+     * Returns the first value of [key] from [tag], or null when the tag is null,
+     * the field is missing, or the value is blank.
+     */
+    private fun firstField(tag: Tag?, key: FieldKey): String? =
+        tag?.let { t ->
+            runCatching { t.getFirst(key) }.getOrNull()
+                ?.trim()?.takeIf { it.isNotEmpty() }
+        }
 
     /**
      * Returns the URI of an already-cached artwork for the song with [id],

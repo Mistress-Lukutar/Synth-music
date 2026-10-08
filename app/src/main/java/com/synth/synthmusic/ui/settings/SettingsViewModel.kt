@@ -58,9 +58,31 @@ class SettingsViewModel(
 
     fun rescanLibrary() {
         viewModelScope.launch {
+            if (_isScanning.value) return@launch
             _isScanning.value = true
             _scanError.value = null
             scanMusicUseCase()
+                .onSuccess {
+                    _isScanning.value = false
+                }
+                .onFailure { error ->
+                    _isScanning.value = false
+                    _scanError.value = error.message
+                }
+        }
+    }
+
+    /**
+     * Rebuilds the library from the files on disk, ignoring the incremental cache.
+     * Song ids are preserved, so playlists, bookmarks and playback state survive;
+     * metadata, lyrics and artwork are re-read from the files.
+     */
+    fun forceRefreshLibrary() {
+        viewModelScope.launch {
+            if (_isScanning.value) return@launch
+            _isScanning.value = true
+            _scanError.value = null
+            scanMusicUseCase(forceFullRefresh = true)
                 .onSuccess {
                     _isScanning.value = false
                 }

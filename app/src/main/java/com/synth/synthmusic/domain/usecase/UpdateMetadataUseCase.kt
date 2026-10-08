@@ -64,8 +64,10 @@ class UpdateMetadataUseCase(
                 // original — in-place writes risk corrupting the MP3 on crash.
                 // The temp name must keep the real audio extension: JAudioTagger
                 // selects its reader/writer by extension and rejects unknown ones.
+                // The leading dot hides the temp from MediaStore, so a copy left
+                // behind by a killed process is never indexed as a track.
                 val extension = file.extension.ifBlank { "mp3" }
-                val tempFile = File(file.parentFile, "${file.nameWithoutExtension}.synthtmp.$extension")
+                val tempFile = File(file.parentFile, ".${file.nameWithoutExtension}.synthtmp.$extension")
                 try {
                     file.copyTo(tempFile, overwrite = true)
                     val audioFile = AudioFileIO.read(tempFile)
