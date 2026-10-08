@@ -127,6 +127,7 @@ val aiModule = module {
         RunChatUseCase(
             chatRepository = get(),
             providerRepository = get(),
+            modelRepository = get(),
             settingsRepository = get(),
             assistantRepository = get(),
             toolDispatcher = get(),

@@ -34,7 +34,22 @@ data class AiProvider(
 )
 
 /**
+ * Where a model's capability limits came from.
+ */
+enum class ModelLimitsSource {
+    /** Parsed from the provider's model-list endpoint. */
+    PROVIDER,
+
+    /** Entered by the user; wins over provider-reported values on re-fetch. */
+    MANUAL
+}
+
+/**
  * Domain model of a model offered by a provider.
+ *
+ * @property contextTokens input context window in tokens, when known.
+ * @property maxOutputTokens maximum output tokens, when known.
+ * @property limitsSource where the limits came from, or null when unknown.
  */
 data class AiModel(
     val providerId: Long,
@@ -42,7 +57,10 @@ data class AiModel(
     val displayName: String,
     val supportsTools: Boolean,
     val supportsVision: Boolean,
-    val isPinned: Boolean
+    val isPinned: Boolean,
+    val contextTokens: Int? = null,
+    val maxOutputTokens: Int? = null,
+    val limitsSource: ModelLimitsSource? = null
 )
 
 /**

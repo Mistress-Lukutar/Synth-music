@@ -144,6 +144,10 @@ data class AiEndpoint(
 
 /**
  * Protocol-agnostic chat completion request.
+ *
+ * @property maxTokens output cap sent to the provider; null omits the
+ * parameter so the provider applies its own maximum (Anthropic, whose API
+ * requires the field, falls back to a constant in the client).
  */
 data class AiChatRequest(
     val endpoint: AiEndpoint,
@@ -151,7 +155,7 @@ data class AiChatRequest(
     val turns: List<AiTurn>,
     val tools: List<AiToolSpec>,
     val temperature: Double = 0.7,
-    val maxTokens: Int = 4096
+    val maxTokens: Int? = null
 )
 
 /**

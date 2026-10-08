@@ -7,6 +7,8 @@ import com.synth.synthmusic.domain.model.AiChatMessage
 import com.synth.synthmusic.domain.model.AiEndpoint
 import com.synth.synthmusic.domain.model.AiMessagePart
 import com.synth.synthmusic.domain.model.AiMessageStatus
+import com.synth.synthmusic.domain.model.AiModel
+import com.synth.synthmusic.domain.model.AiProtocol
 import com.synth.synthmusic.domain.model.AiRole
 import com.synth.synthmusic.domain.model.AiToolCall
 import com.synth.synthmusic.domain.model.AiTurn
@@ -14,6 +16,7 @@ import com.synth.synthmusic.domain.model.ChatStreamEvent
 import com.synth.synthmusic.domain.model.StopReason
 import com.synth.synthmusic.domain.repository.AiAssistantRepository
 import com.synth.synthmusic.domain.repository.AiChatRepository
+import com.synth.synthmusic.domain.repository.AiModelRepository
 import com.synth.synthmusic.domain.repository.AiProviderRepository
 import com.synth.synthmusic.domain.repository.AiSettingsRepository
 import kotlinx.coroutines.CancellationException
@@ -26,11 +29,29 @@ import kotlinx.coroutines.withContext
 /** Maximum tool round-trips per user turn before the engine gives up. */
 const val MAX_TOOL_ITERATIONS = 100
 
-/** Rough char-per-token ratio used for context budgeting. */
-private const val CHARS_PER_TOKEN = 4
+/**
+ * Context window assumed when a model's real limit is unknown (neither the
+ * provider reported one nor the user entered it). Conservative on purpose.
+ */
+private const val DEFAULT_CONTEXT_TOKENS = 32_768
 
-/** Transcript cap (in messages) applied before each request. */
-private const val MAX_TRANSCRIPT_MESSAGES = 30
+/**
+ * Output reserve subtracted from the context window when the model's output
+ * cap is unknown, so the transcript leaves room for the answer.
+ */
+private const val DEFAULT_RESERVE_OUTPUT_TOKENS = 4_096
+
+/**
+ * Anthropic requires an explicit max_tokens on every request; this applies
+ * when neither the model row nor the request carries one.
+ */
+const val ANTHROPIC_FALLBACK_MAX_OUTPUT_TOKENS = 8_192
+
+/**
+ * Fraction of the computed budget actually used for history, absorbing the
+ * estimator's error margin.
+ */
+private const val BUDGET_SAFETY_FRACTION = 0.9
 
 /**
  * Events emitted while a chat turn runs.
@@ -52,12 +73,22 @@ sealed interface ChatRunEvent {
 class RunChatUseCase(
     private val chatRepository: AiChatRepository,
     private val providerRepository: AiProviderRepository,
+    private val modelRepository: AiModelRepository,
     private val settingsRepository: AiSettingsRepository,
     private val assistantRepository: AiAssistantRepository,
     private val toolDispatcher: ToolDispatcher,
     private val clientFactory: AiClientFactory,
     private val libraryContextProvider: LibraryContextProvider
 ) {
+
+    /**
+     * Endpoint to send a turn to plus the stored model row (when known),
+     * which carries the capability limits used for context budgeting.
+     */
+    private data class ResolvedTarget(
+        val endpoint: AiEndpoint,
+        val model: AiModel?
+    )
 
     /**
      * Runs one assistant turn for [chatId]: loads history, streams the
@@ -77,11 +108,12 @@ class RunChatUseCase(
             emit(ChatRunEvent.TurnFinished("Chat not found"))
             return@flow
         }
-        val endpoint = resolveEndpoint(chat)
-        if (endpoint == null) {
+        val target = resolveTarget(chat)
+        if (target == null) {
             emit(ChatRunEvent.TurnFinished("No AI provider configured"))
             return@flow
         }
+        val endpoint = target.endpoint
         val systemPrompt = buildSystemPrompt(chat)
         val grants = chatGrants(chat)
         val toolSpecs = toolDispatcher.specsFor(grants)
@@ -103,12 +135,15 @@ class RunChatUseCase(
             while (iterations < MAX_TOOL_ITERATIONS) {
                 iterations++
                 val history = chatRepository.getMessages(chatId)
-                    .takeLast(MAX_TRANSCRIPT_MESSAGES)
+                    .map { it.toTurn() }
                 val request = com.synth.synthmusic.domain.model.AiChatRequest(
                     endpoint = endpoint,
                     systemPrompt = systemPrompt,
-                    turns = history.map { it.toTurn() },
-                    tools = toolSpecs
+                    turns = ContextBudget.windowTurns(
+                        history, historyBudgetTokens(target, systemPrompt)
+                    ),
+                    tools = toolSpecs,
+                    maxTokens = effectiveMaxOutputTokens(target)
                 )
                 val client = clientFactory.clientFor(endpoint.protocol)
 
@@ -244,13 +279,44 @@ class RunChatUseCase(
         }
     }
 
-    private suspend fun resolveEndpoint(chat: AiChat): AiEndpoint? {
+    private suspend fun resolveTarget(chat: AiChat): ResolvedTarget? {
         val settings = settingsRepository.current()
         val providerId = chat.providerId ?: settings.activeProviderId ?: return null
         val modelId = chat.modelId ?: settings.activeModelId ?: return null
         val provider = providerRepository.getProvider(providerId) ?: return null
         val apiKey = providerRepository.getApiKey(providerId) ?: return null
-        return AiEndpoint(provider.baseUrl, apiKey, modelId, provider.protocol)
+        val endpoint = AiEndpoint(provider.baseUrl, apiKey, modelId, provider.protocol)
+        val model = modelRepository.getModel(providerId, modelId)
+        return ResolvedTarget(endpoint, model)
+    }
+
+    /**
+     * Effective output-token limit for the target: the model's stored cap,
+     * else a required fallback for Anthropic (whose API rejects requests
+     * without max_tokens), else null — omit the parameter entirely and let
+     * the provider use its own maximum.
+     */
+    private fun effectiveMaxOutputTokens(target: ResolvedTarget): Int? {
+        target.model?.maxOutputTokens?.let { return it }
+        return if (target.endpoint.protocol == AiProtocol.ANTHROPIC) {
+            ANTHROPIC_FALLBACK_MAX_OUTPUT_TOKENS
+        } else {
+            null
+        }
+    }
+
+    /**
+     * Token budget available for transcript history: the model's context
+     * window minus the output reserve and the system prompt, times the
+     * safety fraction. Never negative — [ContextBudget.windowTurns] always
+     * keeps the newest block even at budget zero.
+     */
+    private fun historyBudgetTokens(target: ResolvedTarget, systemPrompt: String?): Int {
+        val contextLimit = target.model?.contextTokens ?: DEFAULT_CONTEXT_TOKENS
+        val reserveOutput = effectiveMaxOutputTokens(target) ?: DEFAULT_RESERVE_OUTPUT_TOKENS
+        val systemTokens = systemPrompt?.let { ContextBudget.estimateTextTokens(it) } ?: 0
+        val usable = contextLimit - reserveOutput - systemTokens
+        return (usable * BUDGET_SAFETY_FRACTION).toInt().coerceAtLeast(0)
     }
 
     private suspend fun buildSystemPrompt(chat: AiChat): String {

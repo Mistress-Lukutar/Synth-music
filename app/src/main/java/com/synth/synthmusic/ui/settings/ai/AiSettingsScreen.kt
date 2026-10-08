@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -57,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -92,6 +94,7 @@ fun AiSettingsScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var deletingProvider by remember { mutableStateOf<ProviderUi?>(null) }
     var showModelPicker by remember { mutableStateOf(false) }
+    var editingModel by remember { mutableStateOf<ModelUi?>(null) }
     var showWebSearchKeyDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(events) {
@@ -433,12 +436,34 @@ fun AiSettingsScreen(
                 viewModel.onEvent(AiSettingsUiEvent.SetDefaultModel(providerId, modelId))
                 showModelPicker = false
             },
-            onAddManually = { providerId, modelId, displayName ->
+            onAddManually = { providerId, modelId, displayName, contextTokens, maxOutputTokens ->
                 viewModel.onEvent(
-                    AiSettingsUiEvent.AddManualModel(providerId, modelId, displayName)
+                    AiSettingsUiEvent.AddManualModel(
+                        providerId, modelId, displayName, contextTokens, maxOutputTokens
+                    )
                 )
             },
+            onEditModel = { entry ->
+                showModelPicker = false
+                editingModel = entry
+            },
             onDismiss = { showModelPicker = false }
+        )
+    }
+
+    editingModel?.let { entry ->
+        EditModelDialog(
+            model = entry.model,
+            onSave = { displayName, contextTokens, maxOutputTokens ->
+                viewModel.onEvent(
+                    AiSettingsUiEvent.UpdateModelLimits(
+                        entry.providerId, entry.model.modelId,
+                        displayName, contextTokens, maxOutputTokens
+                    )
+                )
+                editingModel = null
+            },
+            onDismiss = { editingModel = null }
         )
     }
 
@@ -648,7 +673,11 @@ private fun ModelPickerDialog(
     providers: List<ProviderUi>,
     active: com.synth.synthmusic.domain.model.ActiveModelRef?,
     onSelect: (Long, String) -> Unit,
-    onAddManually: (providerId: Long, modelId: String, displayName: String) -> Unit,
+    onAddManually: (
+        providerId: Long, modelId: String, displayName: String,
+        contextTokens: Int?, maxOutputTokens: Int?
+    ) -> Unit,
+    onEditModel: (ModelUi) -> Unit,
     onDismiss: () -> Unit
 ) {
     var showManualEntry by remember { mutableStateOf(false) }
@@ -694,14 +723,33 @@ private fun ModelPickerDialog(
                             active?.modelId == entry.model.modelId
                         ListItem(
                             headlineContent = { Text(entry.model.displayName) },
-                            supportingContent = { Text(entry.model.modelId) },
+                            supportingContent = {
+                                Column {
+                                    Text(entry.model.modelId)
+                                    modelLimitsLine(entry.model)?.let {
+                                        Text(
+                                            it,
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                }
+                            },
                             trailingContent = {
-                                if (selected) {
-                                    Icon(
-                                        Icons.Default.AutoAwesome,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = { onEditModel(entry) }) {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription =
+                                                stringResource(R.string.ai_model_edit)
+                                        )
+                                    }
+                                    if (selected) {
+                                        Icon(
+                                            Icons.Default.AutoAwesome,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                 }
                             },
                             modifier = Modifier.clickable {
@@ -721,13 +769,227 @@ private fun ModelPickerDialog(
     if (showManualEntry) {
         ManualModelDialog(
             providers = providers,
-            onConfirm = { providerId, modelId, displayName ->
+            onConfirm = { providerId, modelId, displayName, contextTokens, maxOutputTokens ->
                 showManualEntry = false
-                onAddManually(providerId, modelId, displayName)
+                onAddManually(
+                    providerId, modelId, displayName, contextTokens, maxOutputTokens
+                )
             },
             onDismiss = { showManualEntry = false }
         )
     }
+}
+
+/**
+ * Compact human-readable limits line for a model row, e.g.
+ * "ctx 1M · out 64K", or null when nothing is known.
+ */
+internal fun modelLimitsLine(model: com.synth.synthmusic.domain.model.AiModel): String? {
+    val context = model.contextTokens?.let { "ctx ${formatTokenCount(it)}" }
+    val output = model.maxOutputTokens?.let { "out ${formatTokenCount(it)}" }
+    return listOfNotNull(context, output).joinToString(" · ").ifEmpty { null }
+}
+
+/**
+ * Formats a token count compactly: 1000000 → "1M", 262144 → "262.1K".
+ */
+internal fun formatTokenCount(tokens: Int): String = when {
+    tokens >= 1_000_000 -> trimTokenFraction(tokens / 1_000_000.0) + "M"
+    tokens >= 1_000 -> trimTokenFraction(tokens / 1_000.0) + "K"
+    else -> tokens.toString()
+}
+
+private fun trimTokenFraction(value: Double): String {
+    val formatted = java.lang.String.format(java.util.Locale.US, "%.1f", value)
+    return if (formatted.endsWith(".0")) formatted.dropLast(2) else formatted
+}
+
+/**
+ * Parses an optional numeric field, treating blank text as "unknown".
+ */
+private fun parseOptionalTokens(text: String): Int? =
+    text.trim().takeIf { it.isNotEmpty() }?.toIntOrNull()
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ManualModelDialog(
+    providers: List<ProviderUi>,
+    onConfirm: (
+        providerId: Long, modelId: String, displayName: String,
+        contextTokens: Int?, maxOutputTokens: Int?
+    ) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var providerId by remember { mutableStateOf(providers.firstOrNull()?.id) }
+    var modelId by remember { mutableStateOf("") }
+    var displayName by remember { mutableStateOf("") }
+    var contextTokens by remember { mutableStateOf("") }
+    var maxOutputTokens by remember { mutableStateOf("") }
+    var providerExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.ai_model_add_manual)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExposedDropdownMenuBox(
+                    expanded = providerExpanded,
+                    onExpandedChange = { providerExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = providers.firstOrNull { it.id == providerId }?.label.orEmpty(),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.ai_model_provider)) },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = providerExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = providerExpanded,
+                        onDismissRequest = { providerExpanded = false }
+                    ) {
+                        providers.forEach { provider ->
+                            DropdownMenuItem(
+                                text = { Text(provider.label) },
+                                onClick = {
+                                    providerId = provider.id
+                                    providerExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = modelId,
+                    onValueChange = { modelId = it },
+                    label = { Text(stringResource(R.string.ai_model_id)) },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = displayName,
+                    onValueChange = { displayName = it },
+                    label = { Text(stringResource(R.string.ai_model_display_name)) },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = contextTokens,
+                    onValueChange = { contextTokens = it.filter { c -> c.isDigit() } },
+                    label = { Text(stringResource(R.string.ai_model_context_window)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = maxOutputTokens,
+                    onValueChange = { maxOutputTokens = it.filter { c -> c.isDigit() } },
+                    label = { Text(stringResource(R.string.ai_model_max_output)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+                Text(
+                    text = stringResource(R.string.ai_model_limits_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    providerId?.let {
+                        onConfirm(
+                            it, modelId, displayName,
+                            parseOptionalTokens(contextTokens),
+                            parseOptionalTokens(maxOutputTokens)
+                        )
+                    }
+                },
+                enabled = providerId != null && modelId.isNotBlank()
+            ) {
+                Text(stringResource(R.string.ai_provider_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.ai_provider_cancel))
+            }
+        }
+    )
+}
+
+@Composable
+private fun EditModelDialog(
+    model: com.synth.synthmusic.domain.model.AiModel,
+    onSave: (displayName: String, contextTokens: Int?, maxOutputTokens: Int?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var displayName by remember { mutableStateOf(model.displayName) }
+    var contextTokens by remember {
+        mutableStateOf(model.contextTokens?.toString().orEmpty())
+    }
+    var maxOutputTokens by remember {
+        mutableStateOf(model.maxOutputTokens?.toString().orEmpty())
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.ai_model_edit)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = model.modelId,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = displayName,
+                    onValueChange = { displayName = it },
+                    label = { Text(stringResource(R.string.ai_model_display_name)) },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = contextTokens,
+                    onValueChange = { contextTokens = it.filter { c -> c.isDigit() } },
+                    label = { Text(stringResource(R.string.ai_model_context_window)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = maxOutputTokens,
+                    onValueChange = { maxOutputTokens = it.filter { c -> c.isDigit() } },
+                    label = { Text(stringResource(R.string.ai_model_max_output)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+                Text(
+                    text = stringResource(R.string.ai_model_limits_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSave(
+                        displayName,
+                        parseOptionalTokens(contextTokens),
+                        parseOptionalTokens(maxOutputTokens)
+                    )
+                }
+            ) {
+                Text(stringResource(R.string.ai_provider_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.ai_provider_cancel))
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

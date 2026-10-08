@@ -5,14 +5,17 @@ import com.synth.synthmusic.data.ai.client.buildJsonPostRequest
 import com.synth.synthmusic.domain.model.AiModel
 import com.synth.synthmusic.domain.model.AiProtocol
 import com.synth.synthmusic.domain.model.AiProvider
+import com.synth.synthmusic.domain.model.ModelLimitsSource
 import com.synth.synthmusic.domain.model.guessModelCapabilities
 import com.synth.synthmusic.domain.repository.AiModelRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.intOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -114,6 +117,7 @@ class FetchModelsUseCase {
             val id = obj["id"]?.jsonPrimitive?.content ?: obj["name"]?.jsonPrimitive?.content
                 ?: return@mapNotNull null
             val cleanId = id.removePrefix("models/")
+            val (contextTokens, maxOutputTokens, limitsSource) = parseModelLimits(obj, protocol)
             when (protocol) {
                 AiProtocol.ANTHROPIC -> {
                     val displayName = obj["display_name"]?.jsonPrimitive?.content ?: cleanId
@@ -124,7 +128,10 @@ class FetchModelsUseCase {
                         displayName = displayName,
                         supportsTools = tools,
                         supportsVision = vision,
-                        isPinned = false
+                        isPinned = false,
+                        contextTokens = contextTokens,
+                        maxOutputTokens = maxOutputTokens,
+                        limitsSource = limitsSource
                     )
                 }
                 AiProtocol.GOOGLE_GEMINI -> {
@@ -141,7 +148,10 @@ class FetchModelsUseCase {
                         displayName = displayName,
                         supportsTools = tools,
                         supportsVision = vision,
-                        isPinned = false
+                        isPinned = false,
+                        contextTokens = contextTokens,
+                        maxOutputTokens = maxOutputTokens,
+                        limitsSource = limitsSource
                     )
                 }
                 AiProtocol.OPENAI_COMPATIBLE -> {
@@ -152,9 +162,60 @@ class FetchModelsUseCase {
                         displayName = cleanId,
                         supportsTools = tools,
                         supportsVision = vision,
-                        isPinned = false
+                        isPinned = false,
+                        contextTokens = contextTokens,
+                        maxOutputTokens = maxOutputTokens,
+                        limitsSource = limitsSource
                     )
                 }
+            }
+        }
+    }
+
+    /**
+     * Extracts capability limits from one model entry, per protocol.
+     * Returns (contextTokens, maxOutputTokens, source); the source is
+     * [ModelLimitsSource.PROVIDER] when at least one limit was found.
+     *
+     * - Gemini: `inputTokenLimit` / `outputTokenLimit`.
+     * - OpenAI-compatible: OpenRouter-style `context_length` /
+     *   `top_provider.context_length` / `max_model_len` for the context
+     *   window and `max_completion_tokens` / `top_provider.max_completion_tokens`
+     *   for the output cap. Plain OpenAI responses carry none of these.
+     * - Anthropic: the model-list endpoint reports no limits.
+     */
+    internal fun parseModelLimits(
+        obj: JsonObject,
+        protocol: AiProtocol
+    ): Triple<Int?, Int?, ModelLimitsSource?> {
+        fun JsonObject.objAt(key: String): JsonObject? =
+            get(key)?.let { element ->
+                runCatching { element.jsonObject }.getOrNull()
+            }
+        return when (protocol) {
+            AiProtocol.ANTHROPIC -> Triple(null, null, null)
+            AiProtocol.GOOGLE_GEMINI -> {
+                val context = obj["inputTokenLimit"]?.jsonPrimitive?.intOrNull
+                val output = obj["outputTokenLimit"]?.jsonPrimitive?.intOrNull
+                Triple(
+                    context,
+                    output,
+                    if (context != null || output != null) ModelLimitsSource.PROVIDER else null
+                )
+            }
+            AiProtocol.OPENAI_COMPATIBLE -> {
+                val context = obj["context_length"]?.jsonPrimitive?.intOrNull
+                    ?: obj.objAt("top_provider")
+                        ?.get("context_length")?.jsonPrimitive?.intOrNull
+                    ?: obj["max_model_len"]?.jsonPrimitive?.intOrNull
+                val output = obj["max_completion_tokens"]?.jsonPrimitive?.intOrNull
+                    ?: obj.objAt("top_provider")
+                        ?.get("max_completion_tokens")?.jsonPrimitive?.intOrNull
+                Triple(
+                    context,
+                    output,
+                    if (context != null || output != null) ModelLimitsSource.PROVIDER else null
+                )
             }
         }
     }

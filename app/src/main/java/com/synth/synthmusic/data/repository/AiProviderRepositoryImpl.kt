@@ -8,6 +8,7 @@ import com.synth.synthmusic.data.local.database.toEntity
 import com.synth.synthmusic.domain.model.AiModel
 import com.synth.synthmusic.domain.model.AiProtocol
 import com.synth.synthmusic.domain.model.AiProvider
+import com.synth.synthmusic.domain.model.ModelLimitsSource
 import com.synth.synthmusic.domain.repository.AiModelRepository
 import com.synth.synthmusic.domain.repository.AiProviderRepository
 import kotlinx.coroutines.flow.Flow
@@ -92,7 +93,37 @@ class AiModelRepositoryImpl(
         modelDao.getPinned().map { it.toDomain() }
 
     override suspend fun upsertModels(models: List<AiModel>) {
-        modelDao.upsertAll(models.map { it.toEntity() })
+        val entities = models.map { incoming ->
+            val existing = modelDao.get(incoming.providerId, incoming.modelId)
+            if (existing == null) {
+                incoming.toEntity()
+            } else {
+                mergeModel(incoming, existing.toDomain()).toEntity()
+            }
+        }
+        modelDao.upsertAll(entities)
+    }
+
+    /**
+     * Merges an incoming model row with the stored one. Limits and the pinned
+     * flag are user-visible state that a plain REPLACE would clobber:
+     * - manually entered limits always win (a re-fetch must not overwrite
+     *   them with provider-reported values);
+     * - otherwise provider-reported limits replace stale ones, but a fetch
+     *   that parses no limits keeps the values already stored;
+     * - the pinned flag is preserved from the stored row.
+     */
+    private fun mergeModel(incoming: AiModel, existing: AiModel): AiModel {
+        val limits = when {
+            incoming.limitsSource == ModelLimitsSource.MANUAL -> incoming
+            incoming.limitsSource == ModelLimitsSource.PROVIDER -> incoming
+            else -> incoming.copy(
+                contextTokens = existing.contextTokens,
+                maxOutputTokens = existing.maxOutputTokens,
+                limitsSource = existing.limitsSource
+            )
+        }
+        return limits.copy(isPinned = existing.isPinned)
     }
 
     override suspend fun setPinned(providerId: Long, modelId: String, pinned: Boolean) {

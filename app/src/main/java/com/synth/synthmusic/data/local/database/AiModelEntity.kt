@@ -24,5 +24,14 @@ data class AiModelEntity(
     @ColumnInfo(name = "supports_vision")
     val supportsVision: Boolean,
     @ColumnInfo(name = "is_pinned")
-    val isPinned: Boolean
+    val isPinned: Boolean,
+    /** Input context window in tokens, when known (provider or user). */
+    @ColumnInfo(name = "context_tokens")
+    val contextTokens: Int?,
+    /** Maximum output tokens, when known (provider or user). */
+    @ColumnInfo(name = "max_output_tokens")
+    val maxOutputTokens: Int?,
+    /** Where the limits came from: "provider"/"manual" (ModelLimitsSource name) or null. */
+    @ColumnInfo(name = "limits_source")
+    val limitsSource: String?
 )

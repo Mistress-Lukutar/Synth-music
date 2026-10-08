@@ -35,7 +35,8 @@ class AnthropicClient(
         val body = buildJsonObject {
             put("model", request.endpoint.modelId)
             put("stream", true)
-            put("max_tokens", request.maxTokens)
+            // Required by the Anthropic API — fall back when unset.
+            put("max_tokens", request.maxTokens ?: DEFAULT_MAX_TOKENS)
             put("temperature", request.temperature)
             request.systemPrompt?.let { put("system", it) }
             putJsonArray("messages") {
@@ -236,6 +237,12 @@ class AnthropicClient(
         const val ANTHROPIC_VERSION = "2023-06-01"
         const val KEY_INPUT_TOKENS = "input_tokens"
         const val KEY_PENDING_TOOL = "pending_tool"
+
+        /**
+         * max_tokens is mandatory in Anthropic requests; this applies when
+         * neither the model row nor the request carries an explicit cap.
+         */
+        const val DEFAULT_MAX_TOKENS = 8_192
 
         fun mapAnthropicStopReason(raw: String): StopReason = when (raw) {
             "end_turn", "stop_sequence" -> StopReason.END_TURN

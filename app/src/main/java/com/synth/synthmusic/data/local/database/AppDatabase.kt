@@ -30,7 +30,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AiActionLogEntity::class,
         CoverBlacklistEntity::class
     ],
-    version = 16,
+    version = 17,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -222,6 +222,15 @@ abstract class AppDatabase : RoomDatabase() {
                     "blacklisted_at INTEGER NOT NULL, " +
                     "PRIMARY KEY(hash))"
                 )
+            }
+        }
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Per-model capability limits (context window / max output),
+                // auto-detected from the provider or entered manually.
+                db.execSQL("ALTER TABLE ai_models ADD COLUMN context_tokens INTEGER")
+                db.execSQL("ALTER TABLE ai_models ADD COLUMN max_output_tokens INTEGER")
+                db.execSQL("ALTER TABLE ai_models ADD COLUMN limits_source TEXT")
             }
         }
     }

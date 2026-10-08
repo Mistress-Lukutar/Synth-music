@@ -7,6 +7,7 @@ import com.synth.synthmusic.domain.model.AiCapability
 import com.synth.synthmusic.domain.model.AiModel
 import com.synth.synthmusic.domain.model.AiProtocol
 import com.synth.synthmusic.domain.model.AiProvider
+import com.synth.synthmusic.domain.model.ModelLimitsSource
 import com.synth.synthmusic.domain.model.WebSearchProvider
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -36,7 +37,12 @@ fun AiModelEntity.toDomain(): AiModel = AiModel(
     displayName = displayName,
     supportsTools = supportsTools,
     supportsVision = supportsVision,
-    isPinned = isPinned
+    isPinned = isPinned,
+    contextTokens = contextTokens,
+    maxOutputTokens = maxOutputTokens,
+    limitsSource = limitsSource?.let { source ->
+        ModelLimitsSource.entries.firstOrNull { it.name == source }
+    }
 )
 
 /**
@@ -92,7 +98,10 @@ fun AiModel.toEntity() = AiModelEntity(
     displayName = displayName,
     supportsTools = supportsTools,
     supportsVision = supportsVision,
-    isPinned = isPinned
+    isPinned = isPinned,
+    contextTokens = contextTokens,
+    maxOutputTokens = maxOutputTokens,
+    limitsSource = limitsSource?.name
 )
 
 /**

@@ -73,7 +73,7 @@ class GeminiClient(
             }
             putJsonObject("generationConfig") {
                 put("temperature", request.temperature)
-                put("maxOutputTokens", request.maxTokens)
+                request.maxTokens?.let { put("maxOutputTokens", it) }
             }
         }.toString()
 

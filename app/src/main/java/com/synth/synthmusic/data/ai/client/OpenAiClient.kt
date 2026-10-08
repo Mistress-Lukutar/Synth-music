@@ -24,7 +24,9 @@ class OpenAiClient(
             put("model", request.endpoint.modelId)
             put("stream", true)
             put("temperature", request.temperature)
-            put("max_tokens", request.maxTokens)
+            // Omitted when unset: the provider then applies its own maximum,
+            // and newer OpenAI reasoning models reject max_tokens anyway.
+            request.maxTokens?.let { put("max_tokens", it) }
             putJsonArray("messages") {
                 request.systemPrompt?.let { system ->
                     add(

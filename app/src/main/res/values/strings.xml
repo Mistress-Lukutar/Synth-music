@@ -33,6 +33,10 @@
     <string name="ai_model_provider">Provider</string>
     <string name="ai_model_id">Model ID</string>
     <string name="ai_model_display_name">Display name (optional)</string>
+    <string name="ai_model_context_window">Context window (tokens)</string>
+    <string name="ai_model_max_output">Max output tokens</string>
+    <string name="ai_model_limits_hint">Leave blank to use the provider default</string>
+    <string name="ai_model_edit">Edit model</string>
 
     <!-- AI Settings: capabilities -->
     <string name="ai_capabilities_section">Capabilities</string>

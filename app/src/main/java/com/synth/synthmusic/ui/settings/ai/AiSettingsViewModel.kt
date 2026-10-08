@@ -6,6 +6,7 @@ import com.synth.synthmusic.data.ai.client.AiClientFactory
 import com.synth.synthmusic.domain.model.AiCapability
 import com.synth.synthmusic.domain.model.AiEndpoint
 import com.synth.synthmusic.domain.model.AiModel
+import com.synth.synthmusic.domain.model.ModelLimitsSource
 import com.synth.synthmusic.domain.model.AiProtocol
 import com.synth.synthmusic.domain.model.ActiveModelRef
 import com.synth.synthmusic.domain.model.AiSettings
@@ -127,11 +128,27 @@ sealed class AiSettingsUiEvent {
 
     /**
      * Adds a model to a provider manually, without fetching the model list.
+     * [contextTokens] / [maxOutputTokens] are optional capability limits the
+     * user knows about the model; blank fields mean unknown.
      */
     data class AddManualModel(
         val providerId: Long,
         val modelId: String,
-        val displayName: String
+        val displayName: String,
+        val contextTokens: Int? = null,
+        val maxOutputTokens: Int? = null
+    ) : AiSettingsUiEvent()
+
+    /**
+     * Updates a stored model's display name and capability limits. Limits
+     * are recorded as user-entered, so a later model-list fetch keeps them.
+     */
+    data class UpdateModelLimits(
+        val providerId: Long,
+        val modelId: String,
+        val displayName: String,
+        val contextTokens: Int?,
+        val maxOutputTokens: Int?
     ) : AiSettingsUiEvent()
 }
 
@@ -282,12 +299,46 @@ class AiSettingsViewModel(
                                 .ifEmpty { modelId },
                             supportsTools = tools,
                             supportsVision = vision,
-                            isPinned = false
+                            isPinned = false,
+                            contextTokens = event.contextTokens,
+                            maxOutputTokens = event.maxOutputTokens,
+                            limitsSource = if (
+                                event.contextTokens != null || event.maxOutputTokens != null
+                            ) {
+                                ModelLimitsSource.MANUAL
+                            } else {
+                                null
+                            }
                         )
                     )
                 )
                 refresh()
                 _events.value = AiSettingsEvent.Message("Model $modelId added")
+            }
+            is AiSettingsUiEvent.UpdateModelLimits -> viewModelScope.launch {
+                val existing = modelRepository.getModel(event.providerId, event.modelId)
+                if (existing == null) {
+                    _events.value = AiSettingsEvent.Message("Model not found")
+                    return@launch
+                }
+                modelRepository.upsertModels(
+                    listOf(
+                        existing.copy(
+                            displayName = event.displayName.trim()
+                                .ifEmpty { existing.displayName },
+                            contextTokens = event.contextTokens,
+                            maxOutputTokens = event.maxOutputTokens,
+                            limitsSource = if (
+                                event.contextTokens != null || event.maxOutputTokens != null
+                            ) {
+                                ModelLimitsSource.MANUAL
+                            } else {
+                                null
+                            }
+                        )
+                    )
+                )
+                refresh()
             }
         }
     }
