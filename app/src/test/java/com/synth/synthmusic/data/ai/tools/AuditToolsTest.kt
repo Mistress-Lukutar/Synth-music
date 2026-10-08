@@ -1,7 +1,13 @@
 package com.synth.synthmusic.data.ai.tools
 
+import com.synth.synthmusic.domain.model.AiCapability
 import com.synth.synthmusic.domain.model.Song
+import com.synth.synthmusic.domain.usecase.ai.ToolContext
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.jaudiotagger.tag.id3.ID3v23Tag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -10,8 +16,9 @@ import org.junit.Test
 import org.junit.Assert.assertNotNull
 
 /**
- * Unit tests for the `audit_tracks` helpers: [auditIssues],
- * [isMissingMetadata], [tagIssues] and [deepFileIssues] error handling.
+ * Unit tests for the `audit_tracks` tool and its helpers: [auditIssues],
+ * [isMissingMetadata], [tagIssues], [deepFileIssues] error handling and the
+ * playlist id validation of [AuditTracksTool].
  */
 class AuditToolsTest {
 
@@ -125,5 +132,46 @@ class AuditToolsTest {
         val issues = deepFileIssues(song())
         assertEquals(listOf(AuditReasons.UNREADABLE_FILE), issues)
         assertNotNull(issues)
+    }
+
+    private fun toolContext() =
+        ToolContext(chatId = 1L, grants = setOf(AiCapability.READ_LIBRARY))
+
+    private fun toolArgs(json: String): kotlinx.serialization.json.JsonObject =
+        Json.parseToJsonElement(json).jsonObject
+
+    @Test
+    fun `audit_tracks unknown playlist id returns self-correcting error`() = runTest {
+        val tool = AuditTracksTool(
+            allSongs = { emptyList() },
+            playlistSongs = { emptyList() },
+            allPlaylists = { listOf(Triple(6L, "Archive", 89)) }
+        )
+        val outcome = tool.execute(
+            toolArgs("""{"scope":"playlist","playlistId":99}"""),
+            toolContext()
+        )
+        assertTrue(outcome.isError)
+        val parsed = Json.parseToJsonElement(outcome.content).jsonObject
+        assertEquals("playlist_not_found", parsed["error"]!!.jsonPrimitive.content)
+        assertEquals("Archive", parsed["playlists"]!!.jsonArray.first().jsonObject["name"]!!
+            .jsonPrimitive.content)
+    }
+
+    @Test
+    fun `audit_tracks known playlist id audits its songs`() = runTest {
+        val tool = AuditTracksTool(
+            allSongs = { emptyList() },
+            playlistSongs = { if (it == 6L) listOf(song(lyrics = null)) else emptyList() },
+            allPlaylists = { listOf(Triple(6L, "Archive", 89)) }
+        )
+        val outcome = tool.execute(
+            toolArgs("""{"scope":"playlist","playlistId":6}"""),
+            toolContext()
+        )
+        assertFalse(outcome.isError)
+        val parsed = Json.parseToJsonElement(outcome.content).jsonObject
+        assertEquals("1", parsed["checked"]!!.jsonPrimitive.content)
+        assertEquals("1", parsed["problematic"]!!.jsonPrimitive.content)
     }
 }

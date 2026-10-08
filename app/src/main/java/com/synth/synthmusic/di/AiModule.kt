@@ -202,36 +202,34 @@ val aiModule = module {
     } bind AiTool::class
     single {
         val songRepository = get<SongRepository>()
+        val playlistRepository = get<PlaylistRepository>()
         BrowseCollectionsTool(
             allSongs = { songRepository.getAllSongs() },
             genres = { songRepository.observeGenres().first() },
-            playlists = {
-                get<PlaylistRepository>().observeAllPlaylists().first().map { playlist ->
-                    Triple(
-                        playlist.id,
-                        playlist.name,
-                        get<PlaylistRepository>().observePlaylistSongs(playlist.id)
-                            .first().size
-                    )
-                }
-            }
+            playlists = playlistSummaries(playlistRepository)
         )
     } bind AiTool::class
     single {
-        GetPlaylistTool(playlistSongs = { playlistId ->
-            get<PlaylistRepository>().observePlaylistSongs(playlistId).first()
-        })
+        val playlistRepository = get<PlaylistRepository>()
+        GetPlaylistTool(
+            playlistSongs = { playlistId ->
+                playlistRepository.observePlaylistSongs(playlistId).first()
+            },
+            allPlaylists = playlistSummaries(playlistRepository)
+        )
     } bind AiTool::class
     single {
         LibraryStatsTool(allSongs = { get<SongRepository>().getAllSongs() })
     } bind AiTool::class
     single {
         val songRepository = get<SongRepository>()
+        val playlistRepository = get<PlaylistRepository>()
         AuditTracksTool(
             allSongs = { songRepository.getAllSongs() },
             playlistSongs = { playlistId ->
-                get<PlaylistRepository>().observePlaylistSongs(playlistId).first()
+                playlistRepository.observePlaylistSongs(playlistId).first()
             },
+            allPlaylists = playlistSummaries(playlistRepository),
             embeddedCoverHash = { song ->
                 readEmbeddedCover(song)?.let { sha256Hex(it.bytes) }
             },
@@ -251,12 +249,14 @@ val aiModule = module {
     } bind AiTool::class
     single {
         val songRepository = get<SongRepository>()
+        val playlistRepository = get<PlaylistRepository>()
         PurgeCoversTool(
             blacklistDao = get(),
             allSongs = { songRepository.getAllSongs() },
             playlistSongs = { playlistId ->
-                get<PlaylistRepository>().observePlaylistSongs(playlistId).first()
+                playlistRepository.observePlaylistSongs(playlistId).first()
             },
+            allPlaylists = playlistSummaries(playlistRepository),
             readCover = { song -> readEmbeddedCover(song) },
             removeCover = { song ->
                 get<WriteArtworkToMp3UseCase>().removeArtwork(song)
@@ -294,6 +294,23 @@ val aiModule = module {
         com.synth.synthmusic.ui.ai.assistant.AssistantEditorViewModel(
             assistantId = assistantId,
             assistantRepository = get()
+        )
+    }
+}
+
+/**
+ * Live playlist summaries (id, name, song count) shared by the library tools.
+ * Counts are recomputed from the join table on every call because the
+ * entity's song_count column is only maintained on some mutation paths.
+ */
+private fun playlistSummaries(
+    playlistRepository: PlaylistRepository
+): suspend () -> List<Triple<Long, String, Int>> = {
+    playlistRepository.observeAllPlaylists().first().map { playlist ->
+        Triple(
+            playlist.id,
+            playlist.name,
+            playlistRepository.observePlaylistSongs(playlist.id).first().size
         )
     }
 }

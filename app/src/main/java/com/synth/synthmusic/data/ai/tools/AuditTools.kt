@@ -114,6 +114,7 @@ internal fun tagIssues(tag: Tag?): List<String> = buildList {
 class AuditTracksTool(
     private val allSongs: suspend () -> List<Song>,
     private val playlistSongs: suspend (Long) -> List<Song>,
+    private val allPlaylists: suspend () -> List<Triple<Long, String, Int>>,
     private val deepFileIssues: suspend (Song) -> List<String> = ::deepFileIssues,
     private val embeddedCoverHash: suspend (Song) -> String? = { null },
     private val isCoverBlacklisted: suspend (String) -> Boolean = { false }
@@ -171,6 +172,10 @@ class AuditTracksTool(
                             "(get ids from browse_collections type=playlists)",
                         isError = true
                     )
+                val playlists = allPlaylists()
+                if (playlists.none { it.first == playlistId }) {
+                    return playlistNotFoundOutcome(playlistId, playlists)
+                }
                 playlistSongs(playlistId)
             }
             else -> return ToolOutcome(

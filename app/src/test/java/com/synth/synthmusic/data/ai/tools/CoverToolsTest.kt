@@ -159,6 +159,7 @@ class CoverToolsTest {
             blacklistDao = dao,
             allSongs = { listOf(songBad, songOk) },
             playlistSongs = { emptyList() },
+            allPlaylists = { listOf(Triple(1L, "Test", 2)) },
             readCover = { s -> EmbeddedCover(s.id.toByteArray(), 900, 150) },
             removeCover = { s -> removed += s.id; Result.success(Unit) }
         )
@@ -186,6 +187,7 @@ class CoverToolsTest {
             blacklistDao = dao,
             allSongs = { listOf(song("s1", "Bad", null), song("s2", "Good", null)) },
             playlistSongs = { emptyList() },
+            allPlaylists = { listOf(Triple(1L, "Test", 2)) },
             readCover = { s -> EmbeddedCover(s.id.toByteArray(), 500, 500) },
             removeCover = { s -> removed += s.id; Result.success(Unit) }
         )
@@ -210,6 +212,7 @@ class CoverToolsTest {
             blacklistDao = dao,
             allSongs = { listOf(song("s1", "Bad", null)) },
             playlistSongs = { emptyList() },
+            allPlaylists = { listOf(Triple(1L, "Test", 2)) },
             readCover = { s -> EmbeddedCover(s.id.toByteArray(), 500, 500) },
             removeCover = { _ -> Result.failure(IllegalStateException("locked")) }
         )
@@ -222,6 +225,27 @@ class CoverToolsTest {
         assertEquals("0", parsed["updated"]!!.jsonPrimitive.content)
         assertEquals("1", parsed["failed"]!!.jsonPrimitive.content)
         assertTrue("locked" in parsed["failures"]!!.jsonArray.first().jsonPrimitive.content)
+    }
+
+    @Test
+    fun `purge playlist scope with unknown id errors with playlist list`() = runTest {
+        val tool = PurgeCoversTool(
+            blacklistDao = FakeBlacklistDao(),
+            allSongs = { emptyList() },
+            playlistSongs = { emptyList() },
+            allPlaylists = { listOf(Triple(6L, "Archive", 89)) },
+            readCover = { null },
+            removeCover = { Result.success(Unit) }
+        )
+        val outcome = tool.execute(
+            args("""{"scope":"playlist","playlistId":99,"dry_run":true}"""),
+            context(AiCapability.WRITE_METADATA)
+        )
+        assertTrue(outcome.isError)
+        val parsed = Json.parseToJsonElement(outcome.content).jsonObject
+        assertEquals("playlist_not_found", parsed["error"]!!.jsonPrimitive.content)
+        assertTrue("Archive" in parsed["playlists"]!!.jsonArray.first().jsonObject["name"]!!
+            .jsonPrimitive.content)
     }
 
     @Test

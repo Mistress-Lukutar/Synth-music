@@ -28,6 +28,31 @@ fun songSummary(song: Song): JsonObject = buildJsonObject {
 }
 
 /**
+ * Error outcome for a playlist id that does not exist. Embeds the current
+ * playlist list (id, name, song_count) so the model can pick the right id in
+ * a single step instead of probing ids one by one.
+ */
+internal fun playlistNotFoundOutcome(
+    playlistId: Long,
+    playlists: List<Triple<Long, String, Int>>
+): ToolOutcome = ToolOutcome(
+    buildJsonObject {
+        put("error", "playlist_not_found")
+        put("playlist_id", playlistId)
+        put("playlists", buildJsonArray {
+            playlists.forEach { (id, name, songCount) ->
+                add(buildJsonObject {
+                    put("id", id)
+                    put("name", name)
+                    put("song_count", songCount)
+                })
+            }
+        })
+    }.toString(),
+    isError = true
+)
+
+/**
  * Shared schema helpers for library tools.
  */
 object ToolSchemas {
@@ -184,7 +209,9 @@ class BrowseCollectionsTool(
 
     override val name = "browse_collections"
     override val description = "List collections: albums, artists, genres or playlists, " +
-        "each with song counts. Optionally filter by a text query."
+        "each with song counts. Playlist items include their id — pass it to " +
+        "get_playlist, audit_tracks or purge_covers; album items include album_artist. " +
+        "Optionally filter by a text query."
     override val paramsSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") {
@@ -240,6 +267,11 @@ class BrowseCollectionsTool(
                                 buildJsonObject {
                                     put("name", entry.first)
                                     put("song_count", entry.second)
+                                    when (type) {
+                                        "playlists" -> entry.third.toLongOrNull()
+                                            ?.let { put("id", it) }
+                                        "albums" -> put("album_artist", entry.third)
+                                    }
                                 }
                             )
                         }
@@ -258,12 +290,14 @@ class BrowseCollectionsTool(
  * `get_playlist` — songs of a playlist in order.
  */
 class GetPlaylistTool(
-    private val playlistSongs: suspend (Long) -> List<Song>
+    private val playlistSongs: suspend (Long) -> List<Song>,
+    private val allPlaylists: suspend () -> List<Triple<Long, String, Int>>
 ) : AiTool {
 
     override val name = "get_playlist"
     override val description = "Return the songs of a playlist in order, given its playlist id " +
-        "(ids come from browse_collections with type=playlists)."
+        "(ids come from browse_collections with type=playlists). A nonexistent id returns " +
+        "an error listing all existing playlists with their ids."
     override val paramsSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") {
@@ -279,6 +313,10 @@ class GetPlaylistTool(
     override suspend fun execute(args: JsonObject, context: ToolContext): ToolOutcome {
         val playlistId = args["playlistId"]?.toString()?.toLongOrNull()
             ?: return ToolOutcome("Missing or invalid playlistId", isError = true)
+        val playlists = allPlaylists()
+        if (playlists.none { it.first == playlistId }) {
+            return playlistNotFoundOutcome(playlistId, playlists)
+        }
         val songs = playlistSongs(playlistId)
         return ToolOutcome(
             buildJsonObject {

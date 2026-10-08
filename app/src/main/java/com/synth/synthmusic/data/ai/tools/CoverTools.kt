@@ -284,6 +284,7 @@ class PurgeCoversTool(
     private val blacklistDao: CoverBlacklistDao,
     private val allSongs: suspend () -> List<Song>,
     private val playlistSongs: suspend (Long) -> List<Song>,
+    private val allPlaylists: suspend () -> List<Triple<Long, String, Int>>,
     private val readCover: suspend (Song) -> EmbeddedCover?,
     private val removeCover: suspend (Song) -> Result<Unit>
 ) : AiTool {
@@ -331,6 +332,10 @@ class PurgeCoversTool(
                             "(get ids from browse_collections type=playlists)",
                         isError = true
                     )
+                val playlists = allPlaylists()
+                if (playlists.none { it.first == playlistId }) {
+                    return playlistNotFoundOutcome(playlistId, playlists)
+                }
                 playlistSongs(playlistId)
             }
             else -> return ToolOutcome(
