@@ -48,15 +48,7 @@ interface SongDao {
         val existing = getAll().associateBy { it.id }
         val newSongs = songs.filter { it.id !in existing }
         val updatedSongs = songs.mapNotNull { song ->
-            existing[song.id]?.let { old ->
-                song.copy(
-                    rating = old.rating,
-                    playCount = old.playCount,
-                    lastPlayed = old.lastPlayed,
-                    lyrics = old.lyrics,
-                    isFavorite = old.isFavorite
-                )
-            }
+            existing[song.id]?.let { mergePreservingUserData(song, it) }
         }
         if (newSongs.isNotEmpty()) insertAll(newSongs)
         if (updatedSongs.isNotEmpty()) updateAll(updatedSongs)
@@ -119,3 +111,24 @@ interface SongDao {
     @Query("UPDATE songs SET replay_gain_track_db = :trackDb, replay_gain_album_db = :albumDb WHERE id = :songId")
     suspend fun updateReplayGain(songId: String, trackDb: Float?, albumDb: Float?)
 }
+
+/**
+ * Merges an [incoming] row onto the [stored] row for the same song id,
+ * protecting user data from bulk overwrites.
+ *
+ * Rating, play count, favorite and last-played always keep the stored value:
+ * they are only changed through dedicated update methods, and the scan
+ * re-extracts them as zeros. Lyrics are kept only when the incoming row does
+ * not carry one (the scan never reads lyrics and passes null); an explicit
+ * non-null lyrics value — from metadata editing or `set_lyrics` — must win,
+ * otherwise the tag is written to the file while the text is silently dropped
+ * from the database.
+ */
+internal fun mergePreservingUserData(incoming: SongEntity, stored: SongEntity): SongEntity =
+    incoming.copy(
+        rating = stored.rating,
+        playCount = stored.playCount,
+        lastPlayed = stored.lastPlayed,
+        lyrics = incoming.lyrics ?: stored.lyrics,
+        isFavorite = stored.isFavorite
+    )
