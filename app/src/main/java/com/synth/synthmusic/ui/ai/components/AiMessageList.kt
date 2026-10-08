@@ -238,10 +238,16 @@ private fun AssistantBubble(message: AiChatMessage) {
                 val reasoning = message.parts
                     .filterIsInstance<AiMessagePart.Reasoning>()
                     .joinToString("") { it.text }
+                // Reasoning is live only while it is the latest step: once the
+                // model starts emitting text or tool calls the trace is done,
+                // even though the message as a whole is still streaming.
+                val reasoningStreaming = message.status == AiMessageStatus.STREAMING &&
+                    message.text.isBlank() &&
+                    message.parts.none { it is AiMessagePart.ToolCall }
                 if (reasoning.isNotBlank()) {
                     ReasoningSection(
                         reasoning = reasoning,
-                        isStreaming = message.status == AiMessageStatus.STREAMING
+                        isStreaming = reasoningStreaming
                     )
                     Spacer(Modifier.height(8.dp))
                 }

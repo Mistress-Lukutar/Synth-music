@@ -11,6 +11,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -103,7 +105,15 @@ fun AppNavigation(
         NavHost(
             navController = navController,
             startDestination = SplashRoute,
-            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
+            modifier = Modifier
+                .padding(bottom = innerPadding.calculateBottomPadding())
+                // Consume exactly the space applied above — the bottom-bar
+                // offset. Consuming the full innerPadding would also swallow
+                // the status-bar inset and let top bars slide under the
+                // system clock.
+                .consumeWindowInsets(
+                    WindowInsets(bottom = innerPadding.calculateBottomPadding())
+                ),
             enterTransition = { enterTransition() },
             exitTransition = { exitTransition() },
             popEnterTransition = { popEnterTransition() },

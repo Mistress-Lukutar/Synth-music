@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -339,6 +340,10 @@ fun AiScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
+                    // Consume this Scaffold's padding too, so imePadding()
+                    // lifts the composer exactly onto the keyboard top
+                    // instead of stacking on top of the mini-player offset.
+                    .consumeWindowInsets(innerPadding)
                     .imePadding()
             ) {
                 Box(
