@@ -563,9 +563,10 @@ internal fun stripSyncedTimestamps(lrc: String): String =
         .joinToString("\n")
 
 /**
- * `web_search` — Brave/Tavily with a user-configured key; not advertised
- * when no key is set (dispatcher filters by required INTERNET only, so the
- * tool itself reports the missing configuration).
+ * `web_search` — Brave/Tavily with a user-configured key. Reports itself
+ * unavailable when no provider/key is configured, so the dispatcher never
+ * advertises it to the model; a late call (e.g. replayed history) still
+ * reports the missing configuration.
  */
 class WebSearchTool(
     private val settingsRepository: AiSettingsRepository
@@ -582,6 +583,12 @@ class WebSearchTool(
         putJsonArray("required") { add(JsonPrimitive("query")) }
     }
     override val requiredGrants = setOf(AiCapability.INTERNET)
+
+    override suspend fun isAvailable(): Boolean {
+        val settings = settingsRepository.current()
+        if (settings.webSearchProvider == WebSearchProvider.NONE) return false
+        return !settingsRepository.getWebSearchKey().isNullOrBlank()
+    }
 
     override suspend fun execute(args: JsonObject, context: ToolContext): ToolOutcome =
         withContext(Dispatchers.IO) {

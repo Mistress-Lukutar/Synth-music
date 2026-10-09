@@ -14,7 +14,9 @@ import kotlinx.coroutines.withContext
 /**
  * Production [ToolDispatcher]: resolves tools from the registered set,
  * enforces the capability policy (missing grants are denied — tools outside
- * the effective grants are never advertised in the first place), executes on
+ * the effective grants are never advertised in the first place, and neither
+ * are tools that report themselves unavailable, e.g. web_search without a
+ * configured key), executes on
  * [Dispatchers.IO], truncates oversized results and writes an audit entry for
  * every call — including denied and failed ones.
  */
@@ -28,11 +30,13 @@ class ToolDispatcherImpl(
 
     /**
      * Returns specs of all registered tools whose required grants are
-     * satisfied by [grants].
+     * satisfied by [grants] and that are usable in the current
+     * configuration.
      */
-    override fun specsFor(grants: Set<AiCapability>): List<AiToolSpec> =
-        tools.filter { tool -> tool.requiredGrants.all { it in grants } }
-            .map { it.toSpec() }
+    override suspend fun specsFor(grants: Set<AiCapability>): List<AiToolSpec> =
+        tools.filter { tool ->
+            tool.requiredGrants.all { it in grants } && tool.isAvailable()
+        }.map { it.toSpec() }
 
     /**
      * Whether a call to [toolName] requires an approval card in the chat.

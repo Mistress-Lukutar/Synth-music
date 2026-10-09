@@ -22,13 +22,15 @@ class ToolDispatcherImplTest {
         override val name: String,
         override val requiredGrants: Set<AiCapability>,
         override val confirmationLevel: ConfirmationLevel = ConfirmationLevel.NONE,
-        private val result: ToolOutcome = ToolOutcome("ok")
+        private val result: ToolOutcome = ToolOutcome("ok"),
+        private val available: Boolean = true
     ) : AiTool {
         override val description = "fake"
         override val paramsSchema: JsonObject = buildJsonObject {
             put("type", "object")
         }
         var executed = false
+        override suspend fun isAvailable() = available
         override suspend fun execute(args: JsonObject, context: ToolContext): ToolOutcome {
             executed = true
             return result
@@ -108,12 +110,21 @@ class ToolDispatcherImplTest {
     }
 
     @Test
-    fun `specs filtered by grants`() {
+    fun `specs filtered by grants`() = runTest {
         val read = FakeTool("read", requiredGrants = setOf(AiCapability.READ_LIBRARY))
         val write = FakeTool("write", requiredGrants = setOf(AiCapability.WRITE_METADATA))
         val d = dispatcher(read, write)
         val specs = d.specsFor(setOf(AiCapability.READ_LIBRARY))
         assertEquals(listOf("read"), specs.map { it.name })
+    }
+
+    @Test
+    fun `unavailable tool is not advertised`() = runTest {
+        val off = FakeTool("off", requiredGrants = emptySet(), available = false)
+        val on = FakeTool("on", requiredGrants = emptySet())
+        val d = dispatcher(off, on)
+        val specs = d.specsFor(emptySet())
+        assertEquals(listOf("on"), specs.map { it.name })
     }
 
     @Test

@@ -52,6 +52,16 @@ interface AiTool {
     /** Capabilities required before this tool is advertised/executed. */
     val requiredGrants: Set<AiCapability>
 
+    /**
+     * Whether the tool is usable with the current app configuration, e.g.
+     * web_search without a configured search provider and API key.
+     * Unavailable tools are never advertised to the model. This is a
+     * configuration check — per-chat permission gating happens via
+     * [requiredGrants]. Must not throw for domain conditions; report
+     * `false` instead.
+     */
+    suspend fun isAvailable(): Boolean = true
+
     /** Confirmation policy applied by the dispatcher. */
     val confirmationLevel: ConfirmationLevel
         get() = ConfirmationLevel.NONE

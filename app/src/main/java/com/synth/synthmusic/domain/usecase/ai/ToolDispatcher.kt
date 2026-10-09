@@ -61,9 +61,10 @@ interface ToolDispatcher {
 
     /**
      * Returns the specs of all tools available to a chat with [grants].
-     * Only these are advertised to the model.
+     * Only these are advertised to the model; tools whose [AiTool.isAvailable]
+     * reports `false` (e.g. web_search without a configured key) are omitted.
      */
-    fun specsFor(grants: Set<AiCapability>): List<AiToolSpec>
+    suspend fun specsFor(grants: Set<AiCapability>): List<AiToolSpec>
 
     /**
      * Executes [call]; never throws — failures are returned as an error
@@ -78,7 +79,7 @@ interface ToolDispatcher {
  */
 class EmptyToolDispatcher : ToolDispatcher {
 
-    override fun specsFor(grants: Set<AiCapability>): List<AiToolSpec> = emptyList()
+    override suspend fun specsFor(grants: Set<AiCapability>): List<AiToolSpec> = emptyList()
 
     override suspend fun execute(
         call: AiToolCall,
