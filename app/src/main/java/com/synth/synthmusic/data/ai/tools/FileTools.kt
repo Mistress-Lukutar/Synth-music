@@ -33,7 +33,8 @@ class ListMusicFoldersTool(
 
     override val name = "list_music_folders"
     override val description = "List the music folders known to the library. move_file may " +
-        "only move songs into one of these existing folders."
+        "only move songs into one of these existing folders; download_audio accepts them as " +
+        "absolute folder targets."
     override val paramsSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") { }

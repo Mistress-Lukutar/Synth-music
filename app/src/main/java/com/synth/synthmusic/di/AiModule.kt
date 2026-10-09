@@ -18,11 +18,13 @@ import com.synth.synthmusic.data.ai.tools.GetPlaylistTool
 import com.synth.synthmusic.data.ai.tools.GetSongsDetailsTool
 import com.synth.synthmusic.data.ai.tools.AuditTracksTool
 import com.synth.synthmusic.data.ai.tools.LibraryStatsTool
+import com.synth.synthmusic.data.ai.tools.DownloadAudioTool
 import com.synth.synthmusic.data.ai.tools.DownloadImageTool
 import com.synth.synthmusic.data.ai.tools.DownloadStore
 import com.synth.synthmusic.data.ai.tools.FetchUrlTool
 import com.synth.synthmusic.data.ai.tools.GetLyricsOnlineTool
 import com.synth.synthmusic.data.ai.tools.GetSongArtworkTool
+import com.synth.synthmusic.data.ai.tools.RefreshLibraryTool
 import com.synth.synthmusic.data.ai.tools.DeleteFileTool
 import com.synth.synthmusic.data.ai.tools.EmbedArtworkTool
 import com.synth.synthmusic.data.ai.tools.ListMusicFoldersTool
@@ -193,6 +195,15 @@ val aiModule = module {
     single { WebSearchTool(settingsRepository = get()) } bind AiTool::class
     single { FetchUrlTool() } bind AiTool::class
     single { DownloadImageTool(downloadStore = get()) } bind AiTool::class
+    single {
+        DownloadAudioTool(
+            appContext = androidContext(),
+            songRepository = get(),
+            scanMusicUseCase = get(),
+            checkWritePermission = get()
+        )
+    } bind AiTool::class
+    single { RefreshLibraryTool(scanMusicUseCase = get()) } bind AiTool::class
     single { GetSongArtworkTool(appContext = androidContext(), songRepository = get()) } bind AiTool::class
     single {
         SearchSongsTool(allSongs = { get<SongRepository>().getAllSongs() })
