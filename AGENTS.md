@@ -224,7 +224,7 @@ Type-safe routes are defined in `navigation/Routes.kt` using Kotlin Serializatio
 | `FOREGROUND_SERVICE` | Background playback service |
 | `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Media playback foreground type |
 | `WAKE_LOCK` | Keep CPU awake during playback |
-| `INTERNET` | AI provider requests and internet tools (iTunes/MusicBrainz/LRCLIB/web search) |
+| `INTERNET` | AI provider requests and internet tools (iTunes/MusicBrainz/LRCLIB/Genius/web search) |
 
 ---
 

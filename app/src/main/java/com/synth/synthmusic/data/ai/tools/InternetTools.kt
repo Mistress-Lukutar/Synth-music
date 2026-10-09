@@ -204,12 +204,13 @@ class SearchReleaseTool : AiTool {
 }
 
 /**
- * `get_lyrics_online` — LRCLIB lyrics search with lyrics.ovh fallback.
+ * `get_lyrics_online` — LRCLIB lyrics search with Genius and lyrics.ovh
+ * fallbacks.
  */
 class GetLyricsOnlineTool : AiTool {
 
     override val name = "get_lyrics_online"
-    override val description = "Fetch lyrics for a track from LRCLIB, falling back to " +
+    override val description = "Fetch lyrics for a track from LRCLIB, then Genius, then " +
         "lyrics.ovh. Returns clean plain lyrics; [mm:ss.xx] timestamps from synced " +
         "(LRC) sources are stripped. Feed the result to set_lyrics."
     override val paramsSchema: JsonObject = buildJsonObject {
@@ -231,6 +232,7 @@ class GetLyricsOnlineTool : AiTool {
             val artist = args["artist"]?.jsonPrimitive?.content
                 ?: return@withContext ToolOutcome("Missing artist", isError = true)
             fetchFromLrcLib(track, artist)
+                ?: fetchFromGenius(track, artist)
                 ?: fetchFromLyricsOvh(track, artist)
                 ?: ToolOutcome("No lyrics found for \"$track\" by \"$artist\"")
         }
@@ -270,6 +272,39 @@ class GetLyricsOnlineTool : AiTool {
         )
     }
 
+    /**
+     * Searches Genius via its keyless public web endpoint, picks the song
+     * page matching the requested title, and extracts the server-rendered
+     * lyric containers. Returns null when search or page fetch fails, so the
+     * caller can try the next source.
+     */
+    private fun fetchFromGenius(track: String, artist: String): ToolOutcome? {
+        val searchUrl = "https://genius.com/api/search/multi?q=${urlEncode("$artist $track")}"
+        if (isBlockedHost(searchUrl)) {
+            return ToolOutcome("Blocked host", isError = true)
+        }
+        val (searchCode, searchBody, _) = httpGet(searchUrl)
+        if (searchCode != 200) return null
+        val hits = runCatching { parseGeniusSongHits(searchBody) }.getOrDefault(emptyList())
+        val hit = pickGeniusSongHit(hits, track, artist) ?: return null
+        val pageUrl = hit["url"]?.jsonPrimitive?.content ?: return null
+        if (isBlockedHost(pageUrl)) {
+            return ToolOutcome("Blocked host", isError = true)
+        }
+        val (pageCode, pageBody, _) = httpGet(pageUrl)
+        if (pageCode != 200) return null
+        val lyrics = extractGeniusLyrics(pageBody) ?: return null
+        return ToolOutcome(
+            buildJsonObject {
+                hit["title"]?.let { put("track", it.jsonPrimitive.content) }
+                hit["primary_artist_names"]?.let { put("artist", it.jsonPrimitive.content) }
+                put("plain", lyrics)
+                put("source", "genius")
+                put("url", pageUrl)
+            }.toString()
+        )
+    }
+
     /** Queries the keyless lyrics.ovh API as a second chance. */
     private fun fetchFromLyricsOvh(track: String, artist: String): ToolOutcome? {
         val url = "https://api.lyrics.ovh/v1/${urlEncode(artist)}/${urlEncode(track)}"
@@ -292,6 +327,228 @@ class GetLyricsOnlineTool : AiTool {
             }.toString()
         )
     }
+}
+
+/**
+ * Genius' keyless web search JSON: song hits live in
+ * `response.sections[].hits[].result`.
+ */
+internal fun parseGeniusSongHits(body: String): List<JsonObject> {
+    val sections = runCatching {
+        Json { ignoreUnknownKeys = true }.parseToJsonElement(body)
+            .jsonObject["response"]?.jsonObject?.get("sections")?.jsonArray
+    }.getOrNull() ?: return emptyList()
+    return sections.asSequence()
+        .map { section -> section.jsonObject["hits"]?.jsonArray.orEmpty() }
+        .flatten()
+        .map { it.jsonObject }
+        .filter { it["type"]?.jsonPrimitive?.content == "song" }
+        .mapNotNull { it["result"]?.jsonObject }
+        .toList()
+}
+
+/** Score at which a hit's title counts as a partial (containment) match. */
+private const val GENIUS_TITLE_PARTIAL_SCORE = 3
+
+/**
+ * Picks the Genius hit whose title matches the requested track, preferring
+ * exact title + artist matches. Instrumental recordings and pending
+ * (incomplete) lyric pages never qualify, and Genius translation accounts
+ * are skipped so the original-language page wins. Requires at least a
+ * partial title match — artist-only hits would risk the wrong song's lyrics.
+ */
+internal fun pickGeniusSongHit(hits: List<JsonObject>, track: String, artist: String): JsonObject? =
+    hits.asSequence()
+        .filterNot { hit -> hit["instrumental"]?.jsonPrimitive?.content == "true" }
+        .filterNot { hit ->
+            (hit["lyrics_state"]?.jsonPrimitive?.content ?: "complete") != "complete"
+        }
+        .filterNot(::isGeniusTranslationHit)
+        .map { hit -> hit to geniusMatchScore(hit, track, artist) }
+        .filter { (_, score) -> score >= GENIUS_TITLE_PARTIAL_SCORE }
+        .maxByOrNull { (_, score) -> score }
+        ?.first
+
+/** Scores a hit: a title signal (exact > partial) plus an artist bonus. */
+internal fun geniusMatchScore(hit: JsonObject, track: String, artist: String): Int {
+    val targetTitle = normalizeForMatch(track)
+    val targetArtist = normalizeForMatch(artist)
+    if (targetTitle.isEmpty()) return 0
+    val titleScore = listOfNotNull(
+        hit["title"]?.jsonPrimitive?.content,
+        hit["title_with_featured"]?.jsonPrimitive?.content
+    ).distinct().maxOfOrNull { title ->
+        val candidate = normalizeForMatch(title)
+        when {
+            candidate.isEmpty() -> 0
+            candidate == targetTitle -> 6
+            candidate.contains(targetTitle) || targetTitle.contains(candidate) ->
+                GENIUS_TITLE_PARTIAL_SCORE
+            else -> 0
+        }
+    } ?: 0
+    if (targetArtist.isEmpty()) return titleScore
+    val artistScore = listOfNotNull(
+        hit["primary_artist_names"]?.jsonPrimitive?.content,
+        hit["artist_names"]?.jsonPrimitive?.content
+    ).distinct().maxOfOrNull { name ->
+        val candidate = normalizeForMatch(name)
+        when {
+            candidate.isEmpty() -> 0
+            candidate == targetArtist -> 2
+            candidate.contains(targetArtist) || targetArtist.contains(candidate) -> 1
+            else -> 0
+        }
+    } ?: 0
+    return titleScore + artistScore
+}
+
+/** Detects the "Genius … Translations / Romanizations" service accounts. */
+private fun isGeniusTranslationHit(hit: JsonObject): Boolean =
+    listOfNotNull(
+        hit["primary_artist_names"]?.jsonPrimitive?.content,
+        hit["artist_names"]?.jsonPrimitive?.content
+    ).any { name ->
+        val normalized = normalizeForMatch(name)
+        normalized.contains("genius") &&
+            (normalized.contains("translation") || normalized.contains("romanization"))
+    }
+
+/** Lowercases and collapses everything but letters and digits to spaces. */
+internal fun normalizeForMatch(value: String): String =
+    value.lowercase().replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
+
+/** Attribute of Genius' server-rendered lyric containers. */
+private const val LYRICS_CONTAINER_ATTR = "data-lyrics-container=\"true\""
+
+/** Attribute Genius puts on header/ad subtrees inside lyric containers. */
+private const val EXCLUDE_FROM_SELECTION_ATTR = "data-exclude-from-selection=\"true\""
+
+private val DIV_TAG_REGEX = Regex("<div(?:\\s[^>]*)?>")
+
+/**
+ * Extracts the plain lyric text from a Genius song page: collects every
+ * `data-lyrics-container` div (balanced — the header subtree nests inside
+ * the first one), drops excluded header/ad subtrees, converts `<br>` runs
+ * to line breaks and decodes HTML entities. Returns null when the page has
+ * no lyric container content.
+ */
+internal fun extractGeniusLyrics(html: String): String? {
+    if (!html.contains(LYRICS_CONTAINER_ATTR)) return null
+    val text = buildString {
+        var searchStart = 0
+        while (true) {
+            val attrAt = html.indexOf(LYRICS_CONTAINER_ATTR, searchStart)
+            if (attrAt < 0) break
+            val tagEnd = html.indexOf('>', attrAt)
+            if (tagEnd < 0) break
+            val closeAt = findMatchingDivClose(html, tagEnd + 1) ?: break
+            val chunk = geniusFragmentToText(html.substring(tagEnd + 1, closeAt))
+            if (chunk.isNotEmpty()) {
+                append(chunk)
+                append('\n')
+            }
+            searchStart = closeAt + "</div>".length
+        }
+    }
+    return text.replace(Regex("\n{3,}"), "\n\n").trim().takeIf { it.isNotEmpty() }
+}
+
+/** Converts one lyric container's inner HTML into clean plain text. */
+private fun geniusFragmentToText(fragment: String): String {
+    val withBreaks = stripExcludedSubtrees(fragment)
+        .replace(Regex("<!--.*?-->", setOf(RegexOption.DOT_MATCHES_ALL)), " ")
+        .replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
+        .replace(Regex("</(?:p|div|li|h\\d)>", RegexOption.IGNORE_CASE), "\n")
+    val plain = decodeHtmlEntities(Regex("<[^>]+>").replace(withBreaks, ""))
+    return plain.lineSequence()
+        .map { it.replace(Regex("[ \\t\\u00A0]+"), " ").trim() }
+        .joinToString("\n")
+        .trim()
+}
+
+/** Removes `<div data-exclude-from-selection>` subtrees (Genius headers/ads). */
+private fun stripExcludedSubtrees(fragment: String): String {
+    if (!fragment.contains(EXCLUDE_FROM_SELECTION_ATTR)) return fragment
+    return buildString {
+        var pos = 0
+        while (pos < fragment.length) {
+            val open = DIV_TAG_REGEX.find(fragment, pos)
+            if (open == null) {
+                append(fragment, pos, fragment.length)
+                break
+            }
+            if (EXCLUDE_FROM_SELECTION_ATTR !in open.value) {
+                pos = open.range.last + 1
+                continue
+            }
+            append(fragment, pos, open.range.first)
+            val close = findMatchingDivClose(fragment, open.range.last + 1) ?: break
+            pos = close + "</div>".length
+        }
+    }
+}
+
+/**
+ * Returns the index of the `</div>` that closes a div opened immediately
+ * before [from], accounting for nested `<div>` tags, or null when the
+ * markup is unbalanced.
+ */
+private fun findMatchingDivClose(html: String, from: Int): Int? {
+    var depth = 1
+    var pos = from
+    while (pos < html.length) {
+        val nextClose = html.indexOf("</div>", pos)
+        if (nextClose < 0) return null
+        val nextOpen = Regex("<div[\\s>]").find(html, pos)?.range?.first
+        if (nextOpen != null && nextOpen < nextClose) {
+            depth++
+            pos = nextOpen + 4
+        } else {
+            depth--
+            pos = nextClose + "</div>".length
+            if (depth == 0) return nextClose
+        }
+    }
+    return null
+}
+
+private val HTML_ENTITY_REGEX = Regex("&(#[xX][0-9a-fA-F]+|#[0-9]+|[a-zA-Z][a-zA-Z0-9]*);")
+
+private val NAMED_HTML_ENTITIES = mapOf(
+    "amp" to "&", "lt" to "<", "gt" to ">", "quot" to "\"", "apos" to "'",
+    "nbsp" to " ", "ndash" to "–", "mdash" to "—",
+    "lsquo" to "‘", "rsquo" to "’", "ldquo" to "“", "rdquo" to "”",
+    "hellip" to "…", "copy" to "©", "reg" to "®"
+)
+
+/**
+ * Decodes numeric (`&#39;`, `&#x27;`) and common named HTML entities.
+ * Unknown entities are kept verbatim; control characters other than tab,
+ * newline and carriage return are dropped.
+ */
+internal fun decodeHtmlEntities(text: String): String {
+    if ('&' !in text) return text
+    return HTML_ENTITY_REGEX.replace(text) { match ->
+        val body = match.groupValues[1]
+        when {
+            // Numeric references that do not resolve to printable text
+            // (unknown or control characters) are dropped outright.
+            body.startsWith("#x", ignoreCase = true) ->
+                codePointToText(body.substring(2).toIntOrNull(16)).orEmpty()
+            body.startsWith("#") ->
+                codePointToText(body.substring(1).toIntOrNull()).orEmpty()
+            else -> NAMED_HTML_ENTITIES[body.lowercase()] ?: match.value
+        }
+    }
+}
+
+/** Maps a numeric character reference to text, rejecting invalid code points. */
+private fun codePointToText(codePoint: Int?): String? {
+    if (codePoint == null || !Character.isValidCodePoint(codePoint)) return null
+    if (codePoint < 32 && codePoint != 9 && codePoint != 10 && codePoint != 13) return null
+    if (codePoint in 0xD800..0xDFFF) return null
+    return String(Character.toChars(codePoint))
 }
 
 /**
@@ -460,16 +717,12 @@ class FetchUrlTool : AiTool {
 
     internal fun extractText(html: String): String {
         val title = Regex("<title[^>]*>(.*?)</title>", RegexOption.DOT_MATCHES_ALL)
-            .find(html)?.groupValues?.get(1)?.trim()
+            .find(html)?.groupValues?.get(1)?.trim()?.let(::decodeHtmlEntities)
         val withoutScripts = html
             .replace(Regex("<(script|style)[^>]*>.*?</\\1>", RegexOption.DOT_MATCHES_ALL), " ")
         val text = withoutScripts
             .replace(Regex("<[^>]+>"), " ")
-            .replace(Regex("&nbsp;"), " ")
-            .replace(Regex("&amp;"), "&")
-            .replace(Regex("&lt;"), "<")
-            .replace(Regex("&gt;"), ">")
-            .replace(Regex("&quot;"), "\"")
+            .let(::decodeHtmlEntities)
             .replace(Regex("\\s+"), " ")
             .trim()
         return (title?.let { "$title\n\n" } ?: "") + text
