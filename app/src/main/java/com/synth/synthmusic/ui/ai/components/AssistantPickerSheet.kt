@@ -61,7 +61,8 @@ fun AssistantPickerSheet(
                 iconName = assistant.avatarIcon,
                 colorIndex = assistant.avatarColorIndex,
                 selected = selectedAssistantId == assistant.id,
-                onClick = { onAssistantSelected(assistant) }
+                onClick = { onAssistantSelected(assistant) },
+                avatarImage = assistant.avatarImage
             )
         }
         ListItem(
@@ -84,7 +85,8 @@ private fun AssistantSheetRow(
     iconName: String?,
     colorIndex: Int?,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    avatarImage: String? = null
 ) {
     ListItem(
         headlineContent = { Text(name) },
@@ -95,7 +97,8 @@ private fun AssistantSheetRow(
             AssistantAvatar(
                 iconName = iconName,
                 colorIndex = colorIndex,
-                contentDescription = name
+                contentDescription = name,
+                avatarImage = avatarImage
             )
         },
         trailingContent = if (selected) {

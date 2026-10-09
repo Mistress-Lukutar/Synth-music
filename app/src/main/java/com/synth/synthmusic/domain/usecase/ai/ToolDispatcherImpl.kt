@@ -31,12 +31,30 @@ class ToolDispatcherImpl(
     /**
      * Returns specs of all registered tools whose required grants are
      * satisfied by [grants] and that are usable in the current
-     * configuration.
+     * configuration. When [allowedTools] is non-null, only tools on that
+     * list are returned (the assistant's per-tool selection).
      */
-    override suspend fun specsFor(grants: Set<AiCapability>): List<AiToolSpec> =
+    override suspend fun specsFor(
+        grants: Set<AiCapability>,
+        allowedTools: Set<String>?
+    ): List<AiToolSpec> =
         tools.filter { tool ->
-            tool.requiredGrants.all { it in grants } && tool.isAvailable()
+            tool.requiredGrants.all { it in grants } &&
+                (allowedTools == null || tool.name in allowedTools) &&
+                tool.isAvailable()
         }.map { it.toSpec() }
+
+    /**
+     * Descriptors of every registered tool for the assistant editor.
+     */
+    override fun allTools(): List<AiToolDescriptor> = tools.map { tool ->
+        AiToolDescriptor(
+            name = tool.name,
+            description = tool.description,
+            requiredGrants = tool.requiredGrants,
+            confirmationLevel = tool.confirmationLevel
+        )
+    }
 
     /**
      * Whether a call to [toolName] requires an approval card in the chat.
@@ -63,6 +81,14 @@ class ToolDispatcherImpl(
                 call,
                 "User denied: this action requires the $names capability " +
                     "(enable it in AI settings)"
+            )
+        }
+        if (context.allowedTools != null && call.name !in context.allowedTools) {
+            audit(context.chatId, call, AiActionOutcome.DENIED, "Not in assistant's tool list")
+            return errorResult(
+                call,
+                "User denied: this tool is not enabled for the current assistant " +
+                    "(enable it in the assistant editor)"
             )
         }
 

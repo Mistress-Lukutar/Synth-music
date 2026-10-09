@@ -40,6 +40,9 @@ interface ApprovalBridge {
  * @property chatId the chat that triggered the call.
  * @property grants capabilities granted in this chat (assistant defaults
  * intersected with the global kill-switches).
+ * @property allowedTools explicit per-tool allow-list of the chat's assistant;
+ * `null` means unrestricted (capability policy only). Calls outside the list
+ * are denied.
  * @property approvalBridge UI bridge for confirmations; null in headless
  * contexts (tests), which auto-denies interactive prompts.
  * @property imageSink sink for vision tool results; images appended here are
@@ -48,8 +51,25 @@ interface ApprovalBridge {
 data class ToolContext(
     val chatId: Long,
     val grants: Set<AiCapability>,
+    val allowedTools: Set<String>? = null,
     val approvalBridge: ApprovalBridge? = null,
     val imageSink: MutableList<AiMessagePart.Image> = mutableListOf()
+)
+
+/**
+ * Editor-facing description of a registered tool: what the assistant editor
+ * needs to render per-tool grant switches. Not advertised to the model.
+ *
+ * @property name unique snake_case tool name.
+ * @property description model-facing usage guidance (English).
+ * @property requiredGrants capabilities this tool depends on.
+ * @property confirmationLevel confirmation policy applied on execution.
+ */
+data class AiToolDescriptor(
+    val name: String,
+    val description: String,
+    val requiredGrants: Set<AiCapability>,
+    val confirmationLevel: ConfirmationLevel
 )
 
 /**
@@ -60,11 +80,18 @@ data class ToolContext(
 interface ToolDispatcher {
 
     /**
-     * Returns the specs of all tools available to a chat with [grants].
-     * Only these are advertised to the model; tools whose [AiTool.isAvailable]
-     * reports `false` (e.g. web_search without a configured key) are omitted.
+     * Returns the specs of all tools available to a chat with [grants],
+     * restricted to [allowedTools] when it is non-null. Only these are
+     * advertised to the model; tools whose [AiTool.isAvailable] reports
+     * `false` (e.g. web_search without a configured key) are omitted.
      */
-    suspend fun specsFor(grants: Set<AiCapability>): List<AiToolSpec>
+    suspend fun specsFor(grants: Set<AiCapability>, allowedTools: Set<String>? = null): List<AiToolSpec>
+
+    /**
+     * Descriptors of every registered tool for the assistant editor's
+     * per-tool grant switches.
+     */
+    fun allTools(): List<AiToolDescriptor>
 
     /**
      * Executes [call]; never throws — failures are returned as an error
@@ -79,7 +106,12 @@ interface ToolDispatcher {
  */
 class EmptyToolDispatcher : ToolDispatcher {
 
-    override suspend fun specsFor(grants: Set<AiCapability>): List<AiToolSpec> = emptyList()
+    override suspend fun specsFor(
+        grants: Set<AiCapability>,
+        allowedTools: Set<String>?
+    ): List<AiToolSpec> = emptyList()
+
+    override fun allTools(): List<AiToolDescriptor> = emptyList()
 
     override suspend fun execute(
         call: AiToolCall,

@@ -138,7 +138,7 @@ class ToolDispatcherImplTest {
             override suspend fun requestConfirmation(request: ConfirmationRequest) = false
             override fun isAlwaysAllowed(toolName: String) = false
         }
-        val result = d.execute(call("t"), ToolContext(1L, emptySet(), deny))
+        val result = d.execute(call("t"), ToolContext(1L, emptySet(), approvalBridge = deny))
         assertTrue(result.isError)
         assertTrue(result.content.contains("denied"))
     }
@@ -154,7 +154,7 @@ class ToolDispatcherImplTest {
             override suspend fun requestConfirmation(request: ConfirmationRequest) = true
             override fun isAlwaysAllowed(toolName: String) = true
         }
-        val result = d.execute(call("t"), ToolContext(1L, emptySet(), allow))
+        val result = d.execute(call("t"), ToolContext(1L, emptySet(), approvalBridge = allow))
         assertEquals("ok", result.content)
     }
 
@@ -169,7 +169,7 @@ class ToolDispatcherImplTest {
             override suspend fun requestConfirmation(request: ConfirmationRequest) = false
             override fun isAlwaysAllowed(toolName: String) = true
         }
-        val result = d.execute(call("t"), ToolContext(1L, emptySet(), deny))
+        val result = d.execute(call("t"), ToolContext(1L, emptySet(), approvalBridge = deny))
         assertTrue(result.isError)
     }
 

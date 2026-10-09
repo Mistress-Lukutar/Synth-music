@@ -3,6 +3,14 @@ package com.synth.synthmusic.domain.model
 /**
  * Domain model of an AI assistant persona: a named system instruction with an
  * avatar and default capability grants applied to new chats.
+ *
+ * @property defaultTools explicit allow-list of tool names for chats with this
+ * persona; `null` falls back to the capability-based policy (every tool whose
+ * required grants are covered by [defaultGrants]). Built-ins and legacy rows
+ * keep `null`.
+ * @property avatarImage file name of a custom avatar image stored in the
+ * app-private assistant avatar directory; `null` renders the preset
+ * [avatarIcon].
  */
 data class AiAssistant(
     val id: Long,
@@ -14,7 +22,9 @@ data class AiAssistant(
     val avatarColorIndex: Int,
     val defaultGrants: Set<AiCapability>,
     val isBuiltin: Boolean,
-    val sortOrder: Int
+    val sortOrder: Int,
+    val defaultTools: Set<String>? = null,
+    val avatarImage: String? = null
 )
 
 /**

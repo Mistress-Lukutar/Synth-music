@@ -58,7 +58,9 @@ fun AiAssistantEntity.toDomain(): AiAssistant = AiAssistant(
     avatarColorIndex = avatarColorIndex,
     defaultGrants = parseGrants(defaultGrantsJson),
     isBuiltin = isBuiltin,
-    sortOrder = sortOrder
+    sortOrder = sortOrder,
+    defaultTools = defaultToolsJson?.let(::parseTools),
+    avatarImage = avatarImage
 )
 
 /**
@@ -116,6 +118,8 @@ fun AiAssistant.toEntity() = AiAssistantEntity(
     avatarIcon = avatarIcon,
     avatarColorIndex = avatarColorIndex,
     defaultGrantsJson = serializeGrants(defaultGrants),
+    defaultToolsJson = defaultTools?.let(::serializeTools),
+    avatarImage = avatarImage,
     isBuiltin = isBuiltin,
     sortOrder = sortOrder
 )
@@ -146,6 +150,30 @@ fun parseGrants(json: String): Set<AiCapability> = runCatching {
     payload.grants.mapNotNull { name ->
         runCatching { AiCapability.valueOf(name) }.getOrNull()
     }.toSet()
+}.getOrDefault(emptySet())
+
+/**
+ * Serializable wrapper for the JSON-encoded tool allow-list stored in
+ * [AiAssistantEntity.defaultToolsJson]. An explicit empty list means the
+ * assistant gets no tools; a `null` column means "policy not set".
+ */
+@Serializable
+private data class ToolsPayload(val tools: List<String>)
+
+/**
+ * Serializes a tool allow-list to its JSON storage form.
+ */
+fun serializeTools(tools: Set<String>): String {
+    val payload = ToolsPayload(tools = tools.toList())
+    return Json.encodeToString(ToolsPayload.serializer(), payload)
+}
+
+/**
+ * Parses a tool allow-list from its JSON storage form; unknown tool names are
+ * dropped so removals in newer versions do not resurrect dead entries.
+ */
+fun parseTools(json: String): Set<String> = runCatching {
+    Json.decodeFromString(ToolsPayload.serializer(), json).tools.toSet()
 }.getOrDefault(emptySet())
 
 /**

@@ -103,7 +103,8 @@ val aiModule = module {
     single<AiChatRepository> { AiChatRepositoryImpl(get(), get(), get(), get()) }
     single<AiAssistantRepository> { AiAssistantRepositoryImpl(get()) }
     single<AiActionLogRepository> { AiActionLogRepositoryImpl(get()) }
-    single { ImageAttachmentLoader(androidContext()) }
+    single { com.synth.synthmusic.data.ai.ImageAttachmentLoader(androidContext()) }
+    single { com.synth.synthmusic.data.ai.AssistantAvatarStore(androidContext()) }
 
     // --- Chat clients ---
     single { OpenAiClient(get(), get()) }
@@ -294,7 +295,9 @@ val aiModule = module {
     viewModel { (assistantId: Long?) ->
         com.synth.synthmusic.ui.ai.assistant.AssistantEditorViewModel(
             assistantId = assistantId,
-            assistantRepository = get()
+            assistantRepository = get(),
+            toolDispatcher = get(),
+            avatarStore = get()
         )
     }
 }

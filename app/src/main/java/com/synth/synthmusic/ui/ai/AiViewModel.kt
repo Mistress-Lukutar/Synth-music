@@ -47,6 +47,7 @@ data class ChatListItem(
     val assistantName: String?,
     val assistantIcon: String?,
     val assistantColorIndex: Int?,
+    val assistantImage: String?,
     val updatedAt: Long
 )
 
@@ -216,6 +217,7 @@ class AiViewModel(
                     assistantName = assistant?.name,
                     assistantIcon = assistant?.avatarIcon,
                     assistantColorIndex = assistant?.avatarColorIndex,
+                    assistantImage = assistant?.avatarImage,
                     updatedAt = chat.updatedAt
                 )
             },

@@ -120,7 +120,8 @@
     <string name="assistant_system_prompt">System prompt</string>
     <string name="assistant_system_prompt_hint">You are a meticulous metadata assistant…</string>
     <string name="assistant_icon">Icon</string>
-    <string name="assistant_default_grants">Default permissions</string>
+    <string name="assistant_custom_image">Custom image</string>
+    <string name="assistant_default_tools">Default tools</string>
     <string name="assistant_save">Save</string>
     <string name="assistant_save_copy">Save as copy</string>
     <string name="assistant_delete">Delete assistant</string>

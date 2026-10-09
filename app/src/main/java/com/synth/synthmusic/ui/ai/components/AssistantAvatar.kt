@@ -1,5 +1,6 @@
 package com.synth.synthmusic.ui.ai.components
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -22,16 +23,30 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.synth.synthmusic.data.ai.AssistantAvatarStore
 import com.synth.synthmusic.domain.model.AiAvatarIcon
 import com.synth.synthmusic.domain.model.AiAssistant
+import java.io.File
 
 /**
- * Renders an assistant persona avatar: preset icon on a tinted circle.
- * Colors are derived from the Material theme palette, never hardcoded.
+ * Resolves a stored custom avatar file name to its file in app-private
+ * storage; the file may not exist (Coil renders nothing then).
+ */
+fun avatarImageFile(context: Context, name: String): File =
+    File(File(context.filesDir, AssistantAvatarStore.DIRECTORY), name)
+
+/**
+ * Renders an assistant persona avatar: preset icon on a tinted circle, or
+ * the persona's custom image when one is set. Colors are derived from the
+ * Material theme palette, never hardcoded.
  *
  * @param assistant the persona to render.
  * @param size the avatar diameter.
@@ -48,16 +63,19 @@ fun AssistantAvatar(
         colorIndex = assistant.avatarColorIndex,
         contentDescription = assistant.name,
         size = size,
-        modifier = modifier
+        modifier = modifier,
+        avatarImage = assistant.avatarImage
     )
 }
 
 /**
  * Renders an avatar from raw persona fields, tolerating deleted assistants.
- * A null [iconName] or [colorIndex] falls back to the neutral assistant look.
+ * A non-null [avatarImage] wins over the preset icon; a null [iconName] or
+ * [colorIndex] falls back to the neutral assistant look.
  *
  * @param iconName the [AiAvatarIcon] name of the persona.
  * @param colorIndex the persona tint index.
+ * @param avatarImage file name of a custom avatar image, or null.
  * @param contentDescription accessibility label, null for decorative use.
  * @param size the avatar diameter.
  * @param modifier the modifier to be applied to the avatar.
@@ -68,7 +86,8 @@ fun AssistantAvatar(
     colorIndex: Int?,
     contentDescription: String?,
     size: Dp = 40.dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    avatarImage: String? = null
 ) {
     val tints = listOf(
         MaterialTheme.colorScheme.primary,
@@ -86,6 +105,17 @@ fun AssistantAvatar(
         MaterialTheme.colorScheme.surfaceContainerHighest,
         MaterialTheme.colorScheme.surfaceContainerHigh
     )
+    if (avatarImage != null) {
+        AsyncImage(
+            model = avatarImageFile(LocalContext.current, avatarImage),
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+                .size(size)
+                .clip(CircleShape)
+        )
+        return
+    }
     if (iconName == null || colorIndex == null) {
         Box(
             modifier = modifier

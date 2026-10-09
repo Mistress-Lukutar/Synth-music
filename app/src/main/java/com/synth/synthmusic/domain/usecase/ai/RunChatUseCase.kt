@@ -116,10 +116,11 @@ class RunChatUseCase(
         val endpoint = target.endpoint
         val systemPrompt = buildSystemPrompt(chat)
         val grants = chatGrants(chat)
-        val toolSpecs = toolDispatcher.specsFor(grants)
+        val allowedTools = chatAllowedTools(chat)
+        val toolSpecs = toolDispatcher.specsFor(grants, allowedTools)
         android.util.Log.d(
             "SynthAI",
-            "Advertising ${toolSpecs.size} tools (grants=$grants)"
+            "Advertising ${toolSpecs.size} tools (grants=$grants, allowed=$allowedTools)"
         )
 
         try {
@@ -245,7 +246,14 @@ class RunChatUseCase(
                 val imageSink = mutableListOf<AiMessagePart.Image>()
                 val results = toolCalls.map { call ->
                     toolDispatcher.execute(
-                        call, ToolContext(chatId, grants, approvalBridge, imageSink)
+                        call,
+                        ToolContext(
+                            chatId = chatId,
+                            grants = grants,
+                            allowedTools = allowedTools,
+                            approvalBridge = approvalBridge,
+                            imageSink = imageSink
+                        )
                     )
                 }
                 chatRepository.appendMessage(
@@ -340,6 +348,14 @@ class RunChatUseCase(
             ?: AiCapability.entries.toSet()
         return assistantDefaults intersect globalEnabled
     }
+
+    /**
+     * Explicit per-tool allow-list of the chat's assistant; `null` (chats
+     * without an assistant, or personas without a tool selection) advertises
+     * every tool covered by [chatGrants].
+     */
+    private suspend fun chatAllowedTools(chat: AiChat): Set<String>? =
+        chat.assistantId?.let { assistantRepository.getAssistant(it)?.defaultTools }
 
     private suspend fun createStreamingMessage(chatId: Long): AiChatMessage {
         val id = chatRepository.appendMessage(

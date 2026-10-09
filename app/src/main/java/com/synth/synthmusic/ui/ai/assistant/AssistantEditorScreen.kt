@@ -1,6 +1,10 @@
 package com.synth.synthmusic.ui.ai.assistant
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,11 +22,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +36,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,20 +46,28 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.synth.synthmusic.R
 import com.synth.synthmusic.domain.model.AiCapability
 import com.synth.synthmusic.domain.model.AiAvatarIcon
+import com.synth.synthmusic.domain.usecase.ai.AiToolDescriptor
 import com.synth.synthmusic.ui.ai.components.avatarIcon
-import com.synth.synthmusic.ui.settings.components.SettingSwitch
+import com.synth.synthmusic.ui.ai.components.avatarImageFile
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 /**
- * Assistant persona editor: name, icon, description, system prompt and
- * default capability grants. Built-ins are duplicated rather than edited.
+ * Assistant persona editor: name, icon or custom image, description, system
+ * prompt and default per-tool grants. Built-ins are duplicated rather than
+ * edited.
  *
  * @param assistantId id of the persona to edit, null to create a new one.
  * @param onNavigateBack pops the back stack.
@@ -71,6 +85,9 @@ fun AssistantEditorScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val finished by viewModel.finished.collectAsStateWithLifecycle()
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    val pickImage = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri -> uri?.let(viewModel::onImagePicked) }
 
     LaunchedEffect(finished) {
         if (finished) {
@@ -146,11 +163,14 @@ fun AssistantEditorScreen(
             )
             IconGrid(
                 selected = state.avatarIcon,
-                colorIndex = state.avatarColorIndex,
-                onSelect = { icon ->
-                    viewModel.update {
-                        it.copy(avatarIcon = icon, avatarColorIndex = icon.ordinal % 6)
-                    }
+                avatarImage = state.avatarImage,
+                onSelectIcon = viewModel::selectPresetIcon,
+                onPickImage = {
+                    pickImage.launch(
+                        PickVisualMediaRequest(
+                            ActivityResultContracts.PickVisualMedia.ImageOnly
+                        )
+                    )
                 }
             )
 
@@ -165,15 +185,16 @@ fun AssistantEditorScreen(
             )
 
             Text(
-                text = stringResource(R.string.assistant_default_grants),
+                text = stringResource(R.string.assistant_default_tools),
                 style = MaterialTheme.typography.titleSmall
             )
             AiCapability.entries.forEach { capability ->
-                SettingSwitch(
-                    title = capabilityLabel(capability),
-                    description = "",
-                    checked = capability in state.grants,
-                    onCheckedChange = { viewModel.toggleGrant(capability, it) }
+                ToolGroup(
+                    capability = capability,
+                    tools = viewModel.toolCatalog,
+                    selectedTools = state.selectedTools,
+                    onToggleGroup = { enabled -> viewModel.toggleGroup(capability, enabled) },
+                    onToggleTool = viewModel::toggleTool
                 )
             }
 
@@ -215,8 +236,9 @@ fun AssistantEditorScreen(
 @Composable
 private fun IconGrid(
     selected: AiAvatarIcon,
-    colorIndex: Int,
-    onSelect: (AiAvatarIcon) -> Unit
+    avatarImage: String?,
+    onSelectIcon: (AiAvatarIcon) -> Unit,
+    onPickImage: () -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(6),
@@ -224,8 +246,49 @@ private fun IconGrid(
             .fillMaxWidth()
             .size(width = 0.dp, height = 168.dp)
     ) {
+        item {
+            val hasImage = avatarImage != null
+            Box(
+                modifier = Modifier
+                    .padding(6.dp)
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (hasImage) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
+                    .then(
+                        if (hasImage) {
+                            Modifier.border(
+                                width = 2.dp,
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = CircleShape
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .clickable(onClick = onPickImage),
+                contentAlignment = Alignment.Center
+            ) {
+                if (avatarImage != null) {
+                    AsyncImage(
+                        model = avatarImageFile(LocalContext.current, avatarImage),
+                        contentDescription = stringResource(R.string.assistant_custom_image),
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.AddPhotoAlternate,
+                        contentDescription = stringResource(R.string.assistant_custom_image),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
         items(items = AiAvatarIcon.entries.toList()) { icon ->
-            val isSelected = icon == selected
+            val isSelected = avatarImage == null && icon == selected
             Box(
                 modifier = Modifier
                     .padding(6.dp)
@@ -235,7 +298,7 @@ private fun IconGrid(
                         if (isSelected) MaterialTheme.colorScheme.primaryContainer
                         else MaterialTheme.colorScheme.surfaceContainerHigh
                     )
-                    .clickable { onSelect(icon) },
+                    .clickable { onSelectIcon(icon) },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -245,6 +308,97 @@ private fun IconGrid(
                     else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+/**
+ * One capability group of the per-tool grant switches: a tri-state header
+ * (all/none/some) followed by a checkbox row per tool. Tools appear under
+ * the first capability they require, so every tool is listed exactly once.
+ */
+@Composable
+private fun ToolGroup(
+    capability: AiCapability,
+    tools: List<AiToolDescriptor>,
+    selectedTools: Set<String>,
+    onToggleGroup: (Boolean) -> Unit,
+    onToggleTool: (String, Boolean) -> Unit
+) {
+    val groupTools = remember(tools) {
+        tools.filter { tool ->
+            AiCapability.entries.firstOrNull { it in tool.requiredGrants } == capability
+        }
+    }
+    if (groupTools.isEmpty()) return
+    val selectedCount = groupTools.count { it.name in selectedTools }
+    val triState = when (selectedCount) {
+        0 -> ToggleableState.Off
+        groupTools.size -> ToggleableState.On
+        else -> ToggleableState.Indeterminate
+    }
+    Column {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onToggleGroup(triState != ToggleableState.On) }
+                .padding(vertical = 2.dp)
+        ) {
+            TriStateCheckbox(
+                state = triState,
+                onClick = { onToggleGroup(triState != ToggleableState.On) }
+            )
+            Text(
+                text = capabilityLabel(capability),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
+        groupTools.forEach { tool ->
+            ToolRow(
+                tool = tool,
+                selected = tool.name in selectedTools,
+                onToggle = onToggleTool
+            )
+        }
+    }
+}
+
+/**
+ * One per-tool grant row: checkbox, tool name and its model-facing
+ * description.
+ */
+@Composable
+private fun ToolRow(
+    tool: AiToolDescriptor,
+    selected: Boolean,
+    onToggle: (String, Boolean) -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle(tool.name, !selected) }
+            .padding(start = 12.dp)
+    ) {
+        Checkbox(
+            checked = selected,
+            onCheckedChange = { onToggle(tool.name, it) }
+        )
+        Column(modifier = Modifier.padding(start = 4.dp)) {
+            Text(
+                text = tool.name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = tool.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

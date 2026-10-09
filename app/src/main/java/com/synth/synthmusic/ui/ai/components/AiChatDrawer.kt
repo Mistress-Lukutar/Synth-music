@@ -123,7 +123,8 @@ fun AiChatDrawer(
                         iconName = assistant.avatarIcon,
                         colorIndex = assistant.avatarColorIndex,
                         selected = selectedAssistantId == assistant.id,
-                        onClick = { onSelectAssistant(assistant) }
+                        onClick = { onSelectAssistant(assistant) },
+                        avatarImage = assistant.avatarImage
                     )
                 }
                 AgentRow(
@@ -197,7 +198,8 @@ fun AiChatDrawer(
                             iconName = chat.assistantIcon,
                             colorIndex = chat.assistantColorIndex,
                             contentDescription = chat.assistantName,
-                            size = 32.dp
+                            size = 32.dp,
+                            avatarImage = chat.assistantImage
                         )
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -284,7 +286,8 @@ private fun AgentHeader(
             iconName = assistant?.avatarIcon,
             colorIndex = assistant?.avatarColorIndex,
             contentDescription = assistant?.name,
-            size = 40.dp
+            size = 40.dp,
+            avatarImage = assistant?.avatarImage
         )
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -323,7 +326,8 @@ private fun AgentRow(
     iconName: String?,
     colorIndex: Int?,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    avatarImage: String? = null
 ) {
     Row(
         modifier = Modifier
@@ -336,7 +340,8 @@ private fun AgentRow(
             iconName = iconName,
             colorIndex = colorIndex,
             contentDescription = name,
-            size = 32.dp
+            size = 32.dp,
+            avatarImage = avatarImage
         )
         Spacer(Modifier.width(12.dp))
         Text(

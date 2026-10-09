@@ -237,7 +237,8 @@ fun AiScreen(
                                 iconName = state.activeAssistant?.avatarIcon,
                                 colorIndex = state.activeAssistant?.avatarColorIndex,
                                 contentDescription = state.activeAssistant?.name,
-                                size = 32.dp
+                                size = 32.dp,
+                                avatarImage = state.activeAssistant?.avatarImage
                             )
                             Column(
                                 modifier = Modifier
@@ -532,7 +533,8 @@ private fun NewChatHint(
             iconName = assistant?.avatarIcon,
             colorIndex = assistant?.avatarColorIndex,
             contentDescription = assistant?.name,
-            size = 72.dp
+            size = 72.dp,
+            avatarImage = assistant?.avatarImage
         )
         Text(
             text = stringResource(R.string.ai_empty_title),

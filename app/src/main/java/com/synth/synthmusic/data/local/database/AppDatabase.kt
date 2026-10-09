@@ -30,7 +30,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AiActionLogEntity::class,
         CoverBlacklistEntity::class
     ],
-    version = 17,
+    version = 18,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -231,6 +231,14 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE ai_models ADD COLUMN context_tokens INTEGER")
                 db.execSQL("ALTER TABLE ai_models ADD COLUMN max_output_tokens INTEGER")
                 db.execSQL("ALTER TABLE ai_models ADD COLUMN limits_source TEXT")
+            }
+        }
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Per-tool assistant allow-list (NULL = legacy capability-based
+                // policy) and custom avatar image file name (NULL = preset icon).
+                db.execSQL("ALTER TABLE ai_assistants ADD COLUMN default_tools_json TEXT")
+                db.execSQL("ALTER TABLE ai_assistants ADD COLUMN avatar_image TEXT")
             }
         }
     }

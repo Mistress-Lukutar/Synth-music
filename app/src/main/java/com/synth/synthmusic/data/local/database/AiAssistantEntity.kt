@@ -28,6 +28,10 @@ data class AiAssistantEntity(
     val avatarColorIndex: Int,
     @ColumnInfo(name = "default_grants_json")
     val defaultGrantsJson: String,
+    @ColumnInfo(name = "default_tools_json")
+    val defaultToolsJson: String?,
+    @ColumnInfo(name = "avatar_image")
+    val avatarImage: String?,
     @ColumnInfo(name = "is_builtin")
     val isBuiltin: Boolean,
     @ColumnInfo(name = "sort_order")
