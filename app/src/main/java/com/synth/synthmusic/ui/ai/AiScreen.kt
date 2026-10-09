@@ -116,6 +116,7 @@ fun AiScreen(
     var renameChatId by remember { mutableStateOf<Long?>(null) }
     var renameInitialTitle by remember { mutableStateOf("") }
     var deleteChatId by remember { mutableStateOf<Long?>(null) }
+    var deleteAssistant by remember { mutableStateOf<AiAssistant?>(null) }
 
     fun openDrawer() {
         keyboardController?.hide()
@@ -195,6 +196,10 @@ fun AiScreen(
                             viewModel.onEvent(AiUiEvent.SelectAssistant(assistant))
                         }
                     },
+                    onEditAssistant = { assistant ->
+                        closeDrawerThen { onNavigateToAssistantEditor(assistant.id) }
+                    },
+                    onDeleteAssistant = { assistant -> deleteAssistant = assistant },
                     onRenameChat = { chat ->
                         renameInitialTitle = chat.title
                         renameChatId = chat.id
@@ -459,6 +464,14 @@ fun AiScreen(
                 showAgentPicker = false
                 viewModel.onEvent(AiUiEvent.SelectAssistant(assistant))
             },
+            onEditAssistant = { assistant ->
+                showAgentPicker = false
+                onNavigateToAssistantEditor(assistant.id)
+            },
+            onDeleteAssistant = { assistant ->
+                showAgentPicker = false
+                deleteAssistant = assistant
+            },
             onCreateCustom = {
                 showAgentPicker = false
                 onNavigateToAssistantEditor(null)
@@ -487,6 +500,20 @@ fun AiScreen(
                 viewModel.onEvent(AiUiEvent.DeleteChat(chatId))
             },
             onDismiss = { deleteChatId = null }
+        )
+    }
+
+    deleteAssistant?.let { assistant ->
+        ConfirmDialog(
+            title = stringResource(R.string.assistant_delete),
+            text = stringResource(R.string.assistant_delete_confirm),
+            onConfirm = {
+                deleteAssistant = null
+                viewModel.onEvent(
+                    AiUiEvent.DeleteAssistant(assistant.id, assistant.avatarImage)
+                )
+            },
+            onDismiss = { deleteAssistant = null }
         )
     }
 

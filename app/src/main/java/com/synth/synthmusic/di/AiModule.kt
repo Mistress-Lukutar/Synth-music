@@ -300,7 +300,8 @@ val aiModule = module {
             runChatUseCase = get(),
             imageAttachmentLoader = get(),
             actionLogRepository = get(),
-            aiSettingsDataStore = get()
+            aiSettingsDataStore = get(),
+            avatarStore = get()
         )
     }
     viewModel { (assistantId: Long?) ->

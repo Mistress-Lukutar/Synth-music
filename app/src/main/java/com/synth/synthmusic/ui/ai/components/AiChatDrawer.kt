@@ -65,6 +65,8 @@ import java.util.concurrent.TimeUnit
  * @param onNewChat starts a fresh draft.
  * @param onOpenChat opens a history chat.
  * @param onSelectAssistant selects the assistant for the next chat.
+ * @param onEditAssistant opens the assistant editor for the given assistant.
+ * @param onDeleteAssistant asks the caller to confirm deleting the assistant.
  * @param onRenameChat requests renaming the given history chat.
  * @param onDeleteChat requests deleting the given history chat.
  * @param onCreateAssistant opens the assistant editor.
@@ -81,6 +83,8 @@ fun AiChatDrawer(
     onNewChat: () -> Unit,
     onOpenChat: (Long) -> Unit,
     onSelectAssistant: (AiAssistant?) -> Unit,
+    onEditAssistant: (AiAssistant) -> Unit,
+    onDeleteAssistant: (AiAssistant) -> Unit,
     onRenameChat: (ChatListItem) -> Unit,
     onDeleteChat: (ChatListItem) -> Unit,
     onCreateAssistant: () -> Unit,
@@ -124,7 +128,10 @@ fun AiChatDrawer(
                         colorIndex = assistant.avatarColorIndex,
                         selected = selectedAssistantId == assistant.id,
                         onClick = { onSelectAssistant(assistant) },
-                        avatarImage = assistant.avatarImage
+                        avatarImage = assistant.avatarImage,
+                        assistant = assistant,
+                        onEditAssistant = onEditAssistant,
+                        onDeleteAssistant = onDeleteAssistant
                     )
                 }
                 AgentRow(
@@ -318,8 +325,10 @@ private fun AgentHeader(
 }
 
 /**
- * One selectable row of the assistant list.
+ * One selectable row of the assistant list. Non-null [assistant] enables the
+ * long-press management menu (edit / delete, duplicate for built-ins).
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AgentRow(
     name: String,
@@ -327,40 +336,62 @@ private fun AgentRow(
     colorIndex: Int?,
     selected: Boolean,
     onClick: () -> Unit,
-    avatarImage: String? = null
+    avatarImage: String? = null,
+    assistant: AiAssistant? = null,
+    onEditAssistant: ((AiAssistant) -> Unit)? = null,
+    onDeleteAssistant: ((AiAssistant) -> Unit)? = null
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AssistantAvatar(
-            iconName = iconName,
-            colorIndex = colorIndex,
-            contentDescription = name,
-            size = 32.dp,
-            avatarImage = avatarImage
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(
-            text = name,
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (selected) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-        if (selected) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
+    var menuExpanded by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = if (assistant != null) {
+                        { menuExpanded = true }
+                    } else {
+                        null
+                    }
+                )
+                .padding(horizontal = 20.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AssistantAvatar(
+                iconName = iconName,
+                colorIndex = colorIndex,
+                contentDescription = name,
+                size = 32.dp,
+                avatarImage = avatarImage
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (selected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+        if (assistant != null) {
+            AssistantMenu(
+                assistant = assistant,
+                expanded = menuExpanded,
+                onDismiss = { menuExpanded = false },
+                onEditAssistant = onEditAssistant,
+                onDeleteAssistant = onDeleteAssistant
             )
         }
     }

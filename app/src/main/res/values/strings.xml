@@ -79,6 +79,9 @@
     <string name="ai_drawer_settings">AI settings</string>
     <string name="ai_agent_general">General</string>
     <string name="ai_agent_general_description">Plain assistant without a persona</string>
+    <string name="ai_agent_edit">Edit</string>
+    <string name="ai_agent_delete">Delete</string>
+    <string name="ai_agent_duplicate">Duplicate</string>
 
     <!-- AI new-chat empty state -->
     <string name="ai_empty_title">How can I help with your music?</string>

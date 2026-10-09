@@ -3,6 +3,7 @@ package com.synth.synthmusic.ui.ai
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.synth.synthmusic.data.ai.AssistantAvatarStore
 import com.synth.synthmusic.data.ai.ImageAttachmentLoader
 import com.synth.synthmusic.data.local.datastore.AiSettingsDataStore
 import com.synth.synthmusic.domain.model.AiActionLogEntry
@@ -111,6 +112,9 @@ sealed class AiUiEvent {
     /** Deletes the given chat and returns to a draft if it was open. */
     data class DeleteChat(val chatId: Long) : AiUiEvent()
 
+    /** Deletes a custom assistant persona together with its avatar image. */
+    data class DeleteAssistant(val assistantId: Long, val avatarImage: String?) : AiUiEvent()
+
     /** Clears all messages in the active chat. */
     data object ClearMessages : AiUiEvent()
 
@@ -136,7 +140,8 @@ class AiViewModel(
     private val runChatUseCase: RunChatUseCase,
     private val imageAttachmentLoader: ImageAttachmentLoader,
     actionLogRepository: AiActionLogRepository,
-    private val aiSettingsDataStore: AiSettingsDataStore
+    private val aiSettingsDataStore: AiSettingsDataStore,
+    private val avatarStore: AssistantAvatarStore
 ) : ViewModel() {
 
     /** Id of the open chat; null while composing a fresh draft. */
@@ -332,6 +337,14 @@ class AiViewModel(
                 chatRepository.deleteChat(event.chatId)
                 if (event.chatId == activeChatId.value) {
                     newChat()
+                }
+            }
+            is AiUiEvent.DeleteAssistant -> viewModelScope.launch {
+                assistantRepository.deleteAssistant(event.assistantId)
+                avatarStore.delete(event.avatarImage)
+                if (draftAssistantId.value == event.assistantId) {
+                    draftAssistantId.value = null
+                    aiSettingsDataStore.setLastAssistantId(null)
                 }
             }
             AiUiEvent.ClearMessages -> activeChatId.value?.let { id ->
