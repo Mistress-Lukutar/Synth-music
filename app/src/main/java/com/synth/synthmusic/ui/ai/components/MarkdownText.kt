@@ -104,8 +104,20 @@ fun MarkdownText(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        tree.children.forEach { child -> MarkdownBlock(child, markdown, styles) }
+        visibleBlocks(tree.children).forEach { child ->
+            MarkdownBlock(child, markdown, styles)
+        }
     }
+}
+
+/**
+ * Drops whitespace-only tokens the parser leaves between blocks (one EOL
+ * token per newline, even for blank lines). Rendering them would insert
+ * empty text blocks that still reserve a full line of height, so a double
+ * newline between paragraphs produced a large vertical gap.
+ */
+internal fun visibleBlocks(nodes: List<ASTNode>): List<ASTNode> = nodes.filterNot {
+    it.type == MarkdownTokenTypes.EOL || it.type == MarkdownTokenTypes.WHITE_SPACE
 }
 
 /** Theme-derived span styles shared by all inline rendering. */
@@ -160,13 +172,19 @@ private fun MarkdownBlock(node: ASTNode, source: String, styles: InlineStyles) {
                 fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        else ->
-            // Unknown block: render its text so nothing silently disappears.
-            Text(
-                text = annotateNodes(node.children, source, styles),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+        else -> {
+            // Unknown block: render its text so nothing silently disappears,
+            // but skip pure-whitespace leftovers — they would render as
+            // blank lines with full line height.
+            val text = annotateNodes(node.children, source, styles)
+            if (text.text.isNotBlank()) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
     }
 }
 
