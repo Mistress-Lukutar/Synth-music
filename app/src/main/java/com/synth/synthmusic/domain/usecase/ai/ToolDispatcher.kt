@@ -88,10 +88,10 @@ interface ToolDispatcher {
     suspend fun specsFor(grants: Set<AiCapability>, allowedTools: Set<String>? = null): List<AiToolSpec>
 
     /**
-     * Descriptors of every registered tool for the assistant editor's
-     * per-tool grant switches.
+     * Descriptors of every registered tool (built-in and user-imported
+     * custom) for the assistant editor's per-tool grant switches.
      */
-    fun allTools(): List<AiToolDescriptor>
+    suspend fun allTools(): List<AiToolDescriptor>
 
     /**
      * Executes [call]; never throws — failures are returned as an error
@@ -111,7 +111,7 @@ class EmptyToolDispatcher : ToolDispatcher {
         allowedTools: Set<String>?
     ): List<AiToolSpec> = emptyList()
 
-    override fun allTools(): List<AiToolDescriptor> = emptyList()
+    override suspend fun allTools(): List<AiToolDescriptor> = emptyList()
 
     override suspend fun execute(
         call: AiToolCall,

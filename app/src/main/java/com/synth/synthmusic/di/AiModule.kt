@@ -108,6 +108,34 @@ val aiModule = module {
     single { com.synth.synthmusic.data.ai.ImageAttachmentLoader(androidContext()) }
     single { com.synth.synthmusic.data.ai.AssistantAvatarStore(androidContext()) }
 
+    // --- Custom tools (user-imported packages) ---
+    single {
+        com.synth.synthmusic.data.ai.customtools.CustomToolSecretStore(
+            context = androidContext(),
+            cipher = get(),
+            json = get()
+        )
+    }
+    single {
+        com.synth.synthmusic.data.ai.customtools.CustomToolRepository(
+            context = androidContext(),
+            json = get(),
+            httpClient = get(),
+            secretStore = get(),
+            downloader = com.synth.synthmusic.data.ai.tools.AudioFileDownloader(
+                appContext = androidContext(),
+                songRepository = get(),
+                scanMusicUseCase = get(),
+                checkWritePermission = get()
+            ),
+            songRepository = get(),
+            builtInToolNames = { getAll<AiTool>().map { it.name }.toSet() }
+        )
+    }
+    single<com.synth.synthmusic.domain.usecase.ai.CustomToolProvider> {
+        get<com.synth.synthmusic.data.ai.customtools.CustomToolRepository>()
+    }
+
     // --- Chat clients ---
     single { OpenAiClient(get(), get()) }
     single { AnthropicClient(get(), get()) }
@@ -121,6 +149,7 @@ val aiModule = module {
     single<ToolDispatcher> {
         ToolDispatcherImpl(
             tools = getAll(),
+            customTools = get(),
             actionLogRepository = get(),
             settingsRepository = get()
         )
@@ -291,6 +320,9 @@ val aiModule = module {
 
     // --- ViewModels ---
     viewModel { com.synth.synthmusic.ui.settings.ai.AiSettingsViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel {
+        com.synth.synthmusic.ui.settings.ai.customtools.CustomToolsViewModel(get())
+    }
     viewModel {
         com.synth.synthmusic.ui.ai.AiViewModel(
             chatRepository = get(),

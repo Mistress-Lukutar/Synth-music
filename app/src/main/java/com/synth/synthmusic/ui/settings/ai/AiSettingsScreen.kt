@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Language
@@ -82,6 +83,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun AiSettingsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToCustomTools: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: AiSettingsViewModel = koinViewModel()
 ) {
@@ -303,6 +305,28 @@ fun AiSettingsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
+            // --- Custom tools ---
+            SettingsGroupCard(
+                title = stringResource(R.string.ai_custom_tools_section),
+                icon = Icons.Default.Extension
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(stringResource(R.string.ai_custom_tools_manage))
+                    },
+                    supportingContent = {
+                        Text(stringResource(R.string.ai_custom_tools_manage_hint))
+                    },
+                    trailingContent = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier.clickable { onNavigateToCustomTools() }
                 )
             }
 

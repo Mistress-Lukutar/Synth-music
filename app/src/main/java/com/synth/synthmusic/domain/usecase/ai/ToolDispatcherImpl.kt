@@ -12,21 +12,31 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Production [ToolDispatcher]: resolves tools from the registered set,
- * enforces the capability policy (missing grants are denied — tools outside
- * the effective grants are never advertised in the first place, and neither
- * are tools that report themselves unavailable, e.g. web_search without a
- * configured key), executes on
+ * Production [ToolDispatcher]: resolves tools from the registered set plus
+ * user-imported custom tools, enforces the capability policy (missing grants
+ * are denied — tools outside the effective grants are never advertised in
+ * the first place, and neither are tools that report themselves unavailable,
+ * e.g. web_search without a configured key), executes on
  * [Dispatchers.IO], truncates oversized results and writes an audit entry for
- * every call — including denied and failed ones.
+ * every call — including denied and failed ones. Built-ins win name
+ * collisions with custom tools (imports reject them anyway).
  */
 class ToolDispatcherImpl(
     private val tools: List<AiTool>,
+    private val customTools: CustomToolProvider,
     private val actionLogRepository: AiActionLogRepository,
     private val settingsRepository: AiSettingsRepository
 ) : ToolDispatcher {
 
     private val toolsByName: Map<String, AiTool> = tools.associateBy { it.name }
+
+    private suspend fun usable(
+        tool: AiTool,
+        grants: Set<AiCapability>,
+        allowedTools: Set<String>?
+    ) = tool.requiredGrants.all { it in grants } &&
+        (allowedTools == null || tool.name in allowedTools) &&
+        tool.isAvailable()
 
     /**
      * Returns specs of all registered tools whose required grants are
@@ -37,23 +47,27 @@ class ToolDispatcherImpl(
     override suspend fun specsFor(
         grants: Set<AiCapability>,
         allowedTools: Set<String>?
-    ): List<AiToolSpec> =
-        tools.filter { tool ->
-            tool.requiredGrants.all { it in grants } &&
-                (allowedTools == null || tool.name in allowedTools) &&
-                tool.isAvailable()
-        }.map { it.toSpec() }
+    ): List<AiToolSpec> {
+        val custom = customTools.activeTools()
+            .filter { it.name !in toolsByName }
+        return (tools + custom)
+            .filter { usable(it, grants, allowedTools) }
+            .map { it.toSpec() }
+    }
 
     /**
      * Descriptors of every registered tool for the assistant editor.
      */
-    override fun allTools(): List<AiToolDescriptor> = tools.map { tool ->
-        AiToolDescriptor(
-            name = tool.name,
-            description = tool.description,
-            requiredGrants = tool.requiredGrants,
-            confirmationLevel = tool.confirmationLevel
-        )
+    override suspend fun allTools(): List<AiToolDescriptor> {
+        val custom = customTools.activeTools().filter { it.name !in toolsByName }
+        return (tools + custom).map { tool ->
+            AiToolDescriptor(
+                name = tool.name,
+                description = tool.description,
+                requiredGrants = tool.requiredGrants,
+                confirmationLevel = tool.confirmationLevel
+            )
+        }
     }
 
     /**
@@ -66,7 +80,7 @@ class ToolDispatcherImpl(
         call: AiToolCall,
         context: ToolContext
     ): AiMessagePart.ToolResult {
-        val tool = toolsByName[call.name]
+        val tool = toolsByName[call.name] ?: customTools.toolByName(call.name)
         if (tool == null) {
             audit(context.chatId, call, AiActionOutcome.FAILED, "Unknown tool")
             return errorResult(call, "Unknown tool: ${call.name}")

@@ -1,7 +1,6 @@
 package com.synth.synthmusic.data.ai.tools
 
 import android.content.Context
-import android.os.Environment
 import com.synth.synthmusic.domain.model.AiCapability
 import com.synth.synthmusic.domain.repository.SongRepository
 import com.synth.synthmusic.domain.usecase.CheckWritePermissionUseCase
@@ -11,7 +10,6 @@ import com.synth.synthmusic.domain.usecase.ai.ConfirmationLevel
 import com.synth.synthmusic.domain.usecase.ai.ToolContext
 import com.synth.synthmusic.domain.usecase.ai.ToolOutcome
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -22,23 +20,21 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import java.net.URLDecoder
 
 /** Hard cap for a single downloaded audio file (streamed to disk, never held in RAM). */
-private const val MAX_AUDIO_BYTES = 200L * 1024 * 1024
+internal const val MAX_AUDIO_BYTES = 200L * 1024 * 1024
 
 /** Characters stripped from model-supplied file and folder names (mirrors FileTools). */
-private const val ILLEGAL_NAME_CHARS = ":*?\"<>|"
+internal const val ILLEGAL_NAME_CHARS = ":*?\"<>|"
 
 /** Maximum depth of a relative target folder under the Music root. */
-private const val MAX_FOLDER_DEPTH = 8
+internal const val MAX_FOLDER_DEPTH = 8
 
 /** Maximum length of a single file name segment. */
-private const val MAX_NAME_LENGTH = 120
+internal const val MAX_NAME_LENGTH = 120
 
-private const val DOWNLOAD_BUFFER_BYTES = 64 * 1024
+internal const val DOWNLOAD_BUFFER_BYTES = 64 * 1024
 
 /**
  * MP3 signature check over the first bytes of a download: true for an ID3v2
@@ -126,13 +122,20 @@ internal fun uniqueTargetFile(dir: File, fileName: String): File {
  * music storage (folders under the public Music root are created as needed),
  * fires a MediaStore scan and refreshes the library, returning the new song
  * id so follow-up tools can reference the track immediately.
+ *
+ * The pipeline lives in [AudioFileDownloader] so custom scripted tools can
+ * offer the exact same behavior via `ctx.downloadAudio()`.
  */
 class DownloadAudioTool(
-    private val appContext: Context,
-    private val songRepository: SongRepository,
-    private val scanMusicUseCase: ScanMusicUseCase,
-    private val checkWritePermission: CheckWritePermissionUseCase
+    appContext: Context,
+    songRepository: SongRepository,
+    scanMusicUseCase: ScanMusicUseCase,
+    checkWritePermission: CheckWritePermissionUseCase
 ) : AiTool {
+
+    private val downloader = AudioFileDownloader(
+        appContext, songRepository, scanMusicUseCase, checkWritePermission
+    )
 
     override val name = "download_audio"
     override val description = "Download an MP3 from a direct http(s) URL into the device music " +
@@ -175,159 +178,14 @@ class DownloadAudioTool(
 
     override suspend fun execute(args: JsonObject, context: ToolContext): ToolOutcome =
         withContext(Dispatchers.IO) {
-            if (!checkWritePermission()) {
-                return@withContext ToolOutcome(
-                    "No storage write permission; the user must grant \"All files access\" " +
-                        "for Synth Music in system settings",
-                    isError = true
-                )
-            }
             val url = args["url"]?.jsonPrimitive?.content
                 ?: return@withContext ToolOutcome("Missing url", isError = true)
-            if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                return@withContext ToolOutcome("Only http/https URLs are allowed", isError = true)
-            }
-            if (isBlockedHost(url)) {
-                return@withContext ToolOutcome("Blocked host", isError = true)
-            }
-            val targetDir = resolveTargetDir(args["folder"]?.jsonPrimitive?.content)
-                ?: return@withContext ToolOutcome(
-                    "Invalid folder: use a relative path under the Music root " +
-                        "(e.g. 'Rock' or 'Archive/2024') or an existing folder from " +
-                        "list_music_folders",
-                    isError = true
-                )
-            if (!targetDir.isDirectory && !targetDir.mkdirs()) {
-                return@withContext ToolOutcome(
-                    "Could not create folder ${targetDir.absolutePath}", isError = true
-                )
-            }
-            val target = uniqueTargetFile(
-                targetDir,
-                suggestFileName(args["fileName"]?.jsonPrimitive?.content, url)
-            )
-
-            val download = downloadToTemp(url, target)
-            if (download.isError) return@withContext download
-
-            scanFiles(appContext, listOf(target.absolutePath))
-            val refreshed = scanMusicUseCase().getOrNull()
-            val song = songRepository.getAllSongs().firstOrNull { it.path == target.absolutePath }
-            ToolOutcome(
-                buildJsonObject {
-                    put("savedAs", target.name)
-                    put("folder", target.parentFile?.absolutePath.orEmpty())
-                    put("sizeBytes", target.length())
-                    put("libraryRefreshed", refreshed != null)
-                    if (song != null) {
-                        put("songId", song.id)
-                        put("title", song.title)
-                        put("artist", song.artist)
-                        put("album", song.album)
-                    } else {
-                        put(
-                            "note",
-                            "File saved but not found in the library; call refresh_library " +
-                                "or verify the file is a playable MP3"
-                        )
-                    }
-                }.toString()
+            downloader.download(
+                url = url,
+                folder = args["folder"]?.jsonPrimitive?.content,
+                fileName = args["fileName"]?.jsonPrimitive?.content
             )
         }
-
-    /**
-     * Maps the model-supplied folder to a directory: blank → the public Music
-     * root; relative → under the Music root (created by the caller); absolute
-     * → only an existing music folder known to the library.
-     */
-    private suspend fun resolveTargetDir(raw: String?): File? {
-        val musicRoot =
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
-        if (raw.isNullOrBlank()) return musicRoot
-        if (File(raw).isAbsolute) {
-            return songRepository.observeFolders().first().firstOrNull { folder ->
-                runCatching { File(folder).canonicalPath == File(raw).canonicalPath }
-                    .getOrDefault(false)
-            }?.let { File(it) }
-        }
-        val segments = normalizeRelativeFolder(raw) ?: return null
-        return segments.fold(musicRoot) { parent, name -> File(parent, name) }
-    }
-
-    /**
-     * Streams the response into `<target>.part`, validates the MP3 signature
-     * and size cap, then renames onto [target]. The temp file is removed on
-     * every failure path. Internal failures are returned as error outcomes.
-     */
-    private fun downloadToTemp(url: String, target: File): ToolOutcome {
-        val temp = File(target.parentFile, target.name + ".part")
-        temp.delete()
-        val connection = URL(url).openConnection() as HttpURLConnection
-        try {
-            connection.connectTimeout = CONNECT_TIMEOUT_MS
-            connection.readTimeout = READ_TIMEOUT_MS
-            connection.instanceFollowRedirects = true
-            connection.setRequestProperty("User-Agent", MUSIC_BRAINZ_USER_AGENT)
-            val code = connection.responseCode
-            if (code !in 200..299) {
-                return ToolOutcome("HTTP $code", isError = true)
-            }
-            val contentType = connection.contentType.orEmpty()
-            if (connection.contentLengthLong > MAX_AUDIO_BYTES) {
-                return ToolOutcome("File exceeds the 200 MB limit", isError = true)
-            }
-            if (contentType.contains("text/html") || contentType.startsWith("image/") ||
-                contentType.startsWith("video/") || contentType.contains("json")
-            ) {
-                return ToolOutcome(
-                    "URL did not return audio (content-type: $contentType)", isError = true
-                )
-            }
-            val head = ByteArray(3)
-            var headLength = 0
-            var written = 0L
-            connection.inputStream.use { input ->
-                temp.outputStream().use { output ->
-                    val buffer = ByteArray(DOWNLOAD_BUFFER_BYTES)
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read < 0) break
-                        if (headLength < head.size) {
-                            val take = minOf(head.size - headLength, read)
-                            System.arraycopy(buffer, 0, head, headLength, take)
-                            headLength += take
-                        }
-                        written += read
-                        if (written > MAX_AUDIO_BYTES) {
-                            return ToolOutcome(
-                                "Download exceeded the 200 MB limit", isError = true
-                            )
-                        }
-                        output.write(buffer, 0, read)
-                    }
-                }
-            }
-            if (written == 0L) {
-                return ToolOutcome("Empty response body", isError = true)
-            }
-            if (!looksLikeMp3(head, headLength)) {
-                return ToolOutcome(
-                    "URL did not return an MP3 file (content-type: $contentType)", isError = true
-                )
-            }
-            if (!temp.renameTo(target)) {
-                return ToolOutcome("Could not finalize ${target.name}", isError = true)
-            }
-            return ToolOutcome("ok")
-        } catch (e: Exception) {
-            return ToolOutcome(
-                "Download failed: ${e.message ?: "network error"}", isError = true
-            )
-        } finally {
-            connection.disconnect()
-            temp.delete()
-        }
-    }
 }
 
 /**

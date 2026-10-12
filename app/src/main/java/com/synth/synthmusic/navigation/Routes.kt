@@ -42,6 +42,9 @@ object SettingsRoute
 object AiSettingsRoute
 
 @Serializable
+object AiCustomToolsRoute
+
+@Serializable
 data class AssistantEditorRoute(val assistantId: Long? = null)
 
 

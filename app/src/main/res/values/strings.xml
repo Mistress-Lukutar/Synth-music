@@ -65,6 +65,32 @@
     <string name="ai_error_generic">Something went wrong</string>
     <string name="ai_models_notools_notice">Fetched models with unknown capabilities default to tools on, vision off — adjust flags in the model list.</string>
 
+    <!-- AI Settings: custom tools -->
+    <string name="ai_custom_tools_section">Custom tools</string>
+    <string name="ai_custom_tools_manage">Imported AI tools</string>
+    <string name="ai_custom_tools_manage_hint">Extend the assistant with community-made or self-written tools</string>
+    <string name="ai_custom_tools_title">Custom tools</string>
+    <string name="ai_custom_tools_hint">A custom tool is a JSON manifest (single HTTP request) or a zip archive with manifest.json and a tool.js script. Imported tools are sandboxed: scripts cannot access Java or the file system except through the provided ctx functions, and they only run with the capabilities granted to the chat.</string>
+    <string name="ai_custom_tools_import">Import tool (.json / .zip)</string>
+    <string name="ai_custom_tools_empty">No custom tools imported yet</string>
+    <string name="ai_custom_tools_details">Details</string>
+    <string name="ai_custom_tools_delete">Delete</string>
+    <string name="ai_custom_tools_delete_confirm">Delete tool "%1$s"? Its stored secrets are removed too.</string>
+    <string name="ai_custom_tools_schema">Parameters schema</string>
+    <string name="ai_custom_tools_secret_hint">Secrets used by this tool (stored encrypted, never part of the shared package)</string>
+    <string name="ai_custom_tools_secret_empty">Not set</string>
+    <string name="ai_custom_tools_secret_save">Save secret</string>
+    <string name="ai_custom_tools_test">Test run</string>
+    <string name="ai_custom_tools_args_label">Arguments (JSON)</string>
+    <string name="ai_custom_tools_run">Run</string>
+    <string name="ai_custom_tools_confirmation">Confirmation</string>
+    <string name="ai_custom_tools_load_error">Load error</string>
+    <string name="ai_custom_tools_import_success">Tool "%1$s" imported</string>
+    <string name="ai_custom_tools_import_failed">Import failed: %1$s</string>
+    <string name="ai_custom_tools_deleted">Tool deleted</string>
+    <string name="ai_custom_tools_args_invalid">Arguments are not valid JSON</string>
+    <string name="ai_custom_tools_close">Close</string>
+
     <!-- AI chat home -->
     <string name="ai_home_setup_title">Set up an AI provider</string>
     <string name="ai_home_setup_body">Add an API provider in AI settings to start chatting with your music library assistant.</string>

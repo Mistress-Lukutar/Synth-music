@@ -104,6 +104,9 @@ dependencies {
     // Markdown (AI chat message rendering, GFM flavour)
     implementation(libs.jetbrains.markdown)
 
+    // Rhino — sandboxed JS engine for user-imported custom AI tools
+    implementation(libs.rhino)
+
     // JAudioTagger (metadata / ReplayGain)
     implementation(libs.jaudiotagger)
 

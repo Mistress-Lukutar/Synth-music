@@ -58,9 +58,15 @@ class AssistantEditorViewModel(
     /** Emits after a successful save/delete so the screen can navigate back. */
     val finished = MutableStateFlow<Boolean>(false)
 
-    /** Catalog of registered tools rendered as per-tool grant switches. */
-    val toolCatalog: List<AiToolDescriptor> = toolDispatcher.allTools()
-        .sortedBy { it.name }
+    /**
+     * Catalog of registered tools (built-in + user-imported custom) rendered
+     * as per-tool grant switches. Loaded asynchronously because custom tools
+     * are read from disk.
+     */
+    private val _toolCatalog = MutableStateFlow<List<AiToolDescriptor>>(emptyList())
+
+    /** Editor tool catalog. */
+    val toolCatalog: StateFlow<List<AiToolDescriptor>> = _toolCatalog.asStateFlow()
 
     /** Avatar file name loaded from the persisted row (replacement baseline). */
     private var originalAvatarImage: String? = null
@@ -72,9 +78,13 @@ class AssistantEditorViewModel(
     private var persisted = assistantId == null
 
     init {
-        if (assistantId != null) {
-            viewModelScope.launch {
+        viewModelScope.launch {
+            // Load the catalog first: legacy rows derive their default tool
+            // selection from it.
+            _toolCatalog.value = toolDispatcher.allTools().sortedBy { it.name }
+            if (assistantId != null) {
                 assistantRepository.getAssistant(assistantId)?.let { assistant ->
+                    val toolCatalog = _toolCatalog.value
                     originalAvatarImage = assistant.avatarImage
                     // Legacy rows (and built-ins) have no explicit tool list:
                     // pre-select every tool their capability grants cover.
@@ -102,9 +112,9 @@ class AssistantEditorViewModel(
                         )
                     }
                 }
+            } else {
+                _uiState.update { it.copy(isLoaded = true) }
             }
-        } else {
-            _uiState.update { it.copy(isLoaded = true) }
         }
     }
 
@@ -134,7 +144,7 @@ class AssistantEditorViewModel(
      * Selects or deselects every tool of one capability group at once.
      */
     fun toggleGroup(capability: AiCapability, enabled: Boolean) {
-        val groupTools = toolCatalog
+        val groupTools = _toolCatalog.value
             .filter { capability in it.requiredGrants }
             .map { it.name }
             .toSet()
@@ -188,7 +198,7 @@ class AssistantEditorViewModel(
         val state = _uiState.value
         viewModelScope.launch {
             val asCopy = state.isBuiltin
-            val grants = toolCatalog
+            val grants = _toolCatalog.value
                 .filter { it.name in state.selectedTools }
                 .flatMap { it.requiredGrants }
                 .toSet()

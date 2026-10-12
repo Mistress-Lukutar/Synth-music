@@ -84,6 +84,7 @@ fun AssistantEditorScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val finished by viewModel.finished.collectAsStateWithLifecycle()
+    val toolCatalog by viewModel.toolCatalog.collectAsStateWithLifecycle()
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val pickImage = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -191,7 +192,7 @@ fun AssistantEditorScreen(
             AiCapability.entries.forEach { capability ->
                 ToolGroup(
                     capability = capability,
-                    tools = viewModel.toolCatalog,
+                    tools = toolCatalog,
                     selectedTools = state.selectedTools,
                     onToggleGroup = { enabled -> viewModel.toggleGroup(capability, enabled) },
                     onToggleTool = viewModel::toggleTool

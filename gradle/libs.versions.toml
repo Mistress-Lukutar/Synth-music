@@ -22,6 +22,7 @@ materialKolor = "2.1.1"
 palette = "1.0.0"
 okhttp = "5.1.0"
 jetbrainsMarkdown = "0.7.3"
+rhino = "1.7.15"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -87,6 +88,9 @@ okhttp-mockwebserver3 = { group = "com.squareup.okhttp3", name = "mockwebserver3
 
 # Markdown (AI chat message rendering, GFM flavour)
 jetbrains-markdown = { group = "org.jetbrains", name = "markdown", version.ref = "jetbrainsMarkdown" }
+
+# Rhino (sandboxed JS engine for user-imported custom AI tools)
+rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

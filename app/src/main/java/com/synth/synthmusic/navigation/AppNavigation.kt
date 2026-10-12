@@ -178,6 +178,12 @@ fun AppNavigation(
             }
             composable<AiSettingsRoute> {
                 com.synth.synthmusic.ui.settings.ai.AiSettingsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToCustomTools = { navController.navigate(AiCustomToolsRoute) }
+                )
+            }
+            composable<AiCustomToolsRoute> {
+                com.synth.synthmusic.ui.settings.ai.customtools.CustomToolsScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }

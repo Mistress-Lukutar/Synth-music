@@ -76,8 +76,13 @@ class ToolDispatcherImplTest {
         override suspend fun getWebSearchKey(): String? = null
     }
 
+    private class EmptyCustomTools : CustomToolProvider {
+        override suspend fun activeTools(): List<AiTool> = emptyList()
+        override suspend fun toolByName(name: String): AiTool? = null
+    }
+
     private fun dispatcher(vararg tools: AiTool) =
-        ToolDispatcherImpl(tools.toList(), FakeActionLog(), FakeSettings())
+        ToolDispatcherImpl(tools.toList(), EmptyCustomTools(), FakeActionLog(), FakeSettings())
 
     private fun context(grants: Set<AiCapability>) = ToolContext(chatId = 1L, grants = grants)
 
@@ -180,7 +185,7 @@ class ToolDispatcherImplTest {
             confirmationLevel = ConfirmationLevel.CONFIRM
         )
         val settings = FakeSettings(confirmEdits = false)
-        val d = ToolDispatcherImpl(listOf(tool), FakeActionLog(), settings)
+        val d = ToolDispatcherImpl(listOf(tool), EmptyCustomTools(), FakeActionLog(), settings)
         val result = d.execute(call("t"), context(emptySet()))
         assertEquals("ok", result.content)
         assertEquals(true, tool.executed)
@@ -201,7 +206,8 @@ class ToolDispatcherImplTest {
     fun `every call is audited`() = runTest {
         val log = FakeActionLog()
         val d = ToolDispatcherImpl(
-            listOf(FakeTool("t", requiredGrants = emptySet())), log, FakeSettings()
+            listOf(FakeTool("t", requiredGrants = emptySet())),
+            EmptyCustomTools(), log, FakeSettings()
         )
         d.execute(call("t"), context(emptySet()))
         d.execute(call("unknown"), context(emptySet()))
