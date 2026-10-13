@@ -120,7 +120,7 @@ class CustomToolRepository(
         cache?.let { return it }
         val disabled = store.disabledNames()
         val loaded = store.list().map { stored ->
-            toRecord(stored, disabled.contains(stored.name))
+            toRecord(stored, stored.name !in disabled)
         }.sortedBy { it.name }
         cache = loaded
         return loaded
