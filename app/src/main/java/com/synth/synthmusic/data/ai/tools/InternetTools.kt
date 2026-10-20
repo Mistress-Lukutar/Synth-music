@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
@@ -683,14 +684,40 @@ class WebSearchTool(
 }
 
 /**
- * `fetch_url` — GET an http(s) page and return extracted plain text
- * (scripts/styles/tags stripped, `<title>` kept), capped at 24 KB.
+ * Formats a fetched response body for the model based on its base content
+ * type (parameters stripped). HTML is stripped to plain text via
+ * [FetchUrlTool.extractText], JSON is pretty-printed (raw body on parse
+ * failure), XML and other text types are passed through as-is. Returns null
+ * for unsupported (binary) content types.
+ */
+internal fun formatFetchedBody(body: String, contentType: String): String? {
+    val baseType = contentType.substringBefore(';').trim().lowercase()
+    return when {
+        baseType == "text/html" -> FetchUrlTool().extractText(body)
+        baseType == "application/json" || baseType == "text/json" ||
+            baseType.endsWith("+json") ->
+            runCatching {
+                val json = Json { prettyPrint = true }
+                json.encodeToString(JsonElement.serializer(), json.parseToJsonElement(body))
+            }.getOrDefault(body)
+        baseType == "application/xml" || baseType == "text/xml" ||
+            baseType.endsWith("+xml") -> body
+        baseType.startsWith("text/") -> body
+        else -> null
+    }
+}
+
+/**
+ * `fetch_url` — GET an http(s) URL and return its content: HTML is stripped
+ * to plain text, JSON is pretty-printed, XML/text are passed through as-is
+ * (max 24 KB). Only http/https; local/private addresses are blocked.
  */
 class FetchUrlTool : AiTool {
 
     override val name = "fetch_url"
-    override val description = "Fetch a web page and return its plain text (HTML stripped, " +
-        "max 24 KB). Only http/https; local/private addresses are blocked."
+    override val description = "Fetch a URL and return its content as text: HTML pages are stripped to plain text, " +
+        "JSON is pretty-printed, XML/text are passed through (max 24 KB). " +
+        "Only http/https; local/private addresses are blocked."
     override val paramsSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") {
@@ -714,12 +741,11 @@ class FetchUrlTool : AiTool {
             if (code != 200) {
                 return@withContext ToolOutcome("HTTP $code", isError = true)
             }
-            if (!contentType.contains("text/html") && !contentType.contains("text/plain")) {
-                return@withContext ToolOutcome(
+            val formatted = formatFetchedBody(body, contentType)
+                ?: return@withContext ToolOutcome(
                     "Unsupported content type: $contentType", isError = true
                 )
-            }
-            ToolOutcome(extractText(body).take(MAX_TEXT_CHARS))
+            ToolOutcome(formatted.take(MAX_TEXT_CHARS))
         }
 
     internal fun extractText(html: String): String {
