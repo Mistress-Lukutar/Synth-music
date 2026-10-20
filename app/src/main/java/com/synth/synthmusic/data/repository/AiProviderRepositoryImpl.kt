@@ -112,6 +112,7 @@ class AiModelRepositoryImpl(
      * - otherwise provider-reported limits replace stale ones, but a fetch
      *   that parses no limits keeps the values already stored;
      * - the pinned flag is preserved from the stored row.
+     * - the user vision override is preserved from the stored row.
      */
     private fun mergeModel(incoming: AiModel, existing: AiModel): AiModel {
         val limits = when {
@@ -123,7 +124,7 @@ class AiModelRepositoryImpl(
                 limitsSource = existing.limitsSource
             )
         }
-        return limits.copy(isPinned = existing.isPinned)
+        return limits.copy(isPinned = existing.isPinned, userVisionOverride = existing.userVisionOverride)
     }
 
     override suspend fun setPinned(providerId: Long, modelId: String, pinned: Boolean) {

@@ -30,7 +30,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AiActionLogEntity::class,
         CoverBlacklistEntity::class
     ],
-    version = 18,
+    version = 19,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -239,6 +239,12 @@ abstract class AppDatabase : RoomDatabase() {
                 // policy) and custom avatar image file name (NULL = preset icon).
                 db.execSQL("ALTER TABLE ai_assistants ADD COLUMN default_tools_json TEXT")
                 db.execSQL("ALTER TABLE ai_assistants ADD COLUMN avatar_image TEXT")
+            }
+        }
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Per-model vision override (NULL = auto-detect from model name).
+                db.execSQL("ALTER TABLE ai_models ADD COLUMN user_vision_override INTEGER")
             }
         }
     }

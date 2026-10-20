@@ -37,6 +37,10 @@
     <string name="ai_model_max_output">Max output tokens</string>
     <string name="ai_model_limits_hint">Leave blank to use the provider default</string>
     <string name="ai_model_edit">Edit model</string>
+    <string name="ai_model_vision">Vision capability</string>
+    <string name="ai_model_vision_auto">Auto</string>
+    <string name="ai_model_vision_on">Enabled</string>
+    <string name="ai_model_vision_off">Disabled</string>
 
     <!-- AI Settings: capabilities -->
     <string name="ai_capabilities_section">Capabilities</string>

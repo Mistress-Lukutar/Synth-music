@@ -180,10 +180,10 @@ Type-safe routes are defined in `navigation/Routes.kt` using Kotlin Serializatio
 
 ### Room Database (`AppDatabase`)
 
-- **Version**: 18 (AI tables added in migration 13→14; per-model context/output limits in 16→17; per-tool assistant grants + custom avatar image in 17→18)
+- **Version**: 19 (AI tables added in migration 13→14; per-model context/output limits in 16→17; per-tool assistant grants + custom avatar image in 17→18; per-model vision override in 18→19)
 - **Entities**: `SongEntity`, `AlbumEntity`, `ArtistEntity`, `PlaylistEntity`, `PlaylistSongEntity`, `PlaybackStateEntity`, `PlaybackQueueItemEntity`, `PlaybackOriginalQueueItemEntity`, `WaveformDataEntity`, `RecentlyPlayedCollectionEntity` plus AI tables (`AiProviderEntity`, `AiModelEntity`, `AiChatEntity`, `AiChatMessageEntity`, `AiAssistantEntity`, `AiChatToolGrantEntity`, `AiActionLogEntity`)
 - **Schema export**: disabled (`exportSchema = false`)
-- **Migration strategy**: migrations 7→8 … 17→18 live in the `AppDatabase` companion object; `fallbackToDestructiveMigration(dropAllTables = true)` remains as a fallback. New entities MUST ship with a real migration.
+- **Migration strategy**: migrations 7→8 … 18→19 live in the `AppDatabase` companion object; `fallbackToDestructiveMigration(dropAllTables = true)` remains as a fallback. New entities MUST ship with a real migration.
 - **KSP** is used for compile-time code generation (`ksp(libs.androidx.room.compiler)`).
 
 ### DataStore (`SettingsDataStore`)

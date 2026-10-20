@@ -67,6 +67,7 @@ data class AiUiState(
     val draftInput: String = "",
     val activeAssistant: AiAssistant? = null,
     val modelLabel: String? = null,
+    /** Whether the active model supports vision (image input), including user override. */
     val supportsVision: Boolean = false,
     val messages: List<AiChatMessage> = emptyList(),
     val isStreaming: Boolean = false,
@@ -296,7 +297,7 @@ class AiViewModel(
             draftInput = input,
             activeAssistant = activeAssistant,
             modelLabel = model?.displayName,
-            supportsVision = model?.supportsVision ?: false,
+            supportsVision = model?.effectiveSupportsVision ?: false,
             messages = active.messages,
             isStreaming = active.streaming,
             pendingAttachments = extra.attachments,

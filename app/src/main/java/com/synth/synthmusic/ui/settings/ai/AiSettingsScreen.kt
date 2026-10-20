@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.ModelTraining
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -460,10 +461,10 @@ fun AiSettingsScreen(
                 viewModel.onEvent(AiSettingsUiEvent.SetDefaultModel(providerId, modelId))
                 showModelPicker = false
             },
-            onAddManually = { providerId, modelId, displayName, contextTokens, maxOutputTokens ->
+            onAddManually = { providerId, modelId, displayName, contextTokens, maxOutputTokens, userVisionOverride ->
                 viewModel.onEvent(
                     AiSettingsUiEvent.AddManualModel(
-                        providerId, modelId, displayName, contextTokens, maxOutputTokens
+                        providerId, modelId, displayName, contextTokens, maxOutputTokens, userVisionOverride
                     )
                 )
             },
@@ -478,11 +479,11 @@ fun AiSettingsScreen(
     editingModel?.let { entry ->
         EditModelDialog(
             model = entry.model,
-            onSave = { displayName, contextTokens, maxOutputTokens ->
+            onSave = { displayName, contextTokens, maxOutputTokens, userVisionOverride ->
                 viewModel.onEvent(
                     AiSettingsUiEvent.UpdateModelLimits(
                         entry.providerId, entry.model.modelId,
-                        displayName, contextTokens, maxOutputTokens
+                        displayName, contextTokens, maxOutputTokens, userVisionOverride
                     )
                 )
                 editingModel = null
@@ -699,7 +700,7 @@ private fun ModelPickerDialog(
     onSelect: (Long, String) -> Unit,
     onAddManually: (
         providerId: Long, modelId: String, displayName: String,
-        contextTokens: Int?, maxOutputTokens: Int?
+        contextTokens: Int?, maxOutputTokens: Int?, userVisionOverride: Boolean?
     ) -> Unit,
     onEditModel: (ModelUi) -> Unit,
     onDismiss: () -> Unit
@@ -793,10 +794,10 @@ private fun ModelPickerDialog(
     if (showManualEntry) {
         ManualModelDialog(
             providers = providers,
-            onConfirm = { providerId, modelId, displayName, contextTokens, maxOutputTokens ->
+            onConfirm = { providerId, modelId, displayName, contextTokens, maxOutputTokens, userVisionOverride ->
                 showManualEntry = false
                 onAddManually(
-                    providerId, modelId, displayName, contextTokens, maxOutputTokens
+                    providerId, modelId, displayName, contextTokens, maxOutputTokens, userVisionOverride
                 )
             },
             onDismiss = { showManualEntry = false }
@@ -834,13 +835,47 @@ private fun trimTokenFraction(value: Double): String {
 private fun parseOptionalTokens(text: String): Int? =
     text.trim().takeIf { it.isNotEmpty() }?.toIntOrNull()
 
+/**
+ * Tri-state vision selector: Auto (null = app guess), Enabled, Disabled.
+ */
+@Composable
+private fun VisionOverrideSelector(
+    value: Boolean?,
+    onChange: (Boolean?) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(R.string.ai_model_vision),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = value == null,
+                onClick = { onChange(null) },
+                label = { Text(stringResource(R.string.ai_model_vision_auto)) }
+            )
+            FilterChip(
+                selected = value == true,
+                onClick = { onChange(true) },
+                label = { Text(stringResource(R.string.ai_model_vision_on)) }
+            )
+            FilterChip(
+                selected = value == false,
+                onClick = { onChange(false) },
+                label = { Text(stringResource(R.string.ai_model_vision_off)) }
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ManualModelDialog(
     providers: List<ProviderUi>,
     onConfirm: (
         providerId: Long, modelId: String, displayName: String,
-        contextTokens: Int?, maxOutputTokens: Int?
+        contextTokens: Int?, maxOutputTokens: Int?, userVisionOverride: Boolean?
     ) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -849,6 +884,7 @@ private fun ManualModelDialog(
     var displayName by remember { mutableStateOf("") }
     var contextTokens by remember { mutableStateOf("") }
     var maxOutputTokens by remember { mutableStateOf("") }
+    var visionOverride by remember { mutableStateOf<Boolean?>(null) }
     var providerExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -913,6 +949,10 @@ private fun ManualModelDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
+                VisionOverrideSelector(
+                    value = visionOverride,
+                    onChange = { visionOverride = it }
+                )
                 Text(
                     text = stringResource(R.string.ai_model_limits_hint),
                     style = MaterialTheme.typography.bodySmall,
@@ -927,7 +967,8 @@ private fun ManualModelDialog(
                         onConfirm(
                             it, modelId, displayName,
                             parseOptionalTokens(contextTokens),
-                            parseOptionalTokens(maxOutputTokens)
+                            parseOptionalTokens(maxOutputTokens),
+                            visionOverride
                         )
                     }
                 },
@@ -947,7 +988,7 @@ private fun ManualModelDialog(
 @Composable
 private fun EditModelDialog(
     model: com.synth.synthmusic.domain.model.AiModel,
-    onSave: (displayName: String, contextTokens: Int?, maxOutputTokens: Int?) -> Unit,
+    onSave: (displayName: String, contextTokens: Int?, maxOutputTokens: Int?, userVisionOverride: Boolean?) -> Unit,
     onDismiss: () -> Unit
 ) {
     var displayName by remember { mutableStateOf(model.displayName) }
@@ -957,6 +998,7 @@ private fun EditModelDialog(
     var maxOutputTokens by remember {
         mutableStateOf(model.maxOutputTokens?.toString().orEmpty())
     }
+    var visionOverride by remember { mutableStateOf(model.userVisionOverride) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -988,6 +1030,10 @@ private fun EditModelDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
+                VisionOverrideSelector(
+                    value = visionOverride,
+                    onChange = { visionOverride = it }
+                )
                 Text(
                     text = stringResource(R.string.ai_model_limits_hint),
                     style = MaterialTheme.typography.bodySmall,
@@ -1001,89 +1047,10 @@ private fun EditModelDialog(
                     onSave(
                         displayName,
                         parseOptionalTokens(contextTokens),
-                        parseOptionalTokens(maxOutputTokens)
+                        parseOptionalTokens(maxOutputTokens),
+                        visionOverride
                     )
                 }
-            ) {
-                Text(stringResource(R.string.ai_provider_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.ai_provider_cancel))
-            }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ManualModelDialog(
-    providers: List<ProviderUi>,
-    onConfirm: (providerId: Long, modelId: String, displayName: String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var providerId by remember { mutableStateOf(providers.firstOrNull()?.id) }
-    var modelId by remember { mutableStateOf("") }
-    var displayName by remember { mutableStateOf("") }
-    var providerExpanded by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.ai_model_add_manual)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ExposedDropdownMenuBox(
-                    expanded = providerExpanded,
-                    onExpandedChange = { providerExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = providers.firstOrNull { it.id == providerId }?.label.orEmpty(),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.ai_model_provider)) },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = providerExpanded)
-                        },
-                        modifier = Modifier
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                            .fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = providerExpanded,
-                        onDismissRequest = { providerExpanded = false }
-                    ) {
-                        providers.forEach { provider ->
-                            DropdownMenuItem(
-                                text = { Text(provider.label) },
-                                onClick = {
-                                    providerId = provider.id
-                                    providerExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                OutlinedTextField(
-                    value = modelId,
-                    onValueChange = { modelId = it },
-                    label = { Text(stringResource(R.string.ai_model_id)) },
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = displayName,
-                    onValueChange = { displayName = it },
-                    label = { Text(stringResource(R.string.ai_model_display_name)) },
-                    singleLine = true
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    providerId?.let { onConfirm(it, modelId, displayName) }
-                },
-                enabled = providerId != null && modelId.isNotBlank()
             ) {
                 Text(stringResource(R.string.ai_provider_save))
             }

@@ -23,6 +23,9 @@ data class AiModelEntity(
     val supportsTools: Boolean,
     @ColumnInfo(name = "supports_vision")
     val supportsVision: Boolean,
+    /** User override for vision support; null = auto (use the app guess). */
+    @ColumnInfo(name = "user_vision_override")
+    val userVisionOverride: Boolean? = null,
     @ColumnInfo(name = "is_pinned")
     val isPinned: Boolean,
     /** Input context window in tokens, when known (provider or user). */

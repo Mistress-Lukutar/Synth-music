@@ -130,25 +130,29 @@ sealed class AiSettingsUiEvent {
      * Adds a model to a provider manually, without fetching the model list.
      * [contextTokens] / [maxOutputTokens] are optional capability limits the
      * user knows about the model; blank fields mean unknown.
+     * [userVisionOverride] per-model override for vision support; null = auto.
      */
     data class AddManualModel(
         val providerId: Long,
         val modelId: String,
         val displayName: String,
         val contextTokens: Int? = null,
-        val maxOutputTokens: Int? = null
+        val maxOutputTokens: Int? = null,
+        val userVisionOverride: Boolean? = null
     ) : AiSettingsUiEvent()
 
     /**
      * Updates a stored model's display name and capability limits. Limits
      * are recorded as user-entered, so a later model-list fetch keeps them.
+     * [userVisionOverride] replaces the auto-detected value; null resets to auto.
      */
     data class UpdateModelLimits(
         val providerId: Long,
         val modelId: String,
         val displayName: String,
         val contextTokens: Int?,
-        val maxOutputTokens: Int?
+        val maxOutputTokens: Int?,
+        val userVisionOverride: Boolean?
     ) : AiSettingsUiEvent()
 }
 
@@ -299,6 +303,7 @@ class AiSettingsViewModel(
                                 .ifEmpty { modelId },
                             supportsTools = tools,
                             supportsVision = vision,
+                            userVisionOverride = event.userVisionOverride,
                             isPinned = false,
                             contextTokens = event.contextTokens,
                             maxOutputTokens = event.maxOutputTokens,
@@ -328,6 +333,7 @@ class AiSettingsViewModel(
                                 .ifEmpty { existing.displayName },
                             contextTokens = event.contextTokens,
                             maxOutputTokens = event.maxOutputTokens,
+                            userVisionOverride = event.userVisionOverride,
                             limitsSource = if (
                                 event.contextTokens != null || event.maxOutputTokens != null
                             ) {

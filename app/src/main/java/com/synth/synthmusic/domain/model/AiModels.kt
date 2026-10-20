@@ -50,6 +50,7 @@ enum class ModelLimitsSource {
  * @property contextTokens input context window in tokens, when known.
  * @property maxOutputTokens maximum output tokens, when known.
  * @property limitsSource where the limits came from, or null when unknown.
+ * @property userVisionOverride per-model user override for vision support; null = auto.
  */
 data class AiModel(
     val providerId: Long,
@@ -57,11 +58,17 @@ data class AiModel(
     val displayName: String,
     val supportsTools: Boolean,
     val supportsVision: Boolean,
+    /** User override for vision support; null = auto (use the app guess). */
+    val userVisionOverride: Boolean? = null,
     val isPinned: Boolean,
     val contextTokens: Int? = null,
     val maxOutputTokens: Int? = null,
     val limitsSource: ModelLimitsSource? = null
-)
+) {
+    /** Effective vision support: the user override when set, else the app guess. */
+    val effectiveSupportsVision: Boolean
+        get() = userVisionOverride ?: supportsVision
+}
 
 /**
  * Capabilities an assistant/chat may be granted. Tool advertisement and
