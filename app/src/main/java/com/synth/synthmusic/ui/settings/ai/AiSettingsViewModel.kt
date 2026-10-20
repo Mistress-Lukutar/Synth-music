@@ -294,27 +294,26 @@ class AiSettingsViewModel(
                     return@launch
                 }
                 val (tools, vision) = guessModelCapabilities(modelId)
-                modelRepository.upsertModels(
-                    listOf(
-                        AiModel(
-                            providerId = event.providerId,
-                            modelId = modelId,
-                            displayName = event.displayName.trim()
-                                .ifEmpty { modelId },
-                            supportsTools = tools,
-                            supportsVision = vision,
-                            userVisionOverride = event.userVisionOverride,
-                            isPinned = false,
-                            contextTokens = event.contextTokens,
-                            maxOutputTokens = event.maxOutputTokens,
-                            limitsSource = if (
-                                event.contextTokens != null || event.maxOutputTokens != null
-                            ) {
-                                ModelLimitsSource.MANUAL
-                            } else {
-                                null
-                            }
-                        )
+                val existing = modelRepository.getModel(event.providerId, modelId)
+                modelRepository.upsertUserModel(
+                    AiModel(
+                        providerId = event.providerId,
+                        modelId = modelId,
+                        displayName = event.displayName.trim()
+                            .ifEmpty { modelId },
+                        supportsTools = tools,
+                        supportsVision = vision,
+                        userVisionOverride = event.userVisionOverride,
+                        isPinned = existing?.isPinned ?: false,
+                        contextTokens = event.contextTokens,
+                        maxOutputTokens = event.maxOutputTokens,
+                        limitsSource = if (
+                            event.contextTokens != null || event.maxOutputTokens != null
+                        ) {
+                            ModelLimitsSource.MANUAL
+                        } else {
+                            null
+                        }
                     )
                 )
                 refresh()
@@ -326,22 +325,20 @@ class AiSettingsViewModel(
                     _events.value = AiSettingsEvent.Message("Model not found")
                     return@launch
                 }
-                modelRepository.upsertModels(
-                    listOf(
-                        existing.copy(
-                            displayName = event.displayName.trim()
-                                .ifEmpty { existing.displayName },
-                            contextTokens = event.contextTokens,
-                            maxOutputTokens = event.maxOutputTokens,
-                            userVisionOverride = event.userVisionOverride,
-                            limitsSource = if (
-                                event.contextTokens != null || event.maxOutputTokens != null
-                            ) {
-                                ModelLimitsSource.MANUAL
-                            } else {
-                                null
-                            }
-                        )
+                modelRepository.upsertUserModel(
+                    existing.copy(
+                        displayName = event.displayName.trim()
+                            .ifEmpty { existing.displayName },
+                        contextTokens = event.contextTokens,
+                        maxOutputTokens = event.maxOutputTokens,
+                        userVisionOverride = event.userVisionOverride,
+                        limitsSource = if (
+                            event.contextTokens != null || event.maxOutputTokens != null
+                        ) {
+                            ModelLimitsSource.MANUAL
+                        } else {
+                            null
+                        }
                     )
                 )
                 refresh()
