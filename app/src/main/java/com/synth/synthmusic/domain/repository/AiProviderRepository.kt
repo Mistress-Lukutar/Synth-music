@@ -78,6 +78,15 @@ interface AiModelRepository {
     /** Inserts or updates a batch of models. */
     suspend fun upsertModels(models: List<AiModel>)
 
+    /**
+     * Inserts or updates one model row as authored by the user (add manual,
+     * edit limits). Unlike [upsertModels], no fetch-merge is applied: the row
+     * is written as given, so a user-set vision override — including a reset
+     * to auto — sticks. Callers must build the row from the stored one to
+     * keep user state such as [AiModel.isPinned].
+     */
+    suspend fun upsertUserModel(model: AiModel)
+
     /** Updates the pinned flag of one model. */
     suspend fun setPinned(providerId: Long, modelId: String, pinned: Boolean)
 

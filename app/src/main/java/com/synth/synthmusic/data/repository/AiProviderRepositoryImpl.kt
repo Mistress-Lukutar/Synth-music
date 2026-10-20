@@ -127,6 +127,10 @@ class AiModelRepositoryImpl(
         return limits.copy(isPinned = existing.isPinned, userVisionOverride = existing.userVisionOverride)
     }
 
+    override suspend fun upsertUserModel(model: AiModel) {
+        modelDao.upsertAll(listOf(model.toEntity()))
+    }
+
     override suspend fun setPinned(providerId: Long, modelId: String, pinned: Boolean) {
         modelDao.setPinned(providerId, modelId, pinned)
     }

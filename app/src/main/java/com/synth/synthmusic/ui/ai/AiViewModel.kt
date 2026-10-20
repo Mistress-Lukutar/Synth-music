@@ -18,6 +18,7 @@ import com.synth.synthmusic.domain.repository.AiActionLogRepository
 import com.synth.synthmusic.domain.repository.AiAssistantRepository
 import com.synth.synthmusic.domain.repository.AiChatRepository
 import com.synth.synthmusic.domain.repository.AiModelRepository
+import com.synth.synthmusic.domain.repository.AiSettingsRepository
 import com.synth.synthmusic.domain.repository.AiProviderRepository
 import com.synth.synthmusic.domain.usecase.ai.ApprovalBridge
 import com.synth.synthmusic.domain.usecase.ai.ChatRunEvent
@@ -138,6 +139,7 @@ class AiViewModel(
     private val assistantRepository: AiAssistantRepository,
     providerRepository: AiProviderRepository,
     private val modelRepository: AiModelRepository,
+    private val aiSettingsRepository: AiSettingsRepository,
     private val runChatUseCase: RunChatUseCase,
     private val imageAttachmentLoader: ImageAttachmentLoader,
     actionLogRepository: AiActionLogRepository,
@@ -286,7 +288,7 @@ class AiViewModel(
             else ->
                 drawer.assistants.firstOrNull { it.id == active.draftAssistant }
         }
-        val model = active.chat?.let { resolveModel(it) }
+        val model = resolveModel(active.chat)
         AiUiState(
             isLoading = false,
             hasProvider = providers.isNotEmpty(),
@@ -306,9 +308,13 @@ class AiViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AiUiState())
 
-    private suspend fun resolveModel(chat: AiChat): AiModel? {
-        val providerId = chat.providerId ?: return null
-        val modelId = chat.modelId ?: return null
+    // Mirrors RunChatUseCase.resolveTarget: a chat's pinned provider/model wins,
+    // otherwise the default from AI settings; feeds the model label and the
+    // vision gate on the image-attach button (also on the new-chat draft).
+    private suspend fun resolveModel(chat: AiChat?): AiModel? {
+        val settings = aiSettingsRepository.current()
+        val providerId = chat?.providerId ?: settings.activeProviderId ?: return null
+        val modelId = chat?.modelId ?: settings.activeModelId ?: return null
         return modelRepository.getModel(providerId, modelId)
     }
 

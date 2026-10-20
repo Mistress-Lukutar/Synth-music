@@ -329,6 +329,7 @@ val aiModule = module {
             assistantRepository = get(),
             providerRepository = get(),
             modelRepository = get(),
+            aiSettingsRepository = get(),
             runChatUseCase = get(),
             imageAttachmentLoader = get(),
             actionLogRepository = get(),
