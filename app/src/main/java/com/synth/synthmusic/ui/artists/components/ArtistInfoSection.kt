@@ -220,7 +220,7 @@ private fun ExpandedBioContent(
             TextButton(onClick = { onToggleExpanded(false) }) {
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowUp,
-                    contentDescription = null
+                    contentDescription = stringResource(R.string.artist_info_show_less)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(stringResource(R.string.artist_info_show_less))
@@ -319,7 +319,7 @@ private fun CollapsedBioContent(
                     )
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.artist_info_show_more),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }

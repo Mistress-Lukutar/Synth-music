@@ -55,8 +55,10 @@ class AssistantEditorViewModel(
     /** Editor state. */
     val uiState: StateFlow<AssistantEditorUiState> = _uiState.asStateFlow()
 
+    private val _finished = MutableStateFlow<Boolean>(false)
+
     /** Emits after a successful save/delete so the screen can navigate back. */
-    val finished = MutableStateFlow<Boolean>(false)
+    val finished: StateFlow<Boolean> = _finished.asStateFlow()
 
     /**
      * Catalog of registered tools (built-in + user-imported custom) rendered
@@ -223,7 +225,7 @@ class AssistantEditorViewModel(
             }
             persisted = true
             pendingAvatarImage = null
-            finished.value = true
+            _finished.value = true
         }
     }
 
@@ -241,13 +243,13 @@ class AssistantEditorViewModel(
             }
             persisted = true
             pendingAvatarImage = null
-            finished.value = true
+            _finished.value = true
         }
     }
 
     /** Consumes the finished flag. */
     fun consumeFinished() {
-        finished.value = false
+        _finished.value = false
     }
 
     override fun onCleared() {

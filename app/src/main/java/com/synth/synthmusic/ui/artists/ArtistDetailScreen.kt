@@ -161,7 +161,7 @@ fun ArtistDetailScreen(
                             isEditing = isBioEditing,
                             isExpanded = isBioExpanded,
                             draft = bioDraft,
-                            onDraftChange = { viewModel.bioDraft.value = it },
+                            onDraftChange = { viewModel.updateBioDraft(it) },
                             onStartEdit = { viewModel.startBioEdit() },
                             onCancel = { viewModel.cancelBioEdit() },
                             onSave = { viewModel.saveBio() },

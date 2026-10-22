@@ -1,6 +1,7 @@
 package com.synth.synthmusic.ui.artists
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synth.synthmusic.data.local.cover.CoverCache
@@ -51,23 +52,35 @@ class ArtistDetailViewModel(
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     val songs: StateFlow<List<Song>> = _songs.asStateFlow()
 
-    val isBioEditing = MutableStateFlow(false)
-    val bioDraft = MutableStateFlow("")
-    val isBioExpanded = MutableStateFlow(false)
+    private val _isBioEditing = MutableStateFlow(false)
+    val isBioEditing: StateFlow<Boolean> = _isBioEditing.asStateFlow()
+
+    private val _bioDraft = MutableStateFlow("")
+    val bioDraft: StateFlow<String> = _bioDraft.asStateFlow()
+
+    private val _isBioExpanded = MutableStateFlow(false)
+    val isBioExpanded: StateFlow<Boolean> = _isBioExpanded.asStateFlow()
+
+    /**
+     * Updates the bio edit-draft text.
+     */
+    fun updateBioDraft(text: String) {
+        _bioDraft.value = text
+    }
 
     /**
      * Enters bio-edit mode, populating the draft with the current artist's bio.
      */
     fun startBioEdit() {
-        isBioEditing.value = true
-        bioDraft.value = _artist.value?.bio.orEmpty()
+        _isBioEditing.value = true
+        _bioDraft.value = _artist.value?.bio.orEmpty()
     }
 
     /**
      * Exits bio-edit mode without saving.
      */
     fun cancelBioEdit() {
-        isBioEditing.value = false
+        _isBioEditing.value = false
     }
 
     /**
@@ -75,16 +88,16 @@ class ArtistDetailViewModel(
      */
     fun saveBio() {
         viewModelScope.launch {
-            val text = bioDraft.value.trim()
+            val text = _bioDraft.value.trim()
             try {
                 artistRepository.updateArtistBio(
                     _artist.value?.id ?: return@launch,
                     if (text.isEmpty()) null else text
                 )
-                isBioEditing.value = false
-                isBioExpanded.value = false
-            } catch (_: Exception) {
-                // Save silently — the user can re-edit to see an error.
+                _isBioEditing.value = false
+                _isBioExpanded.value = false
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to save artist bio", e)
             }
         }
     }
@@ -93,7 +106,7 @@ class ArtistDetailViewModel(
      * Toggles the expanded state of the bio info section.
      */
     fun setBioExpanded(expanded: Boolean) {
-        isBioExpanded.value = expanded
+        _isBioExpanded.value = expanded
     }
 
     fun playSongAt(index: Int) {
@@ -201,5 +214,9 @@ class ArtistDetailViewModel(
         songRepository.observeSongsByArtist(artistName)
             .onEach { _songs.value = it }
             .launchIn(viewModelScope)
+    }
+
+    companion object {
+        private const val TAG = "ArtistDetailViewModel"
     }
 }
