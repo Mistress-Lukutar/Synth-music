@@ -14,7 +14,6 @@ import com.synth.synthmusic.ui.library.components.SongListItem
  * @param currentSongId ID of the currently playing song, or null.
  * @param onSongClick Callback invoked with the item index when a song is clicked.
  * @param onNavigateToSongInfo Callback to open song info.
- * @param onNavigateToEditMetadata Callback to open metadata editor.
  * @param onAddToPlaylist Callback to add song to a playlist.
  * @param onPlayNext Callback to play this song next in the queue.
  * @param onAddToQueue Callback to append this song to the queue.
@@ -30,7 +29,6 @@ fun SongList(
     onSongClick: (Song) -> Unit,
     modifier: Modifier = Modifier,
     onNavigateToSongInfo: ((String) -> Unit)? = null,
-    onNavigateToEditMetadata: ((String) -> Unit)? = null,
     onAddToPlaylist: ((String) -> Unit)? = null,
     onPlayNext: ((String) -> Unit)? = null,
     onAddToQueue: ((String) -> Unit)? = null,
@@ -47,7 +45,6 @@ fun SongList(
                 song = song,
                 onClick = { onSongClick(song) },
                 onNavigateToSongInfo = onNavigateToSongInfo,
-                onNavigateToEditMetadata = onNavigateToEditMetadata,
                 onAddToPlaylist = onAddToPlaylist,
                 onPlayNext = onPlayNext,
                 onAddToQueue = onAddToQueue,

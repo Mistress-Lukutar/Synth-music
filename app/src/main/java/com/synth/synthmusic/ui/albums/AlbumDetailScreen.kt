@@ -65,7 +65,6 @@ fun AlbumDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToNowPlaying: () -> Unit,
     onNavigateToSongInfo: (String) -> Unit,
-    onNavigateToEditMetadata: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: AlbumDetailViewModel = koinViewModel { parametersOf(albumTitle, albumArtist) }
 ) {
@@ -146,7 +145,6 @@ fun AlbumDetailScreen(
                     song = song,
                     onClick = { viewModel.playSongAt(index) },
                     onNavigateToSongInfo = onNavigateToSongInfo,
-                    onNavigateToEditMetadata = onNavigateToEditMetadata,
                     onAddToPlaylist = { selectedSongForPlaylist = it },
                     onPlayNext = { viewModel.playNext(it) },
                     onAddToQueue = { viewModel.addToQueue(it) },

@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,12 +32,19 @@ import org.koin.core.parameter.parametersOf
 
 /**
  * Read-only song metadata detail screen.
+ *
+ * @param songId ID of the song to display.
+ * @param onNavigateBack Callback to navigate back.
+ * @param onNavigateToEditMetadata Callback to open the metadata editor for this song.
+ * @param modifier Modifier for styling.
+ * @param viewModel The ViewModel for this screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SongInfoScreen(
     songId: String,
     onNavigateBack: () -> Unit,
+    onNavigateToEditMetadata: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SongInfoViewModel = koinViewModel { parametersOf(songId) }
 ) {
@@ -53,6 +61,11 @@ fun SongInfoScreen(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToEditMetadata) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit metadata")
                     }
                 }
             )

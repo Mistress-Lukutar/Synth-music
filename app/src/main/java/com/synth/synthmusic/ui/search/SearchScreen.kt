@@ -33,7 +33,6 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SearchScreen(
     onNavigateToSongInfo: (String) -> Unit,
-    onNavigateToEditMetadata: (String) -> Unit,
     onNavigateToAlbumDetail: (String, String) -> Unit,
     onNavigateToArtistDetail: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -79,7 +78,6 @@ fun SearchScreen(
                 currentSongId = uiState.currentSongId,
                 onSongClick = { song -> viewModel.onEvent(SearchEvent.PlaySong(song.id)) },
                 onNavigateToSongInfo = onNavigateToSongInfo,
-                onNavigateToEditMetadata = onNavigateToEditMetadata,
                 onAddToPlaylist = { selectedSongForPlaylist = it },
                 onPlayNext = { viewModel.playNext(it) },
                 onAddToQueue = { viewModel.addToQueue(it) },

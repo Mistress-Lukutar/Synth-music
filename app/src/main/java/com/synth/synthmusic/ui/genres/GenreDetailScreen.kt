@@ -53,7 +53,6 @@ fun GenreDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToNowPlaying: () -> Unit,
     onNavigateToSongInfo: (String) -> Unit,
-    onNavigateToEditMetadata: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: GenreDetailViewModel = koinViewModel { parametersOf(genre) }
 ) {
@@ -117,7 +116,6 @@ fun GenreDetailScreen(
                     song = song,
                     onClick = { viewModel.playSongAt(index) },
                     onNavigateToSongInfo = onNavigateToSongInfo,
-                    onNavigateToEditMetadata = onNavigateToEditMetadata,
                     onAddToPlaylist = { selectedSongForPlaylist = it },
                     onPlayNext = { viewModel.playNext(it) },
                     onAddToQueue = { viewModel.addToQueue(it) },

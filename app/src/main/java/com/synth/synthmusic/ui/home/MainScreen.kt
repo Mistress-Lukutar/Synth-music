@@ -19,7 +19,6 @@ import com.synth.synthmusic.ui.search.SearchScreen
  * @param selectedTab Currently selected bottom-nav tab index.
  * @param onNavigateToPlaylistDetail Navigate to playlist detail.
  * @param onNavigateToSongInfo Navigate to song info.
- * @param onNavigateToEditMetadata Navigate to metadata editor.
  * @param onNavigateToAlbumDetail Navigate to album detail.
  * @param onNavigateToArtistDetail Navigate to artist detail.
  * @param onNavigateToGenreDetail Navigate to genre detail.
@@ -34,7 +33,6 @@ fun MainScreen(
     selectedTab: Int,
     onNavigateToPlaylistDetail: (Long) -> Unit,
     onNavigateToSongInfo: (String) -> Unit,
-    onNavigateToEditMetadata: (String) -> Unit,
     onNavigateToAlbumDetail: (String, String) -> Unit,
     onNavigateToArtistDetail: (String) -> Unit,
     onNavigateToGenreDetail: (String) -> Unit,
@@ -54,7 +52,6 @@ fun MainScreen(
             0 -> LibraryScreen(
                 onNavigateToPlaylistDetail = onNavigateToPlaylistDetail,
                 onNavigateToSongInfo = onNavigateToSongInfo,
-                onNavigateToEditMetadata = onNavigateToEditMetadata,
                 onNavigateToAlbumDetail = onNavigateToAlbumDetail,
                 onNavigateToArtistDetail = onNavigateToArtistDetail,
                 onNavigateToGenreDetail = onNavigateToGenreDetail,
@@ -76,7 +73,6 @@ fun MainScreen(
 
             3 -> SearchScreen(
                 onNavigateToSongInfo = onNavigateToSongInfo,
-                onNavigateToEditMetadata = onNavigateToEditMetadata,
                 onNavigateToAlbumDetail = onNavigateToAlbumDetail,
                 onNavigateToArtistDetail = onNavigateToArtistDetail,
                 onNavigateToSettings = onNavigateToSettings,

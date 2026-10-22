@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
@@ -55,7 +58,6 @@ import com.synth.synthmusic.ui.components.formatDuration
  * @param song Song to display.
  * @param onClick Callback invoked when the item is clicked.
  * @param onNavigateToSongInfo Callback to open song info.
- * @param onNavigateToEditMetadata Callback to open metadata editor.
  * @param onAddToPlaylist Callback to add song to a playlist.
  * @param onPlayNext Callback to play this song next in the queue.
  * @param onAddToQueue Callback to append this song to the queue.
@@ -71,7 +73,6 @@ fun SongListItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onNavigateToSongInfo: ((String) -> Unit)? = null,
-    onNavigateToEditMetadata: ((String) -> Unit)? = null,
     onAddToPlaylist: ((String) -> Unit)? = null,
     onPlayNext: ((String) -> Unit)? = null,
     onAddToQueue: ((String) -> Unit)? = null,
@@ -151,7 +152,6 @@ fun SongListItem(
             )
             val hasMenu = remember(
                 onNavigateToSongInfo,
-                onNavigateToEditMetadata,
                 onPlayNext,
                 onAddToQueue,
                 onShare,
@@ -159,7 +159,6 @@ fun SongListItem(
             ) {
                 listOf(
                     onNavigateToSongInfo,
-                    onNavigateToEditMetadata,
                     onPlayNext,
                     onAddToQueue,
                     onShare,
@@ -183,35 +182,32 @@ fun SongListItem(
                                 leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) }
                             )
                         }
-                        onNavigateToEditMetadata?.let { callback ->
-                            DropdownMenuItem(
-                                text = { Text("Edit Metadata") },
-                                onClick = { expanded = false; callback(song.id) }
-                            )
-                        }
                         onPlayNext?.let { callback ->
                             DropdownMenuItem(
                                 text = { Text("Play Next") },
-                                onClick = { expanded = false; callback(song.id) }
+                                onClick = { expanded = false; callback(song.id) },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null) }
                             )
                         }
                         onAddToQueue?.let { callback ->
                             DropdownMenuItem(
                                 text = { Text("Add to Queue") },
-                                onClick = { expanded = false; callback(song.id) }
-                            )
-                        }
-                        onShare?.let { callback ->
-                            DropdownMenuItem(
-                                text = { Text("Share") },
-                                onClick = { expanded = false; callback(song.id) }
+                                onClick = { expanded = false; callback(song.id) },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null) }
                             )
                         }
                         onAddToPlaylist?.let { callback ->
                             DropdownMenuItem(
                                 text = { Text("Add to Playlist") },
                                 onClick = { expanded = false; callback(song.id) },
-                                leadingIcon = { Icon(Icons.AutoMirrored.Default.PlaylistAdd, contentDescription = null) }
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null) }
+                            )
+                        }
+                        onShare?.let { callback ->
+                            DropdownMenuItem(
+                                text = { Text("Share") },
+                                onClick = { expanded = false; callback(song.id) },
+                                leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) }
                             )
                         }
                     }

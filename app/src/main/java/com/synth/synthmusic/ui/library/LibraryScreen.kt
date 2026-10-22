@@ -53,7 +53,6 @@ import org.koin.androidx.compose.koinViewModel
 fun LibraryScreen(
     onNavigateToPlaylistDetail: (Long) -> Unit,
     onNavigateToSongInfo: (String) -> Unit,
-    onNavigateToEditMetadata: (String) -> Unit,
     onNavigateToAlbumDetail: (String, String) -> Unit,
     onNavigateToArtistDetail: (String) -> Unit,
     onNavigateToGenreDetail: (String) -> Unit,

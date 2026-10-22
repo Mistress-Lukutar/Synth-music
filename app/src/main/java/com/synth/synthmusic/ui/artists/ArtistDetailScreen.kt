@@ -72,7 +72,6 @@ fun ArtistDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToNowPlaying: () -> Unit,
     onNavigateToSongInfo: (String) -> Unit,
-    onNavigateToEditMetadata: (String) -> Unit,
     onNavigateToAlbumDetail: (String, String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ArtistDetailViewModel = koinViewModel { parametersOf(artistName) }
@@ -203,7 +202,6 @@ fun ArtistDetailScreen(
                     song = song,
                     onClick = { viewModel.playSongAt(index) },
                     onNavigateToSongInfo = onNavigateToSongInfo,
-                    onNavigateToEditMetadata = onNavigateToEditMetadata,
                     onAddToPlaylist = { selectedSongForPlaylist = it },
                     onPlayNext = { viewModel.playNext(it) },
                     onAddToQueue = { viewModel.addToQueue(it) },

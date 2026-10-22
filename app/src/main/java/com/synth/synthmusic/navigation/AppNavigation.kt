@@ -134,7 +134,6 @@ fun AppNavigation(
                     selectedTab = selectedTab,
                     onNavigateToPlaylistDetail = { navController.navigate(PlaylistDetailRoute(it)) },
                     onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
-                    onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) },
                     onNavigateToAlbumDetail = { title, artist ->
                         navController.navigate(AlbumDetailRoute(title, artist))
                     },
@@ -166,8 +165,7 @@ fun AppNavigation(
                     genre = route.genre,
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
-                    onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
-                    onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) }
+                    onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) }
                 )
             }
             composable<SettingsRoute> {
@@ -201,8 +199,7 @@ fun AppNavigation(
                     albumArtist = route.albumArtist,
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
-                    onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
-                    onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) }
+                    onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) }
                 )
             }
             composable<ArtistDetailRoute> { backStackEntry ->
@@ -212,7 +209,6 @@ fun AppNavigation(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
                     onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
-                    onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) },
                     onNavigateToAlbumDetail = { title, artist ->
                         navController.navigate(AlbumDetailRoute(title, artist))
                     }
@@ -225,15 +221,15 @@ fun AppNavigation(
                     isAll = route.isAll,
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
-                    onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
-                    onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) }
+                    onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) }
                 )
             }
             composable<SongInfoRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<SongInfoRoute>()
                 SongInfoScreen(
                     songId = route.songId,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(route.songId)) }
                 )
             }
             composable<EditMetadataRoute> { backStackEntry ->
@@ -249,8 +245,7 @@ fun AppNavigation(
                     playlistId = route.playlistId,
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToNowPlaying = { navController.navigate(NowPlayingRoute) },
-                    onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) },
-                    onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(it)) }
+                    onNavigateToSongInfo = { navController.navigate(SongInfoRoute(it)) }
                 )
             }
         }
