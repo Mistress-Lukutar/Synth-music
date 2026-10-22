@@ -40,7 +40,8 @@ import org.koin.compose.koinInject
 /**
  * Bottom sheet for adding or removing a song from multiple playlists.
  *
- * Displays each playlist as a row with cover art, name, and a checkbox.
+ * Displays each user-created playlist as a row with cover art, name, and a checkbox.
+ * System playlists (fixed playlists such as Favorites, History, Top Tracks) are excluded.
  * Toggling the checkbox immediately adds or removes the song from that playlist.
  * An OK button dismisses the sheet.
  *
@@ -56,11 +57,12 @@ fun AddToPlaylistDialog(
     playlistRepository: PlaylistRepository = koinInject()
 ) {
     val playlists by playlistRepository.observeAllPlaylists().collectAsStateWithLifecycle(initialValue = emptyList())
+    val userPlaylists = playlists.filter { !it.isFixed }
     val scope = rememberCoroutineScope()
     val containmentMap = remember { mutableStateMapOf<Long, Boolean>() }
 
-    LaunchedEffect(playlists, songId) {
-        playlists.forEach { playlist ->
+    LaunchedEffect(userPlaylists, songId) {
+        userPlaylists.forEach { playlist ->
             containmentMap[playlist.id] = playlistRepository.isSongInPlaylist(playlist.id, songId)
         }
     }
@@ -77,51 +79,66 @@ fun AddToPlaylistDialog(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
-                items(playlists, key = { it.id }) { playlist ->
-                    val isContained = containmentMap[playlist.id] ?: false
+            if (userPlaylists.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No playlists yet. Create one in the Playlists tab.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
+                    items(userPlaylists, key = { it.id }) { playlist ->
+                        val isContained = containmentMap[playlist.id] ?: false
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val context = LocalContext.current
-                        val imageRequest = remember(playlist.artworkUri) {
-                            ImageRequest.Builder(context)
-                                .data(playlist.artworkUri)
-                                .placeholder(R.drawable.ic_placeholder_artwork)
-                                .error(R.drawable.ic_placeholder_artwork)
-                                .build()
-                        }
-                        AsyncImage(
-                            model = imageRequest,
-                            contentDescription = playlist.name,
+                        Row(
                             modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = playlist.name,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Checkbox(
-                            checked = isContained,
-                            onCheckedChange = { checked ->
-                                scope.launch {
-                                    if (checked) {
-                                        playlistRepository.addSongToPlaylist(playlist.id, songId)
-                                    } else {
-                                        playlistRepository.removeSongFromPlaylist(playlist.id, songId)
-                                    }
-                                    containmentMap[playlist.id] = checked
-                                }
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val context = LocalContext.current
+                            val imageRequest = remember(playlist.artworkUri) {
+                                ImageRequest.Builder(context)
+                                    .data(playlist.artworkUri)
+                                    .placeholder(R.drawable.ic_placeholder_artwork)
+                                    .error(R.drawable.ic_placeholder_artwork)
+                                    .build()
                             }
-                        )
+                            AsyncImage(
+                                model = imageRequest,
+                                contentDescription = playlist.name,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = playlist.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Checkbox(
+                                checked = isContained,
+                                onCheckedChange = { checked ->
+                                    scope.launch {
+                                        if (checked) {
+                                            playlistRepository.addSongToPlaylist(playlist.id, songId)
+                                        } else {
+                                            playlistRepository.removeSongFromPlaylist(playlist.id, songId)
+                                        }
+                                        containmentMap[playlist.id] = checked
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
