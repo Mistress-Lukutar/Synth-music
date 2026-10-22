@@ -13,6 +13,7 @@ import com.synth.synthmusic.data.ai.tools.ManageCoverBlacklistTool
 import com.synth.synthmusic.data.ai.tools.PurgeCoversTool
 import com.synth.synthmusic.data.ai.tools.readEmbeddedCover
 import com.synth.synthmusic.data.ai.tools.sha256Hex
+import com.synth.synthmusic.data.ai.tools.GetArtistInfoTool
 import com.synth.synthmusic.data.ai.tools.GetPlaybackStateTool
 import com.synth.synthmusic.data.ai.tools.GetPlaylistTool
 import com.synth.synthmusic.data.ai.tools.GetSongsDetailsTool
@@ -37,6 +38,7 @@ import com.synth.synthmusic.data.ai.tools.SearchReleaseTool
 import com.synth.synthmusic.data.ai.tools.SearchSongsTool
 import com.synth.synthmusic.data.ai.tools.WebSearchTool
 import com.synth.synthmusic.data.ai.tools.SetLyricsTool
+import com.synth.synthmusic.data.ai.tools.SetArtistBioTool
 import com.synth.synthmusic.data.ai.tools.SetRatingFavoriteTool
 import com.synth.synthmusic.data.ai.tools.TrashManager
 import com.synth.synthmusic.data.ai.tools.UpdateSongsMetadataTool
@@ -199,6 +201,8 @@ val aiModule = module {
             updateMetadata = get()
         )
     } bind AiTool::class
+    single { GetArtistInfoTool(get()) } bind AiTool::class
+    single { SetArtistBioTool(get()) } bind AiTool::class
     single { SetRatingFavoriteTool(songRepository = get()) } bind AiTool::class
     single {
         EmbedArtworkTool(
