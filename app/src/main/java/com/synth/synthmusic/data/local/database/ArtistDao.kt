@@ -26,6 +26,12 @@ interface ArtistDao {
     @Query("UPDATE artists SET artwork_uri = :artworkUri WHERE id = :artistId")
     suspend fun updateArtworkUri(artistId: String, artworkUri: String?)
 
+    @Query("UPDATE artists SET bio = :bio WHERE id = :artistId")
+    suspend fun updateBio(artistId: String, bio: String?)
+
+    @Query("SELECT * FROM artists")
+    suspend fun getAllOnce(): List<ArtistEntity>
+
     @Query("SELECT * FROM artists WHERE id = :artistId")
     fun observeById(artistId: String): Flow<ArtistEntity?>
 }

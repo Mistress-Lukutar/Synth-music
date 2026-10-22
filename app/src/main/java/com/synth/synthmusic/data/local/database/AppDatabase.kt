@@ -30,7 +30,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AiActionLogEntity::class,
         CoverBlacklistEntity::class
     ],
-    version = 19,
+    version = 20,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -245,6 +245,12 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Per-model vision override (NULL = auto-detect from model name).
                 db.execSQL("ALTER TABLE ai_models ADD COLUMN user_vision_override INTEGER")
+            }
+        }
+        val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Artist info/bio (Markdown text, nullable).
+                db.execSQL("ALTER TABLE artists ADD COLUMN bio TEXT")
             }
         }
     }

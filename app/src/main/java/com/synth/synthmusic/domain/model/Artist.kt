@@ -8,11 +8,13 @@ package com.synth.synthmusic.domain.model
  * @param songCount Total number of songs by this artist.
  * @param albumCount Total number of albums by this artist.
  * @param artworkUri URI of the artist's cover image.
+ * @param bio Markdown-formatted biographical text, nullable.
  */
 data class Artist(
     val id: String,
     val name: String,
     val songCount: Int,
     val albumCount: Int,
-    val artworkUri: String?
+    val artworkUri: String?,
+    val bio: String? = null
 )
