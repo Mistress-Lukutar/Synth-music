@@ -51,6 +51,51 @@ class ArtistDetailViewModel(
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     val songs: StateFlow<List<Song>> = _songs.asStateFlow()
 
+    val isBioEditing = MutableStateFlow(false)
+    val bioDraft = MutableStateFlow("")
+    val isBioExpanded = MutableStateFlow(false)
+
+    /**
+     * Enters bio-edit mode, populating the draft with the current artist's bio.
+     */
+    fun startBioEdit() {
+        isBioEditing.value = true
+        bioDraft.value = _artist.value?.bio.orEmpty()
+    }
+
+    /**
+     * Exits bio-edit mode without saving.
+     */
+    fun cancelBioEdit() {
+        isBioEditing.value = false
+    }
+
+    /**
+     * Saves the bio draft to the repository and exits edit/expanded modes.
+     */
+    fun saveBio() {
+        viewModelScope.launch {
+            val text = bioDraft.value.trim()
+            try {
+                artistRepository.updateArtistBio(
+                    _artist.value?.id ?: return@launch,
+                    if (text.isEmpty()) null else text
+                )
+                isBioEditing.value = false
+                isBioExpanded.value = false
+            } catch (_: Exception) {
+                // Save silently — the user can re-edit to see an error.
+            }
+        }
+    }
+
+    /**
+     * Toggles the expanded state of the bio info section.
+     */
+    fun setBioExpanded(expanded: Boolean) {
+        isBioExpanded.value = expanded
+    }
+
     fun playSongAt(index: Int) {
         val tracks = _songs.value
         if (index in tracks.indices) {

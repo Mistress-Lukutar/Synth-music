@@ -45,12 +45,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.synth.synthmusic.R
+import com.synth.synthmusic.ui.artists.components.ArtistInfoSection
 import com.synth.synthmusic.ui.components.CollectionCard
 import com.synth.synthmusic.ui.components.CollectionCardStyle
 import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
@@ -80,6 +82,9 @@ fun ArtistDetailScreen(
     val albums by viewModel.albums.collectAsStateWithLifecycle()
     val songs by viewModel.songs.collectAsStateWithLifecycle()
     val playback by viewModel.playbackState.collectAsStateWithLifecycle()
+    val isBioEditing by viewModel.isBioEditing.collectAsStateWithLifecycle()
+    val bioDraft by viewModel.bioDraft.collectAsStateWithLifecycle()
+    val isBioExpanded by viewModel.isBioExpanded.collectAsStateWithLifecycle()
     var selectedSongForPlaylist by remember { mutableStateOf<String?>(null) }
     var showArtworkDialog by remember { mutableStateOf(false) }
     var showGenerateDialog by remember { mutableStateOf(false) }
@@ -131,6 +136,13 @@ fun ArtistDetailScreen(
                                 showArtworkDialog = true
                             }
                         )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.artist_info_edit)) },
+                            onClick = {
+                                menuExpanded = false
+                                viewModel.startBioEdit()
+                            }
+                        )
                     }
                 }
             )
@@ -143,6 +155,19 @@ fun ArtistDetailScreen(
         ) {
             item {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    artist?.let { a ->
+                        ArtistInfoSection(
+                            artist = a,
+                            isEditing = isBioEditing,
+                            isExpanded = isBioExpanded,
+                            draft = bioDraft,
+                            onDraftChange = { viewModel.bioDraft.value = it },
+                            onStartEdit = { viewModel.startBioEdit() },
+                            onCancel = { viewModel.cancelBioEdit() },
+                            onSave = { viewModel.saveBio() },
+                            onToggleExpanded = { viewModel.setBioExpanded(it) }
+                        )
+                    }
                     Text(
                         text = "${songs.size} tracks",
                         style = MaterialTheme.typography.bodyLarge,

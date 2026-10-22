@@ -173,4 +173,16 @@
     <string name="ai_trash_empty">Empty trash</string>
     <string name="ai_trash_restore">Restore</string>
     <string name="ai_activity_section">Activity log</string>
+
+    <!-- Artist info section -->
+    <string name="artist_info_show_more">Show more</string>
+    <string name="artist_info_show_less">Show less</string>
+    <string name="artist_info_add">Add artist info</string>
+    <string name="artist_info_edit">Edit artist info</string>
+    <string name="artist_info_markdown_hint">Markdown is supported</string>
+    <string name="artist_info_field_label">Artist info</string>
+
+    <!-- Action buttons -->
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
 </resources>
