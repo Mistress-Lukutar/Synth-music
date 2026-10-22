@@ -56,6 +56,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -108,6 +109,16 @@ fun AiScreen(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val imeVisible = WindowInsets.isImeVisible
+
+    // Local draft text to eliminate the round-trip lag: BasicTextField reads/
+    // writes this state synchronously in the same composition pass, breaking
+    // the IME feedback loop. The ViewModel's draftInput stays in sync via the
+    // InputChanged event and is cleared here when draftInput goes empty.
+    var inputText by rememberSaveable { mutableStateOf("") }
+
+    LaunchedEffect(state.draftInput) {
+        if (state.draftInput.isEmpty()) inputText = ""
+    }
 
     var showAgentPicker by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
@@ -435,9 +446,9 @@ fun AiScreen(
                 }
 
                 AiChatInputBar(
-                    value = state.draftInput,
-                    onValueChange = { viewModel.onEvent(AiUiEvent.InputChanged(it)) },
-                    onSend = { viewModel.onEvent(AiUiEvent.Send(state.draftInput)) },
+                    value = inputText,
+                    onValueChange = { inputText = it; viewModel.onEvent(AiUiEvent.InputChanged(it)) },
+                    onSend = { viewModel.onEvent(AiUiEvent.Send(inputText)) },
                     onStop = { viewModel.onEvent(AiUiEvent.Stop) },
                     onAttachImage = {
                         photoPicker.launch(
