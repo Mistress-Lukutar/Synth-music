@@ -21,9 +21,6 @@ data class GenreDetailRoute(val genre: String)
 data class SongInfoRoute(val songId: String)
 
 @Serializable
-data class EditMetadataRoute(val songId: String)
-
-@Serializable
 data class PlaylistDetailRoute(val playlistId: Long)
 
 @Serializable

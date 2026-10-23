@@ -42,7 +42,6 @@ import org.koin.core.parameter.parametersOf
  * @param onNavigateBack callback to navigate back.
  * @param onNavigateToNowPlaying callback to open the now playing screen.
  * @param onNavigateToSongInfo callback to open song info.
- * @param onNavigateToEditMetadata callback to open metadata editor.
  * @param modifier the modifier to apply to this screen.
  * @param viewModel the ViewModel for this screen.
  */

@@ -35,7 +35,6 @@ import com.synth.synthmusic.ui.components.SynthBottomNav
 import com.synth.synthmusic.ui.folders.FolderDetailScreen
 import com.synth.synthmusic.ui.home.MainScreen
 import com.synth.synthmusic.ui.library.components.MiniPlayer
-import com.synth.synthmusic.ui.metadata.EditMetadataScreen
 import com.synth.synthmusic.ui.metadata.SongInfoScreen
 import com.synth.synthmusic.ui.nowplaying.NowPlayingScreen
 import com.synth.synthmusic.ui.playback.PlaybackViewModel
@@ -227,14 +226,6 @@ fun AppNavigation(
             composable<SongInfoRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<SongInfoRoute>()
                 SongInfoScreen(
-                    songId = route.songId,
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToEditMetadata = { navController.navigate(EditMetadataRoute(route.songId)) }
-                )
-            }
-            composable<EditMetadataRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<EditMetadataRoute>()
-                EditMetadataScreen(
                     songId = route.songId,
                     onNavigateBack = { navController.popBackStack() }
                 )
