@@ -16,11 +16,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
@@ -28,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -84,6 +88,20 @@ fun SongInfoScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val uiEvent by viewModel.uiEvent.collectAsStateWithLifecycle()
+
+    LaunchedEffect(uiEvent) {
+        uiEvent?.let { event ->
+            when (event) {
+                is SongInfoUiEvent.Message -> snackbarHostState.showSnackbar(event.text)
+            }
+            viewModel.consumeEvent()
+        }
+    }
+
+    var showPermissionDialog by remember { mutableStateOf(false) }
+
     // Artwork picker launcher — reads selected image bytes and pushes to ViewModel.
     val pickMedia = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -111,6 +129,7 @@ fun SongInfoScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(if (isEditing) "Edit Metadata" else "Song Info") },
@@ -131,7 +150,7 @@ fun SongInfoScreen(
                 actions = {
                     if (!isEditing) {
                         IconButton(onClick = {
-                            viewModel.onEvent(SongInfoEvent.ToggleEditMode)
+                            if (canEdit) viewModel.onEvent(SongInfoEvent.ToggleEditMode) else showPermissionDialog = true
                         }) {
                             Icon(Icons.Default.Edit, contentDescription = "Edit metadata")
                         }
@@ -220,6 +239,33 @@ fun SongInfoScreen(
                 )
             }
         }
+    }
+
+    if (showPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDialog = false },
+            title = { Text("Permission required") },
+            text = { Text("All files access permission is required to edit MP3 metadata and artwork.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPermissionDialog = false
+                    viewModel.onEvent(SongInfoEvent.ToggleEditMode)
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                        val intent = android.content.Intent(
+                            android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+                        )
+                        context.startActivity(intent)
+                    }
+                }) {
+                    Text("Grant Permission")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

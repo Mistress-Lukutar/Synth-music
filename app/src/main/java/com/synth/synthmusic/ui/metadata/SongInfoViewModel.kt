@@ -34,6 +34,11 @@ class SongInfoViewModel(
     )
     val uiState: StateFlow<SongInfoUiState> = _uiState.asStateFlow()
 
+    private val _uiEvent = MutableStateFlow<SongInfoUiEvent?>(null)
+
+    /** One-shot UI events; consumed via [consumeEvent]. */
+    val uiEvent: StateFlow<SongInfoUiEvent?> = _uiEvent.asStateFlow()
+
     init {
         songRepository.observeSongById(songId)
             .onEach { result ->
@@ -75,7 +80,12 @@ class SongInfoViewModel(
                 lyrics = event.lyrics,
                 artworkBytes = _uiState.value.pendingArtworkBytes
             )
-            _uiState.update { it.copy(isEditing = false, pendingArtworkBytes = null) }
+            .onSuccess {
+                _uiState.update { it.copy(isEditing = false, pendingArtworkBytes = null) }
+            }
+            .onFailure {
+                _uiEvent.value = SongInfoUiEvent.Message("Failed to save metadata")
+            }
         }
     }
 
@@ -101,5 +111,10 @@ class SongInfoViewModel(
 
     private fun refreshPermission() {
         _uiState.update { it.copy(hasWritePermission = checkWritePermission()) }
+    }
+
+    /** Consumes the pending one-shot event. */
+    fun consumeEvent() {
+        _uiEvent.value = null
     }
 }
