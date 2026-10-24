@@ -31,7 +31,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,6 +43,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.synth.synthmusic.R
+import com.synth.synthmusic.ui.components.SynthTextField
 import com.synth.synthmusic.ui.playlists.components.ArtworkAction
 import com.synth.synthmusic.ui.playlists.components.PlaylistGridCard
 import org.koin.androidx.compose.koinViewModel
@@ -171,7 +171,7 @@ private fun CreatePlaylistDialog(
                     }
                 }
                 CreateDialogStep.EmptyName -> {
-                    TextField(
+                    SynthTextField(
                         value = name,
                         onValueChange = { name = it },
                         label = { Text("Playlist name") },

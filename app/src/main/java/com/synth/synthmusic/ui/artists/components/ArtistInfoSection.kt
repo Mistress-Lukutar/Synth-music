@@ -23,7 +23,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,12 +47,13 @@ import coil.request.ImageRequest
 import com.synth.synthmusic.R
 import com.synth.synthmusic.domain.model.Artist
 import com.synth.synthmusic.ui.ai.components.MarkdownText
+import com.synth.synthmusic.ui.components.SynthTextField
 
 /**
  * Expandable artist-bio section displayed on the Artist detail screen.
  *
  * Three visual states:
- * - **Edit mode**: a [Card] wrapping a multiline [OutlinedTextField] for the bio draft,
+ * - **Edit mode**: a [Card] wrapping a multiline [SynthTextField] for the bio draft,
  *   with Cancel and Save actions.
  * - **View mode, bio present**: a collapsed preview showing a circular artwork thumbnail
  *   alongside a truncated Markdown rendering, plus a "Show more" affordance; expanding
@@ -134,7 +134,7 @@ private fun EditModeCard(
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            OutlinedTextField(
+            SynthTextField(
                 value = draft,
                 onValueChange = onDraftChange,
                 label = { Text(stringResource(R.string.artist_info_field_label)) },

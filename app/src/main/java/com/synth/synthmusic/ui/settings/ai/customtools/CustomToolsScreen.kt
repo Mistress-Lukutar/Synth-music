@@ -24,7 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import com.synth.synthmusic.ui.components.SynthTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -340,7 +340,7 @@ private fun ToolDetailsDialog(
                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            OutlinedTextField(
+                            SynthTextField(
                                 value = value,
                                 onValueChange = { value = it },
                                 label = {
@@ -374,7 +374,7 @@ private fun ToolDetailsDialog(
                     text = stringResource(R.string.ai_custom_tools_test),
                     style = MaterialTheme.typography.titleSmall
                 )
-                OutlinedTextField(
+                SynthTextField(
                     value = argsText,
                     onValueChange = { argsText = it },
                     label = { Text(stringResource(R.string.ai_custom_tools_args_label)) },

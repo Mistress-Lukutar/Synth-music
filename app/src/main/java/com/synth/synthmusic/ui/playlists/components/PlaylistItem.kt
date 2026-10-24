@@ -23,7 +23,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.synth.synthmusic.domain.model.Playlist
+import com.synth.synthmusic.ui.components.SynthTextField
 
 /**
  * Represents a single playlist in the list.
@@ -112,7 +112,7 @@ fun PlaylistItem(
             onDismissRequest = { showRename = false },
             title = { Text("Rename Playlist") },
             text = {
-                TextField(
+                SynthTextField(
                     value = text,
                     onValueChange = { text = it },
                     label = { Text("Name") }

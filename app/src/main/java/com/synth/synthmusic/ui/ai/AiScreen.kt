@@ -42,7 +42,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.OutlinedTextField
+import com.synth.synthmusic.ui.components.SynthTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -663,7 +663,7 @@ private fun RenameChatDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.ai_chat_rename)) },
         text = {
-            OutlinedTextField(value = title, onValueChange = { title = it }, singleLine = true)
+            SynthTextField(value = title, onValueChange = { title = it }, singleLine = true)
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(title) }) {

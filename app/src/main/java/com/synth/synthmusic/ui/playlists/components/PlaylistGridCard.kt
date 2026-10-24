@@ -15,7 +15,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.synth.synthmusic.domain.model.GeneratedArtworkConfig
 import com.synth.synthmusic.domain.model.Playlist
+import com.synth.synthmusic.ui.components.SynthTextField
 import com.synth.synthmusic.ui.components.CollectionCard
 import com.synth.synthmusic.ui.components.CollectionCardStyle
 import com.synth.synthmusic.ui.library.components.ChangeArtworkDialog
@@ -129,7 +129,7 @@ fun PlaylistGridCard(
             onDismissRequest = { showRename = false },
             title = { Text("Rename Playlist") },
             text = {
-                TextField(
+                SynthTextField(
                     value = text,
                     onValueChange = { text = it },
                     label = { Text("Name") }

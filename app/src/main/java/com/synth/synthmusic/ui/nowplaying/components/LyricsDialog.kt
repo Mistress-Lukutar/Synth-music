@@ -10,7 +10,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -22,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.synth.synthmusic.domain.model.Song
 import com.synth.synthmusic.ui.components.MenuDialog
+import com.synth.synthmusic.ui.components.SynthTextField
 
 /**
  * Dialog displaying and editing lyrics for the currently playing song.
@@ -60,7 +60,7 @@ fun LyricsDialog(
         )
 
         if (isEditing) {
-            OutlinedTextField(
+            SynthTextField(
                 value = editedLyrics,
                 onValueChange = { editedLyrics = it },
                 modifier = Modifier

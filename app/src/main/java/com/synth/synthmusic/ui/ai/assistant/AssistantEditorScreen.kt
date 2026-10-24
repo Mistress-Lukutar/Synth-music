@@ -31,7 +31,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import com.synth.synthmusic.ui.components.SynthTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -140,7 +140,7 @@ fun AssistantEditorScreen(
                 )
             }
 
-            OutlinedTextField(
+            SynthTextField(
                 value = state.name,
                 onValueChange = { name -> viewModel.update { it.copy(name = name) } },
                 label = { Text(stringResource(R.string.assistant_name)) },
@@ -148,7 +148,7 @@ fun AssistantEditorScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            OutlinedTextField(
+            SynthTextField(
                 value = state.description,
                 onValueChange = { description ->
                     viewModel.update { it.copy(description = description) }
@@ -175,7 +175,7 @@ fun AssistantEditorScreen(
                 }
             )
 
-            OutlinedTextField(
+            SynthTextField(
                 value = state.systemPrompt,
                 onValueChange = { prompt -> viewModel.update { it.copy(systemPrompt = prompt) } },
                 label = { Text(stringResource(R.string.assistant_system_prompt)) },

@@ -29,7 +29,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -41,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.synth.synthmusic.ui.components.SynthTextField
 import com.synth.synthmusic.ui.library.components.AddToPlaylistDialog
 import com.synth.synthmusic.ui.library.components.ChangeArtworkDialog
 import com.synth.synthmusic.ui.library.components.GenerateArtworkDialog
@@ -217,7 +217,7 @@ fun PlaylistDetailScreen(
             onDismissRequest = { showRenameDialog = false },
             title = { Text("Rename Playlist") },
             text = {
-                TextField(
+                SynthTextField(
                     value = text,
                     onValueChange = { text = it },
                     label = { Text("Name") }

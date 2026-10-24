@@ -43,7 +43,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -65,6 +64,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.synth.synthmusic.R
+import com.synth.synthmusic.ui.components.SynthTextField
 import com.synth.synthmusic.domain.model.AiCapability
 import com.synth.synthmusic.domain.model.AiProtocol
 import com.synth.synthmusic.domain.model.WebSearchProvider
@@ -530,7 +530,7 @@ private fun WebSearchProviderRow(
         onExpandedChange = { expanded = it },
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        OutlinedTextField(
+        SynthTextField(
             value = selected.name.lowercase().replaceFirstChar { it.uppercase() },
             onValueChange = {},
             readOnly = true,
@@ -589,7 +589,7 @@ private fun ProviderEditorDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
+                SynthTextField(
                     value = label,
                     onValueChange = { label = it },
                     label = { Text(stringResource(R.string.ai_provider_label)) },
@@ -599,7 +599,7 @@ private fun ProviderEditorDialog(
                     expanded = protocolExpanded,
                     onExpandedChange = { protocolExpanded = it }
                 ) {
-                    OutlinedTextField(
+                    SynthTextField(
                         value = protocol.name.replace('_', ' ').lowercase()
                             .replaceFirstChar { it.uppercase() },
                         onValueChange = {},
@@ -631,13 +631,13 @@ private fun ProviderEditorDialog(
                         }
                     }
                 }
-                OutlinedTextField(
+                SynthTextField(
                     value = baseUrl,
                     onValueChange = { baseUrl = it },
                     label = { Text(stringResource(R.string.ai_provider_base_url)) },
                     singleLine = true
                 )
-                OutlinedTextField(
+                SynthTextField(
                     value = apiKey,
                     onValueChange = { apiKey = it },
                     label = {
@@ -896,7 +896,7 @@ private fun ManualModelDialog(
                     expanded = providerExpanded,
                     onExpandedChange = { providerExpanded = it }
                 ) {
-                    OutlinedTextField(
+                    SynthTextField(
                         value = providers.firstOrNull { it.id == providerId }?.label.orEmpty(),
                         onValueChange = {},
                         readOnly = true,
@@ -923,26 +923,26 @@ private fun ManualModelDialog(
                         }
                     }
                 }
-                OutlinedTextField(
+                SynthTextField(
                     value = modelId,
                     onValueChange = { modelId = it },
                     label = { Text(stringResource(R.string.ai_model_id)) },
                     singleLine = true
                 )
-                OutlinedTextField(
+                SynthTextField(
                     value = displayName,
                     onValueChange = { displayName = it },
                     label = { Text(stringResource(R.string.ai_model_display_name)) },
                     singleLine = true
                 )
-                OutlinedTextField(
+                SynthTextField(
                     value = contextTokens,
                     onValueChange = { contextTokens = it.filter { c -> c.isDigit() } },
                     label = { Text(stringResource(R.string.ai_model_context_window)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
-                OutlinedTextField(
+                SynthTextField(
                     value = maxOutputTokens,
                     onValueChange = { maxOutputTokens = it.filter { c -> c.isDigit() } },
                     label = { Text(stringResource(R.string.ai_model_max_output)) },
@@ -1010,20 +1010,20 @@ private fun EditModelDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                OutlinedTextField(
+                SynthTextField(
                     value = displayName,
                     onValueChange = { displayName = it },
                     label = { Text(stringResource(R.string.ai_model_display_name)) },
                     singleLine = true
                 )
-                OutlinedTextField(
+                SynthTextField(
                     value = contextTokens,
                     onValueChange = { contextTokens = it.filter { c -> c.isDigit() } },
                     label = { Text(stringResource(R.string.ai_model_context_window)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
-                OutlinedTextField(
+                SynthTextField(
                     value = maxOutputTokens,
                     onValueChange = { maxOutputTokens = it.filter { c -> c.isDigit() } },
                     label = { Text(stringResource(R.string.ai_model_max_output)) },
@@ -1073,7 +1073,7 @@ private fun WebSearchKeyDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.ai_web_search_key)) },
         text = {
-            OutlinedTextField(
+            SynthTextField(
                 value = key,
                 onValueChange = { key = it },
                 visualTransformation = PasswordVisualTransformation(),

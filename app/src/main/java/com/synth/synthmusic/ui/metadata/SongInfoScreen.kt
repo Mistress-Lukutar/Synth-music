@@ -28,7 +28,6 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.synth.synthmusic.domain.model.Song
+import com.synth.synthmusic.ui.components.SynthTextField
 import com.synth.synthmusic.ui.metadata.components.ArtworkPicker
 import com.synth.synthmusic.ui.metadata.components.MetadataField
 import kotlinx.coroutines.Dispatchers
@@ -393,7 +393,7 @@ private fun EditableLyricsTab(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        TextField(
+        SynthTextField(
             value = lyrics,
             onValueChange = onLyricsChange,
             label = { Text("Lyrics") },
