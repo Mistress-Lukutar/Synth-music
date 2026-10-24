@@ -2,6 +2,7 @@ package com.synth.synthmusic.di
 
 import androidx.room.Room
 import com.synth.synthmusic.data.local.database.AppDatabase
+import com.synth.synthmusic.data.local.datastore.SearchHistoryStore
 import com.synth.synthmusic.data.local.datastore.SettingsDataStore
 import com.synth.synthmusic.data.media.PlaybackRepository
 import com.synth.synthmusic.data.media.waveform.WaveformGenerator
@@ -88,6 +89,7 @@ val appModule = module {
     single { get<AppDatabase>().coverBlacklistDao() }
 
     single { SettingsDataStore(androidContext()) }
+    single { SearchHistoryStore(androidContext()) }
     single<SongRepository> { SongRepositoryImpl(get()) }
     single<AlbumRepository> { AlbumRepositoryImpl(get()) }
     single<ArtistRepository> { ArtistRepositoryImpl(get()) }
@@ -213,6 +215,10 @@ val appModule = module {
     viewModel {
         SearchViewModel(
             songRepository = get(),
+            albumRepository = get(),
+            artistRepository = get(),
+            recentlyPlayedRepository = get(),
+            searchHistoryStore = get(),
             playbackRepository = get()
         )
     }
