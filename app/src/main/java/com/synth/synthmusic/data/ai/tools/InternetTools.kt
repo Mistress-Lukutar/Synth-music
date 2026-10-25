@@ -564,10 +564,10 @@ internal fun stripSyncedTimestamps(lrc: String): String =
         .joinToString("\n")
 
 /**
- * `web_search` — Brave/Tavily with a user-configured key. Reports itself
- * unavailable when no provider/key is configured, so the dispatcher never
- * advertises it to the model; a late call (e.g. replayed history) still
- * reports the missing configuration.
+ * `web_search` — Brave/Tavily with a user-configured key, falling back to
+ * keyless DuckDuckGo HTML search when no provider/key is set: results are
+ * parsed from the server-rendered HTML page and redirect-wrapped links
+ * (`uddg=` parameter) are resolved to the real target URLs.
  */
 class WebSearchTool(
     private val settingsRepository: AiSettingsRepository
@@ -575,7 +575,8 @@ class WebSearchTool(
 
     override val name = "web_search"
     override val description = "General web search (top 5 results: title, url, snippet). " +
-        "Requires the user to configure a Brave or Tavily API key in AI settings."
+        "Uses a Brave or Tavily API key when configured in AI settings; " +
+        "without a key it falls back to keyless DuckDuckGo HTML search."
     override val paramsSchema: JsonObject = buildJsonObject {
         put("type", "object")
         putJsonObject("properties") {
@@ -585,65 +586,61 @@ class WebSearchTool(
     }
     override val requiredGrants = setOf(AiCapability.INTERNET)
 
-    override suspend fun isAvailable(): Boolean {
-        val settings = settingsRepository.current()
-        if (settings.webSearchProvider == WebSearchProvider.NONE) return false
-        return !settingsRepository.getWebSearchKey().isNullOrBlank()
-    }
-
     override suspend fun execute(args: JsonObject, context: ToolContext): ToolOutcome =
         withContext(Dispatchers.IO) {
             val settings = settingsRepository.current()
             val key = settingsRepository.getWebSearchKey()
-            if (settings.webSearchProvider == WebSearchProvider.NONE || key.isNullOrBlank()) {
-                return@withContext ToolOutcome(
-                    "No web search provider configured; ask the user to add one in AI settings",
-                    isError = true
-                )
-            }
             val query = args["query"]?.jsonPrimitive?.content
                 ?: return@withContext ToolOutcome("Missing query", isError = true)
-            val results: List<JsonObject> = when (settings.webSearchProvider) {
-                WebSearchProvider.BRAVE -> {
-                    val url = "https://api.search.brave.com/res/v1/web/search?q=${urlEncode(query)}"
-                    val (code, body, _) = httpGet(
-                        url,
-                        headers = mapOf(
-                            "X-Subscription-Token" to key,
-                            "Accept" to "application/json"
+            val results: List<JsonObject> = if (
+                settings.webSearchProvider != WebSearchProvider.NONE && !key.isNullOrBlank()
+            ) {
+                when (settings.webSearchProvider) {
+                    WebSearchProvider.BRAVE -> {
+                        val url = "https://api.search.brave.com/res/v1/web/search?q=${urlEncode(query)}"
+                        val (code, body, _) = httpGet(
+                            url,
+                            headers = mapOf(
+                                "X-Subscription-Token" to key,
+                                "Accept" to "application/json"
+                            )
                         )
-                    )
-                    if (code != 200) {
-                        return@withContext ToolOutcome("Brave returned HTTP $code", isError = true)
+                        if (code != 200) {
+                            return@withContext ToolOutcome("Brave returned HTTP $code", isError = true)
+                        }
+                        parseBraveResults(body)
                     }
-                    parseBraveResults(body)
-                }
-                WebSearchProvider.TAVILY -> {
-                    val payload = buildJsonObject {
-                        put("query", query)
-                        put("max_results", 5)
-                    }.toString()
-                    val connection =
-                        URL("https://api.tavily.com/search").openConnection()
-                            as java.net.HttpURLConnection
-                    connection.requestMethod = "POST"
-                    connection.connectTimeout = CONNECT_TIMEOUT_MS
-                    connection.readTimeout = READ_TIMEOUT_MS
-                    connection.doOutput = true
-                    connection.setRequestProperty("Content-Type", "application/json")
-                    connection.setRequestProperty("Authorization", "Bearer $key")
-                    connection.outputStream.use { it.write(payload.toByteArray()) }
-                    val code = connection.responseCode
-                    val body =
-                        (if (code in 200..299) connection.inputStream else connection.errorStream)
-                            ?.use { it.readBytes().decodeToString() }.orEmpty()
-                    connection.disconnect()
-                    if (code != 200) {
-                        return@withContext ToolOutcome("Tavily returned HTTP $code", isError = true)
+                    WebSearchProvider.TAVILY -> {
+                        val payload = buildJsonObject {
+                            put("query", query)
+                            put("max_results", 5)
+                        }.toString()
+                        val connection =
+                            URL("https://api.tavily.com/search").openConnection()
+                                as java.net.HttpURLConnection
+                        connection.requestMethod = "POST"
+                        connection.connectTimeout = CONNECT_TIMEOUT_MS
+                        connection.readTimeout = READ_TIMEOUT_MS
+                        connection.doOutput = true
+                        connection.setRequestProperty("Content-Type", "application/json")
+                        connection.setRequestProperty("Authorization", "Bearer $key")
+                        connection.outputStream.use { it.write(payload.toByteArray()) }
+                        val code = connection.responseCode
+                        val body =
+                            (if (code in 200..299) connection.inputStream else connection.errorStream)
+                                ?.use { it.readBytes().decodeToString() }.orEmpty()
+                        connection.disconnect()
+                        if (code != 200) {
+                            return@withContext ToolOutcome("Tavily returned HTTP $code", isError = true)
+                        }
+                        parseTavilyResults(body)
                     }
-                    parseTavilyResults(body)
+                    WebSearchProvider.NONE -> emptyList()
                 }
-                WebSearchProvider.NONE -> emptyList()
+            } else {
+                // Keyless fallback builds its own payload (with a note when
+                // the page yields no parsable results) and returns it whole.
+                return@withContext searchDuckDuckGo(query)
             }
             ToolOutcome(
                 buildJsonObject {
@@ -652,6 +649,40 @@ class WebSearchTool(
                 }.toString()
             )
         }
+
+    /**
+     * Keyless fallback: queries the DuckDuckGo HTML endpoint and parses the
+     * server-rendered result anchors. Returns a note inside the payload when
+     * nothing could be parsed (rate limiting / anomaly page), so the model
+     * knows the empty result is a transport-level failure, not a fact.
+     */
+    private fun searchDuckDuckGo(query: String): ToolOutcome {
+        val url = "https://html.duckduckgo.com/html/?q=${urlEncode(query)}"
+        if (isBlockedHost(url)) {
+            return ToolOutcome("Blocked host", isError = true)
+        }
+        val (code, body, _) = httpGet(
+            url,
+            headers = mapOf("User-Agent" to DESKTOP_USER_AGENT)
+        )
+        if (code != 200) {
+            return ToolOutcome("DuckDuckGo returned HTTP $code", isError = true)
+        }
+        val results = parseDuckDuckGoResults(body)
+        return ToolOutcome(
+            buildJsonObject {
+                put("count", results.size)
+                put("results", buildJsonArray { results.forEach { add(it) } })
+                if (results.isEmpty()) {
+                    put(
+                        "note",
+                        "DuckDuckGo returned no parsable results (possibly rate-limited); " +
+                            "try again or use fetch_url on a known search page"
+                    )
+                }
+            }.toString()
+        )
+    }
 
     private fun parseBraveResults(body: String): List<JsonObject> = runCatching {
         val json = Json { ignoreUnknownKeys = true }
@@ -682,6 +713,94 @@ class WebSearchTool(
             }
     }.getOrDefault(emptyList())
 }
+
+/** Browser-like User-Agent for endpoints that reject non-browser clients. */
+internal const val DESKTOP_USER_AGENT =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0"
+
+/** CSS class of DuckDuckGo HTML result title links. */
+private const val DDG_RESULT_LINK_CLASS = "result__a"
+
+/** CSS class of DuckDuckGo HTML result snippets. */
+private const val DDG_RESULT_SNIPPET_CLASS = "result__snippet"
+
+private val HTML_ANCHOR_REGEX = Regex("<a\\s([^>]*?)>(.*?)</a>", RegexOption.DOT_MATCHES_ALL)
+
+/** Max results returned from the DuckDuckGo HTML fallback. */
+private const val DDG_MAX_RESULTS = 5
+
+/**
+ * Parses DuckDuckGo's server-rendered HTML result page. The page is made of
+ * `<div class="result …">` blocks, each holding one `result__a` title link
+ * and one `result__snippet` anchor, so title/snippet pairs are resolved
+ * within their block — an ad block (its title redirects via `/y.js`) is
+ * dropped whole instead of leaking its snippet onto the next hit.
+ * Redirect-wrapped hrefs are resolved via [resolveDuckDuckGoUrl].
+ */
+internal fun parseDuckDuckGoResults(html: String): List<JsonObject> {
+    val blocks = mutableListOf<String>()
+    var pos = 0
+    while (true) {
+        val open = Regex("<div\\s[^>]*>").find(html, pos) ?: break
+        val classes = attrValue(open.value, "class").orEmpty()
+        if ("result" !in classes.split(' ')) {
+            pos = open.range.last + 1
+            continue
+        }
+        val close = findMatchingDivClose(html, open.range.last + 1) ?: break
+        blocks.add(html.substring(open.range.last + 1, close))
+        pos = close + "</div>".length
+    }
+    return blocks.mapNotNull { block ->
+        var url: String? = null
+        var title: String? = null
+        var snippet: String? = null
+        for (match in HTML_ANCHOR_REGEX.findAll(block)) {
+            val attrs = match.groupValues[1]
+            when (attrValue(attrs, "class")) {
+                DDG_RESULT_LINK_CLASS -> if (url == null) {
+                    val href = attrValue(attrs, "href") ?: continue
+                    val resolved = resolveDuckDuckGoUrl(href)
+                    if (resolved.contains("duckduckgo.com/y.js")) return@mapNotNull null
+                    url = resolved
+                    title = htmlToPlainText(match.groupValues[2])
+                }
+                DDG_RESULT_SNIPPET_CLASS -> if (snippet == null) {
+                    snippet = htmlToPlainText(match.groupValues[2])
+                }
+            }
+        }
+        if (url == null || title.isNullOrBlank()) return@mapNotNull null
+        buildJsonObject {
+            put("title", title!!)
+            put("url", url)
+            snippet?.takeIf { it.isNotEmpty() }?.let { put("snippet", it) }
+        }
+    }.take(DDG_MAX_RESULTS)
+}
+
+/**
+ * Restores the real target URL from a DuckDuckGo redirect-wrapped link:
+ * hrefs like `/l/?uddg=<percent-encoded-url>&rut=…` yield the decoded
+ * `uddg` value; direct hrefs pass through unchanged.
+ */
+internal fun resolveDuckDuckGoUrl(href: String): String {
+    val trimmed = href.trim()
+    val uddg = Regex("[?&]uddg=([^&]+)").find(trimmed)?.groupValues?.get(1)
+        ?: return trimmed
+    return runCatching { java.net.URLDecoder.decode(uddg, "UTF-8") }.getOrDefault(trimmed)
+}
+
+/** Returns the value of an HTML attribute inside an attribute string, if present. */
+private fun attrValue(attrs: String, name: String): String? =
+    Regex("\\b$name\\s*=\\s*\"([^\"]*)\"").find(attrs)?.groupValues?.get(1)
+        ?: Regex("\\b$name\\s*=\\s*'([^']*)'").find(attrs)?.groupValues?.get(1)
+
+/** Strips tags, decodes entities and collapses whitespace to single spaces. */
+internal fun htmlToPlainText(html: String): String =
+    decodeHtmlEntities(Regex("<[^>]+>").replace(html, " "))
+        .replace(Regex("\\s+"), " ")
+        .trim()
 
 /**
  * Formats a fetched response body for the model based on its base content

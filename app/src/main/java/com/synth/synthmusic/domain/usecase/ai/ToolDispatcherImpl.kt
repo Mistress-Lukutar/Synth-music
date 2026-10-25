@@ -15,8 +15,8 @@ import kotlinx.coroutines.withContext
  * Production [ToolDispatcher]: resolves tools from the registered set plus
  * user-imported custom tools, enforces the capability policy (missing grants
  * are denied — tools outside the effective grants are never advertised in
- * the first place, and neither are tools that report themselves unavailable,
- * e.g. web_search without a configured key), executes on
+ * the first place, and neither are tools that report themselves unavailable),
+ * executes on
  * [Dispatchers.IO], truncates oversized results and writes an audit entry for
  * every call — including denied and failed ones. Built-ins win name
  * collisions with custom tools (imports reject them anyway).

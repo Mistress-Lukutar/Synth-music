@@ -83,7 +83,7 @@ interface ToolDispatcher {
      * Returns the specs of all tools available to a chat with [grants],
      * restricted to [allowedTools] when it is non-null. Only these are
      * advertised to the model; tools whose [AiTool.isAvailable] reports
-     * `false` (e.g. web_search without a configured key) are omitted.
+     * `false` are omitted.
      */
     suspend fun specsFor(grants: Set<AiCapability>, allowedTools: Set<String>? = null): List<AiToolSpec>
 
