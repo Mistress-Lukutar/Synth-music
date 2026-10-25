@@ -67,6 +67,10 @@ class AiChatRepositoryImpl(
         chatDao.touch(chatId, System.currentTimeMillis())
     }
 
+    override suspend fun setActiveLeaf(chatId: Long, leafId: Long?) {
+        chatDao.updateActiveLeaf(chatId, leafId)
+    }
+
     override suspend fun deleteChat(chatId: Long) {
         messageDao.deleteForChat(chatId)
         actionLogDao.deleteForChat(chatId)
@@ -107,6 +111,7 @@ class AiChatRepositoryImpl(
         assistantId = assistantId,
         providerId = providerId,
         modelId = modelId,
+        activeLeafId = activeLeafId,
         createdAt = createdAt,
         updatedAt = updatedAt,
         isArchived = isArchived
@@ -116,6 +121,7 @@ class AiChatRepositoryImpl(
         id = id,
         chatId = chatId,
         role = role.name,
+        parentId = parentId,
         contentJson = json.encodeToString(partsSerializer, parts),
         status = status.name,
         inputTokens = inputTokens,
@@ -127,6 +133,7 @@ class AiChatRepositoryImpl(
         id = id,
         chatId = chatId,
         role = runCatching { AiRole.valueOf(role) }.getOrDefault(AiRole.ASSISTANT),
+        parentId = parentId,
         parts = parseParts(contentJson),
         status = runCatching { AiMessageStatus.valueOf(status) }
             .getOrDefault(AiMessageStatus.COMPLETE),

@@ -144,6 +144,12 @@
     <string name="ai_chat_needs_provider">No AI provider configured — add one in AI settings</string>
     <string name="ai_message_copy_code">Copy code</string>
     <string name="ai_chat_reasoning">Reasoning</string>
+    <string name="ai_chat_retry">Retry</string>
+    <string name="ai_chat_edit">Edit</string>
+    <string name="ai_chat_copy">Copy</string>
+    <string name="ai_chat_edit_title">Edit message</string>
+    <string name="ai_chat_variants" translatable="false">%1$d/%2$d</string>
+    <string name="ai_chat_too_many_images">Up to 8 images per message</string>
 
     <!-- Assistant editor -->
     <string name="assistant_editor_title">Assistant</string>

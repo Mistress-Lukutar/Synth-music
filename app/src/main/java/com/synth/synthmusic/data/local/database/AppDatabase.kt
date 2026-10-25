@@ -30,7 +30,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AiActionLogEntity::class,
         CoverBlacklistEntity::class
     ],
-    version = 20,
+    version = 21,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -251,6 +251,22 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Artist info/bio (Markdown text, nullable).
                 db.execSQL("ALTER TABLE artists ADD COLUMN bio TEXT")
+            }
+        }
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Conversation tree: each message links to the one it replies
+                // to, the chat pins the branch being viewed. Existing linear
+                // transcripts are backfilled into a single chain so the
+                // active path reproduces the original order.
+                db.execSQL("ALTER TABLE ai_chat_messages ADD COLUMN parent_id INTEGER")
+                db.execSQL("ALTER TABLE ai_chats ADD COLUMN active_leaf_id INTEGER")
+                db.execSQL(
+                    "UPDATE ai_chat_messages SET parent_id = (" +
+                        "SELECT MAX(p.id) FROM ai_chat_messages AS p " +
+                        "WHERE p.chat_id = ai_chat_messages.chat_id " +
+                        "AND p.id < ai_chat_messages.id)"
+                )
             }
         }
     }

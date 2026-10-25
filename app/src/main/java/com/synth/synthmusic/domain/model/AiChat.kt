@@ -2,6 +2,9 @@ package com.synth.synthmusic.domain.model
 
 /**
  * Domain model of a chat conversation.
+ *
+ * [activeLeafId] pins the branch of the conversation tree currently shown;
+ * `null` means the newest message.
  */
 data class AiChat(
     val id: Long,
@@ -9,6 +12,7 @@ data class AiChat(
     val assistantId: Long?,
     val providerId: Long?,
     val modelId: String?,
+    val activeLeafId: Long? = null,
     val createdAt: Long,
     val updatedAt: Long,
     val isArchived: Boolean
@@ -17,11 +21,16 @@ data class AiChat(
 /**
  * Domain model of one message in a chat. [parts] carries the ordered content
  * (text segments, tool calls, tool results, image attachments).
+ *
+ * [parentId] is the id of the message this one replies to (null = first
+ * message of the chat); sibling messages sharing a parent and a role are
+ * alternative variants of the same turn.
  */
 data class AiChatMessage(
     val id: Long,
     val chatId: Long,
     val role: AiRole,
+    val parentId: Long? = null,
     val parts: List<AiMessagePart>,
     val status: AiMessageStatus,
     val inputTokens: Int?,

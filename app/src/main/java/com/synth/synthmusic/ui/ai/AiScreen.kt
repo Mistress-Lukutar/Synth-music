@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -46,6 +47,7 @@ import com.synth.synthmusic.ui.components.SynthTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -61,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -70,6 +73,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.synth.synthmusic.R
 import com.synth.synthmusic.domain.model.AiAssistant
 import com.synth.synthmusic.domain.model.AiActionLogEntry
+import com.synth.synthmusic.domain.model.AiChatMessage
 import com.synth.synthmusic.ui.ai.components.AiChatDrawer
 import com.synth.synthmusic.ui.ai.components.AiChatInputBar
 import com.synth.synthmusic.ui.ai.components.AiChatRowContent
@@ -79,6 +83,9 @@ import com.synth.synthmusic.ui.ai.components.AssistantPickerSheet
 import com.synth.synthmusic.ui.ai.components.buildChatRows
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+
+/** Image attachments selectable in one photo-picker launch. */
+private const val MAX_ATTACH_IMAGES = 8
 
 /**
  * Unified AI surface: the tab always opens on a fresh new-chat draft with
@@ -128,6 +135,7 @@ fun AiScreen(
     var renameInitialTitle by remember { mutableStateOf("") }
     var deleteChatId by remember { mutableStateOf<Long?>(null) }
     var deleteAssistant by remember { mutableStateOf<AiAssistant?>(null) }
+    var editingMessage by remember { mutableStateOf<AiChatMessage?>(null) }
 
     fun openDrawer() {
         keyboardController?.hide()
@@ -141,9 +149,11 @@ fun AiScreen(
     }
 
     val photoPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        uri?.let { viewModel.onEvent(AiUiEvent.AttachImage(it)) }
+        ActivityResultContracts.PickMultipleVisualMedia(MAX_ATTACH_IMAGES)
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            viewModel.onEvent(AiUiEvent.AttachImages(uris))
+        }
     }
 
     // System back, most specific first: hide the keyboard, then close the
@@ -386,7 +396,20 @@ fun AiScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(items = chatRows, key = { it.key }) { row ->
-                                AiChatRowContent(row)
+                                AiChatRowContent(
+                                    row = row,
+                                    variants = state.variants,
+                                    onRetry = { messageId ->
+                                        viewModel.onEvent(AiUiEvent.Retry(messageId))
+                                    },
+                                    onEdit = { messageId ->
+                                        editingMessage =
+                                            state.messages.firstOrNull { it.id == messageId }
+                                    },
+                                    onSwitchVariant = { messageId ->
+                                        viewModel.onEvent(AiUiEvent.SwitchVariant(messageId))
+                                    }
+                                )
                             }
 
                             state.pendingApproval?.let { request ->
@@ -418,7 +441,7 @@ fun AiScreen(
                     }
                 }
 
-                // Pending attachment strip
+                // Pending attachment strip: decoded previews with a remove badge.
                 if (state.pendingAttachments.isNotEmpty()) {
                     Row(
                         modifier = Modifier
@@ -426,21 +449,43 @@ fun AiScreen(
                             .padding(horizontal = 16.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        state.pendingAttachments.forEachIndexed { index, _ ->
-                            AssistChip(
-                                onClick = {
-                                    viewModel.onEvent(AiUiEvent.RemoveAttachment(index))
-                                },
-                                label = { Text("Image ${index + 1}") },
-                                trailingIcon = {
-                                    Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = stringResource(
-                                            R.string.cd_remove_attachment
+                        state.pendingAttachments.forEachIndexed { index, image ->
+                            Box {
+                                coil.compose.AsyncImage(
+                                    model = "data:${image.mimeType};base64,${image.base64}",
+                                    contentDescription = stringResource(
+                                        R.string.ai_chat_image_attachment
+                                    ),
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(96.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                )
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(24.dp)
+                                ) {
+                                    IconButton(
+                                        onClick = {
+                                            viewModel.onEvent(
+                                                AiUiEvent.RemoveAttachment(index)
+                                            )
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = stringResource(
+                                                R.string.cd_remove_attachment
+                                            ),
+                                            modifier = Modifier.size(14.dp)
                                         )
-                                    )
+                                    }
                                 }
-                            )
+                            }
                         }
                     }
                 }
@@ -544,6 +589,17 @@ fun AiScreen(
         ActivityLogDialog(
             entries = actionLog,
             onDismiss = { showActivity = false }
+        )
+    }
+
+    editingMessage?.let { message ->
+        EditMessageDialog(
+            initialText = message.text,
+            onConfirm = { newText ->
+                viewModel.onEvent(AiUiEvent.EditMessage(message.id, newText))
+                editingMessage = null
+            },
+            onDismiss = { editingMessage = null }
         )
     }
 }
@@ -667,6 +723,49 @@ private fun RenameChatDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(title) }) {
+                Text(stringResource(R.string.ai_provider_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.ai_provider_cancel))
+            }
+        }
+    )
+}
+
+/**
+ * Dialog editing the text of a sent user message; confirming branches the
+ * conversation with the corrected text (attachments are preserved).
+ *
+ * @param initialText the current text of the message.
+ * @param onConfirm sends the edited sibling message.
+ * @param onDismiss closes the dialog without changes.
+ */
+@Composable
+private fun EditMessageDialog(
+    initialText: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var text by remember { mutableStateOf(initialText) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.ai_chat_edit_title)) },
+        text = {
+            SynthTextField(
+                value = text,
+                onValueChange = { text = it },
+                singleLine = false,
+                minLines = 3,
+                maxLines = 6
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(text) },
+                enabled = text.isNotBlank()
+            ) {
                 Text(stringResource(R.string.ai_provider_save))
             }
         },

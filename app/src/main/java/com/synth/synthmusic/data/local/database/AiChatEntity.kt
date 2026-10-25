@@ -9,6 +9,9 @@ import androidx.room.PrimaryKey
  *
  * [providerId] and [modelId] snapshot the model chosen at chat creation (or
  * overridden later); `null` falls back to the global default model.
+ *
+ * [activeLeafId] pins the branch of the conversation tree currently shown;
+ * `null` means the newest message (max id).
  */
 @Entity(tableName = "ai_chats")
 data class AiChatEntity(
@@ -23,6 +26,8 @@ data class AiChatEntity(
     val providerId: Long?,
     @ColumnInfo(name = "model_id")
     val modelId: String?,
+    @ColumnInfo(name = "active_leaf_id")
+    val activeLeafId: Long? = null,
     @ColumnInfo(name = "created_at")
     val createdAt: Long,
     @ColumnInfo(name = "updated_at")

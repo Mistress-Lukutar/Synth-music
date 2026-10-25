@@ -95,13 +95,19 @@ class RunChatUseCase(
      * response, executes tool calls and follows up until the model answers
      * without tool requests or [MAX_TOOL_ITERATIONS] is reached.
      *
+     * The new assistant message is attached under [parentMessageId] (null =
+     * the newest leaf of the chat), so a regenerate/edit becomes a sibling
+     * branch instead of deleting history. The chat's active leaf follows the
+     * newly written messages.
+     *
      * Emits [ChatRunEvent.MessageUpdated] as the assistant message evolves.
      * Cancellation (Stop button) persists the partial answer with status
      * [AiMessageStatus.ERROR] and a "(stopped)" marker.
      */
     fun runTurn(
         chatId: Long,
-        approvalBridge: ApprovalBridge? = null
+        approvalBridge: ApprovalBridge? = null,
+        parentMessageId: Long? = null
     ): Flow<ChatRunEvent> = flow {
         val chat = chatRepository.getChat(chatId)
         if (chat == null) {
@@ -132,10 +138,18 @@ class RunChatUseCase(
                     chatRepository.updateMessage(stale.copy(status = AiMessageStatus.ERROR))
                 }
 
+            // Branch point for the reply and, as the turn progresses, the id
+            // of the latest written message; history always follows the path
+            // that ends there.
+            var currentParentId = parentMessageId
+                ?: chatRepository.getMessages(chatId).maxByOrNull { it.id }?.id
+            var lastMessageId = currentParentId
+
             var iterations = 0
             while (iterations < MAX_TOOL_ITERATIONS) {
                 iterations++
                 val history = chatRepository.getMessages(chatId)
+                    .let { ChatTree.activePath(it, lastMessageId) }
                     .map { it.toTurn() }
                 val request = com.synth.synthmusic.domain.model.AiChatRequest(
                     endpoint = endpoint,
@@ -148,7 +162,9 @@ class RunChatUseCase(
                 )
                 val client = clientFactory.clientFor(endpoint.protocol)
 
-                val message = createStreamingMessage(chatId)
+                val message = createStreamingMessage(chatId, currentParentId)
+                lastMessageId = message.id
+                chatRepository.setActiveLeaf(chatId, message.id)
                 val text = StringBuilder()
                 val reasoning = StringBuilder()
                 var tokensIn: Int? = null
@@ -256,11 +272,12 @@ class RunChatUseCase(
                         )
                     )
                 }
-                chatRepository.appendMessage(
+                val toolMessageId = chatRepository.appendMessage(
                     AiChatMessage(
                         id = 0,
                         chatId = chatId,
                         role = AiRole.TOOL,
+                        parentId = message.id,
                         parts = results + imageSink,
                         status = AiMessageStatus.COMPLETE,
                         inputTokens = null,
@@ -268,6 +285,9 @@ class RunChatUseCase(
                         createdAt = System.currentTimeMillis()
                     )
                 )
+                lastMessageId = toolMessageId
+                currentParentId = toolMessageId
+                chatRepository.setActiveLeaf(chatId, toolMessageId)
                 chatRepository.touch(chatId)
                 emit(
                     ChatRunEvent.MessageUpdated(
@@ -357,12 +377,16 @@ class RunChatUseCase(
     private suspend fun chatAllowedTools(chat: AiChat): Set<String>? =
         chat.assistantId?.let { assistantRepository.getAssistant(it)?.defaultTools }
 
-    private suspend fun createStreamingMessage(chatId: Long): AiChatMessage {
+    private suspend fun createStreamingMessage(
+        chatId: Long,
+        parentId: Long?
+    ): AiChatMessage {
         val id = chatRepository.appendMessage(
             AiChatMessage(
                 id = 0,
                 chatId = chatId,
                 role = AiRole.ASSISTANT,
+                parentId = parentId,
                 parts = emptyList(),
                 status = AiMessageStatus.STREAMING,
                 inputTokens = null,
@@ -374,6 +398,7 @@ class RunChatUseCase(
             id = id,
             chatId = chatId,
             role = AiRole.ASSISTANT,
+            parentId = parentId,
             parts = emptyList(),
             status = AiMessageStatus.STREAMING,
             inputTokens = null,

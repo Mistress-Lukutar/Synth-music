@@ -40,6 +40,9 @@ interface AiChatRepository {
     /** Bumps the chat's updated_at timestamp. */
     suspend fun touch(chatId: Long)
 
+    /** Pins the branch of the conversation tree shown for [chatId]. */
+    suspend fun setActiveLeaf(chatId: Long, leafId: Long?)
+
     /** Deletes the chat with its messages and audit entries. */
     suspend fun deleteChat(chatId: Long)
 

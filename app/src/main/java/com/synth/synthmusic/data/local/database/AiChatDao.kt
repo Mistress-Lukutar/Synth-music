@@ -32,6 +32,9 @@ interface AiChatDao {
     @Query("UPDATE ai_chats SET updated_at = :timestamp WHERE id = :chatId")
     suspend fun touch(chatId: Long, timestamp: Long)
 
+    @Query("UPDATE ai_chats SET active_leaf_id = :leafId WHERE id = :chatId")
+    suspend fun updateActiveLeaf(chatId: Long, leafId: Long?)
+
     @Query("DELETE FROM ai_chats WHERE id = :chatId")
     suspend fun deleteById(chatId: Long)
 }

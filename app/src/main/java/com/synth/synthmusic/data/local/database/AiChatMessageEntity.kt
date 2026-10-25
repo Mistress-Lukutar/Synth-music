@@ -12,6 +12,10 @@ import androidx.room.PrimaryKey
  * tool calls, tool results, image attachment refs) as defined by the chat
  * engine's [com.synth.synthmusic.domain.model.AiMessagePart] hierarchy.
  * [status] uses the string values of [com.synth.synthmusic.domain.model.AiMessageStatus].
+ *
+ * [parentId] links the message into the conversation tree: the message it
+ * replies to (null = first message of a chat). Regenerating or editing a
+ * message appends a sibling branch instead of deleting history.
  */
 @Entity(
     tableName = "ai_chat_messages",
@@ -25,6 +29,8 @@ data class AiChatMessageEntity(
     val chatId: Long,
     @ColumnInfo(name = "role")
     val role: String,
+    @ColumnInfo(name = "parent_id")
+    val parentId: Long? = null,
     @ColumnInfo(name = "content_json")
     val contentJson: String,
     @ColumnInfo(name = "status")

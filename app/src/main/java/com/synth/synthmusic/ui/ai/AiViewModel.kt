@@ -22,6 +22,7 @@ import com.synth.synthmusic.domain.repository.AiSettingsRepository
 import com.synth.synthmusic.domain.repository.AiProviderRepository
 import com.synth.synthmusic.domain.usecase.ai.ApprovalBridge
 import com.synth.synthmusic.domain.usecase.ai.ChatRunEvent
+import com.synth.synthmusic.domain.usecase.ai.ChatTree
 import com.synth.synthmusic.domain.usecase.ai.ConfirmationRequest
 import com.synth.synthmusic.domain.usecase.ai.RunChatUseCase
 import kotlinx.coroutines.CancellationException
@@ -70,7 +71,10 @@ data class AiUiState(
     val modelLabel: String? = null,
     /** Whether the active model supports vision (image input), including user override. */
     val supportsVision: Boolean = false,
+    /** The active branch of the conversation tree, root first. */
     val messages: List<AiChatMessage> = emptyList(),
+    /** Variant position of path messages among their siblings, for `< k/n >`. */
+    val variants: Map<Long, ChatTree.Variants> = emptyMap(),
     val isStreaming: Boolean = false,
     val pendingAttachments: List<AiMessagePart.Image> = emptyList(),
     val pendingApproval: ConfirmationRequest? = null,
@@ -96,8 +100,8 @@ sealed class AiUiEvent {
     /** Sends a user message with the current pending attachments. */
     data class Send(val text: String) : AiUiEvent()
 
-    /** Attaches an image from a photo-picker [uri]. */
-    data class AttachImage(val uri: Uri) : AiUiEvent()
+    /** Attaches images from photo-picker [uris]. */
+    data class AttachImages(val uris: List<Uri>) : AiUiEvent()
 
     /** Removes a pending attachment by index. */
     data class RemoveAttachment(val index: Int) : AiUiEvent()
@@ -105,7 +109,23 @@ sealed class AiUiEvent {
     /** Cancels the running stream. */
     data object Stop : AiUiEvent()
 
-    /** Deletes the last assistant answer and re-runs the turn. */
+    /**
+     * Regenerates from the given message: a user message re-asks its
+     * following answer, an assistant message gets a new sibling. The old
+     * branch is kept and reachable via variant switching.
+     */
+    data class Retry(val messageId: Long) : AiUiEvent()
+
+    /**
+     * Edits a user message: appends a sibling with the new text (original
+     * image attachments preserved) and runs the turn from there.
+     */
+    data class EditMessage(val messageId: Long, val newText: String) : AiUiEvent()
+
+    /** Switches the conversation to the branch of the given variant. */
+    data class SwitchVariant(val messageId: Long) : AiUiEvent()
+
+    /** Regenerates the latest assistant answer of the open chat. */
     data object Regenerate : AiUiEvent()
 
     /** Renames the given chat. */
@@ -237,6 +257,7 @@ class AiViewModel(
         val id: Long?,
         val chat: AiChat?,
         val messages: List<AiChatMessage>,
+        val variants: Map<Long, ChatTree.Variants>,
         val streaming: Boolean,
         val draftAssistant: Long?
     )
@@ -247,11 +268,14 @@ class AiViewModel(
         overrides,
         streamingChats,
         draftAssistantId
-    ) { chat, messages, allOverrides, streaming, draftAssistant ->
+    ) { chat, allMessages, allOverrides, streaming, draftAssistant ->
+        val merged = allMessages.map { allOverrides[chat?.id]?.get(it.id) ?: it }
+        val path = ChatTree.activePath(merged, chat?.activeLeafId)
         ActiveSlice(
             id = chat?.id,
             chat = chat,
-            messages = messages.map { allOverrides[chat?.id]?.get(it.id) ?: it },
+            messages = path,
+            variants = ChatTree.variantsOf(merged, path.map { it.id }),
             streaming = chat?.id in streaming,
             draftAssistant = draftAssistant
         )
@@ -301,6 +325,7 @@ class AiViewModel(
             modelLabel = model?.displayName,
             supportsVision = model?.effectiveSupportsVision ?: false,
             messages = active.messages,
+            variants = active.variants,
             isStreaming = active.streaming,
             pendingAttachments = extra.attachments,
             pendingApproval = extra.approval?.takeIf { it.chatId == active.id }?.request,
@@ -328,12 +353,15 @@ class AiViewModel(
             is AiUiEvent.SelectAssistant -> selectAssistant(event.assistant)
             is AiUiEvent.InputChanged -> draftInput.value = event.text
             is AiUiEvent.Send -> send(event.text)
-            is AiUiEvent.AttachImage -> attachImage(event.uri)
+            is AiUiEvent.AttachImages -> attachImages(event.uris)
             is AiUiEvent.RemoveAttachment -> {
                 pendingAttachments.value =
                     pendingAttachments.value.filterIndexed { i, _ -> i != event.index }
             }
             AiUiEvent.Stop -> stop()
+            is AiUiEvent.Retry -> retryMessage(event.messageId)
+            is AiUiEvent.EditMessage -> editMessage(event.messageId, event.newText)
+            is AiUiEvent.SwitchVariant -> switchVariant(event.messageId)
             AiUiEvent.Regenerate -> regenerate()
             is AiUiEvent.RenameChat -> viewModelScope.launch {
                 chatRepository.updateTitle(event.chatId, event.title)
@@ -420,11 +448,17 @@ class AiViewModel(
                 }
                 pendingAttachments.value = emptyList()
                 draftInput.value = ""
-                chatRepository.appendMessage(
+                // New messages extend the branch currently being viewed.
+                val parentLeaf = ChatTree.activePath(
+                    chatRepository.getMessages(chatId),
+                    chatRepository.getChat(chatId)?.activeLeafId
+                ).lastOrNull()?.id
+                val messageId = chatRepository.appendMessage(
                     AiChatMessage(
                         id = 0,
                         chatId = chatId,
                         role = AiRole.USER,
+                        parentId = parentLeaf,
                         parts = parts,
                         status = AiMessageStatus.COMPLETE,
                         inputTokens = null,
@@ -432,17 +466,26 @@ class AiViewModel(
                         createdAt = System.currentTimeMillis()
                     )
                 )
+                chatRepository.setActiveLeaf(chatId, messageId)
                 autoTitle(chatId, text)
-                startRun(chatId)
+                startRun(chatId, messageId)
             }
         }
     }
 
-    private fun attachImage(uri: Uri) {
+    private fun attachImages(uris: List<Uri>) {
         viewModelScope.launch {
             try {
-                pendingAttachments.value =
-                    pendingAttachments.value + imageAttachmentLoader.load(uri)
+                val loaded = uris.map { imageAttachmentLoader.load(it) }
+                val room = MAX_IMAGES_PER_MESSAGE - pendingAttachments.value.size
+                if (room <= 0) {
+                    error.value = "Up to $MAX_IMAGES_PER_MESSAGE images per message"
+                    return@launch
+                }
+                if (loaded.size > room) {
+                    error.value = "Up to $MAX_IMAGES_PER_MESSAGE images per message"
+                }
+                pendingAttachments.value = pendingAttachments.value + loaded.take(room)
             } catch (e: Exception) {
                 error.value = e.message ?: "Cannot attach image"
             }
@@ -454,26 +497,87 @@ class AiViewModel(
         activeChatId.value?.let { id -> runJobs[id]?.cancel() }
     }
 
+    private fun retryMessage(messageId: Long) {
+        val chatId = activeChatId.value ?: return
+        if (chatId in streamingChats.value) return
+        viewModelScope.launch {
+            val message = chatRepository.getMessage(messageId) ?: return@launch
+            when (message.role) {
+                // A user message re-asks the answer that followed it.
+                AiRole.USER -> startRun(chatId, message.id)
+                // An assistant message gets a new sibling under its parent.
+                AiRole.ASSISTANT -> {
+                    val parentId = message.parentId ?: return@launch
+                    startRun(chatId, parentId)
+                }
+                else -> Unit
+            }
+        }
+    }
+
+    private fun editMessage(messageId: Long, newText: String) {
+        val chatId = activeChatId.value ?: return
+        if (chatId in streamingChats.value) return
+        if (newText.isBlank()) return
+        viewModelScope.launch {
+            val original = chatRepository.getMessage(messageId) ?: return@launch
+            if (original.role != AiRole.USER) return@launch
+            // Sibling of the original user message: same parent, images kept.
+            val parts = buildList {
+                add(AiMessagePart.Text(newText))
+                addAll(original.parts.filterIsInstance<AiMessagePart.Image>())
+            }
+            val newId = chatRepository.appendMessage(
+                AiChatMessage(
+                    id = 0,
+                    chatId = chatId,
+                    role = AiRole.USER,
+                    parentId = original.parentId,
+                    parts = parts,
+                    status = AiMessageStatus.COMPLETE,
+                    inputTokens = null,
+                    outputTokens = null,
+                    createdAt = System.currentTimeMillis()
+                )
+            )
+            chatRepository.setActiveLeaf(chatId, newId)
+            startRun(chatId, newId)
+        }
+    }
+
+    private fun switchVariant(messageId: Long) {
+        val chatId = activeChatId.value ?: return
+        if (chatId in streamingChats.value) return
+        viewModelScope.launch {
+            val all = chatRepository.getMessages(chatId)
+            // Jump to the newest leaf of the chosen branch.
+            chatRepository.setActiveLeaf(chatId, ChatTree.newestDescendant(all, messageId))
+        }
+    }
+
     private fun regenerate() {
         val chatId = activeChatId.value ?: return
         if (chatId in streamingChats.value) return
         viewModelScope.launch {
-            val messages = chatRepository.getMessages(chatId)
-            val lastUser = messages.lastOrNull { it.role == AiRole.USER } ?: return@launch
-            // Drop everything after the last user message (assistant answer
-            // and tool activity) so the engine regenerates from the same input.
-            val firstAfterUser = messages.firstOrNull { it.id > lastUser.id } ?: return@launch
-            chatRepository.deleteFrom(chatId, firstAfterUser.id)
-            startRun(chatId)
+            val chat = chatRepository.getChat(chatId) ?: return@launch
+            val path = ChatTree.activePath(
+                chatRepository.getMessages(chatId),
+                chat.activeLeafId
+            )
+            // Non-destructive retry of the last answer on the visible branch.
+            val lastAssistant = path.lastOrNull { it.role == AiRole.ASSISTANT }
+                ?: return@launch
+            startRun(chatId, lastAssistant.parentId ?: return@launch)
         }
     }
 
-    private fun startRun(chatId: Long) {
+    private fun startRun(chatId: Long, parentMessageId: Long?) {
         if (runJobs[chatId]?.isActive == true) return
         streamingChats.value = streamingChats.value + chatId
         runJobs[chatId] = viewModelScope.launch {
             try {
-                runChatUseCase.runTurn(chatId, approvalBridgeFor(chatId)).collect { event ->
+                runChatUseCase.runTurn(chatId, approvalBridgeFor(chatId), parentMessageId)
+                    .collect { event ->
                     when (event) {
                         is ChatRunEvent.MessageUpdated -> {
                             val forChat =
@@ -537,5 +641,8 @@ class AiViewModel(
     private companion object {
         const val DEFAULT_TITLE = "New chat"
         const val TITLE_MAX_LENGTH = 40
+
+        /** Image attachments allowed in one outgoing message. */
+        const val MAX_IMAGES_PER_MESSAGE = 8
     }
 }

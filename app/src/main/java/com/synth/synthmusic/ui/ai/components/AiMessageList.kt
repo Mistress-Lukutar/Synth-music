@@ -1,8 +1,11 @@
 package com.synth.synthmusic.ui.ai.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,10 +21,14 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,14 +41,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.synth.synthmusic.R
 import com.synth.synthmusic.domain.model.AiChatMessage
 import com.synth.synthmusic.domain.model.AiMessagePart
 import com.synth.synthmusic.domain.model.AiMessageStatus
 import com.synth.synthmusic.domain.model.AiRole
+import com.synth.synthmusic.domain.usecase.ai.ChatTree
 import com.synth.synthmusic.domain.usecase.ai.ConfirmationLevel
 import com.synth.synthmusic.domain.usecase.ai.ConfirmationRequest
 
@@ -163,49 +175,177 @@ fun buildChatRows(messages: List<AiChatMessage>): List<AiChatRow> {
  * Renders a single transcript row produced by [buildChatRows].
  *
  * @param row the row to render.
+ * @param variants variant positions of visible messages among their siblings.
+ * @param onRetry regenerates the answer around the given message.
+ * @param onEdit opens the edit flow for the given user message.
+ * @param onSwitchVariant shows the branch of the given sibling instead.
  */
 @Composable
-fun AiChatRowContent(row: AiChatRow) {
+fun AiChatRowContent(
+    row: AiChatRow,
+    variants: Map<Long, ChatTree.Variants> = emptyMap(),
+    onRetry: (Long) -> Unit = {},
+    onEdit: (Long) -> Unit = {},
+    onSwitchVariant: (Long) -> Unit = {}
+) {
     when (row) {
-        is AiChatRow.User -> UserBubble(row.message)
-        is AiChatRow.Assistant -> AssistantBubble(row.message)
+        is AiChatRow.User -> UserBubble(
+            message = row.message,
+            variants = variants[row.message.id],
+            onEdit = onEdit,
+            onSwitchVariant = onSwitchVariant
+        )
+        is AiChatRow.Assistant -> AssistantBubble(
+            message = row.message,
+            variants = variants[row.message.id],
+            onRetry = onRetry,
+            onSwitchVariant = onSwitchVariant
+        )
         is AiChatRow.ToolActivity -> ToolActivityCard(row.calls)
     }
 }
 
 /**
- * Right-aligned user bubble with text parts and image-attachment chips.
+ * Data URL for an inline base64 image part, understood by Coil out of the box.
+ */
+private fun imageDataUrl(image: AiMessagePart.Image): String =
+    "data:${image.mimeType};base64,${image.base64}"
+
+/**
+ * Decoded preview of an image attachment.
  *
- * @param message the user message to render.
+ * @param image the image part to render.
  */
 @Composable
-private fun UserBubble(message: AiChatMessage) {
-    Row(
+private fun ImageThumbnail(image: AiMessagePart.Image) {
+    AsyncImage(
+        model = imageDataUrl(image),
+        contentDescription = stringResource(R.string.ai_chat_image_attachment),
+        contentScale = ContentScale.Crop,
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.End
+            .size(96.dp)
+            .clip(RoundedCornerShape(12.dp))
+    )
+}
+
+/**
+ * `< k/n >` switcher shown above a bubble that has sibling variants
+ * (regenerate/edit branches).
+ *
+ * @param variants the variant position of the message.
+ * @param onSelect shows the branch of the sibling with the given id.
+ */
+@Composable
+private fun VariantSwitcher(
+    variants: ChatTree.Variants,
+    onSelect: (Long) -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        Surface(
-            color = MaterialTheme.colorScheme.primaryContainer,
-            shape = RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp)
+        IconButton(
+            onClick = { onSelect(variants.siblingIds[variants.index - 1]) },
+            enabled = variants.index > 0,
+            modifier = Modifier.size(24.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .widthIn(max = 300.dp)
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                message.parts.forEach { part ->
-                    when (part) {
-                        is AiMessagePart.Text -> Text(part.text)
-                        is AiMessagePart.Image -> AssistChip(
-                            onClick = {},
-                            label = { Text(stringResource(R.string.ai_chat_image_attachment)) }
-                        )
-                        else -> Unit
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowLeft,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        Text(
+            text = "${variants.index + 1}/${variants.count}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        IconButton(
+            onClick = { onSelect(variants.siblingIds[variants.index + 1]) },
+            enabled = variants.index < variants.count - 1,
+            modifier = Modifier.size(24.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Right-aligned user bubble with text parts and image thumbnails. Long-press
+ * opens the edit/copy menu.
+ *
+ * @param message the user message to render.
+ * @param variants variant position of the message, if it has siblings.
+ * @param onEdit opens the edit dialog for the message.
+ * @param onSwitchVariant shows the branch of the given sibling instead.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun UserBubble(
+    message: AiChatMessage,
+    variants: ChatTree.Variants?,
+    onEdit: (Long) -> Unit,
+    onSwitchVariant: (Long) -> Unit
+) {
+    val clipboard = LocalClipboardManager.current
+    var menuOpen by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.End
+    ) {
+        if (variants != null) {
+            VariantSwitcher(variants = variants, onSelect = onSwitchVariant)
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.End
+        ) {
+            Box {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp),
+                    modifier = Modifier.combinedClickable(
+                        onClick = {},
+                        onLongClick = { menuOpen = true }
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .widthIn(max = 300.dp)
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        message.parts.forEach { part ->
+                            when (part) {
+                                is AiMessagePart.Text -> Text(part.text)
+                                is AiMessagePart.Image -> ImageThumbnail(part)
+                                else -> Unit
+                            }
+                        }
                     }
                 }
+                MessageActionMenu(
+                    expanded = menuOpen,
+                    onDismiss = { menuOpen = false },
+                    actions = listOf(
+                        MessageAction(stringResource(R.string.ai_chat_edit)) {
+                            menuOpen = false
+                            onEdit(message.id)
+                        },
+                        MessageAction(stringResource(R.string.ai_chat_copy)) {
+                            menuOpen = false
+                            clipboard.setText(AnnotatedString(message.text))
+                        }
+                    )
+                )
             }
         }
     }
@@ -214,50 +354,117 @@ private fun UserBubble(message: AiChatMessage) {
 /**
  * Left-aligned assistant bubble with markdown text and a collapsible
  * reasoning spoiler; tool calls are rendered separately as
- * [ToolActivityCard].
+ * [ToolActivityCard]. Long-press opens the retry/copy menu.
  *
  * @param message the assistant message to render.
+ * @param variants variant position of the message, if it has siblings.
+ * @param onRetry regenerates this answer as a new sibling branch.
+ * @param onSwitchVariant shows the branch of the given sibling instead.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun AssistantBubble(
+    message: AiChatMessage,
+    variants: ChatTree.Variants?,
+    onRetry: (Long) -> Unit,
+    onSwitchVariant: (Long) -> Unit
+) {
+    val clipboard = LocalClipboardManager.current
+    var menuOpen by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.Start
+    ) {
+        if (variants != null) {
+            VariantSwitcher(variants = variants, onSelect = onSwitchVariant)
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.Start
+        ) {
+            Box {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
+                    modifier = Modifier.combinedClickable(
+                        onClick = {},
+                        onLongClick = { menuOpen = true }
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .widthIn(max = 320.dp)
+                            .padding(12.dp)
+                    ) {
+                        val reasoning = message.parts
+                            .filterIsInstance<AiMessagePart.Reasoning>()
+                            .joinToString("") { it.text }
+                        // Reasoning is live only while it is the latest step: once the
+                        // model starts emitting text or tool calls the trace is done,
+                        // even though the message as a whole is still streaming.
+                        val reasoningStreaming = message.status == AiMessageStatus.STREAMING &&
+                            message.text.isBlank() &&
+                            message.parts.none { it is AiMessagePart.ToolCall }
+                        if (reasoning.isNotBlank()) {
+                            ReasoningSection(
+                                reasoning = reasoning,
+                                isStreaming = reasoningStreaming
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+                        if (message.text.isNotBlank()) {
+                            MarkdownText(
+                                markdown = message.text,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+                MessageActionMenu(
+                    expanded = menuOpen,
+                    onDismiss = { menuOpen = false },
+                    actions = listOf(
+                        MessageAction(stringResource(R.string.ai_chat_retry)) {
+                            menuOpen = false
+                            onRetry(message.id)
+                        },
+                        MessageAction(stringResource(R.string.ai_chat_copy)) {
+                            menuOpen = false
+                            clipboard.setText(AnnotatedString(message.text))
+                        }
+                    )
+                )
+            }
+        }
+    }
+}
+
+/**
+ * One entry of a message long-press menu.
+ */
+private data class MessageAction(val label: String, val onClick: () -> Unit)
+
+/**
+ * Small dropdown menu anchored to a message bubble.
+ *
+ * @param expanded whether the menu is visible.
+ * @param onDismiss closes the menu.
+ * @param actions the menu entries.
  */
 @Composable
-private fun AssistantBubble(message: AiChatMessage) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.Start
-    ) {
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .widthIn(max = 320.dp)
-                    .padding(12.dp)
-            ) {
-                val reasoning = message.parts
-                    .filterIsInstance<AiMessagePart.Reasoning>()
-                    .joinToString("") { it.text }
-                // Reasoning is live only while it is the latest step: once the
-                // model starts emitting text or tool calls the trace is done,
-                // even though the message as a whole is still streaming.
-                val reasoningStreaming = message.status == AiMessageStatus.STREAMING &&
-                    message.text.isBlank() &&
-                    message.parts.none { it is AiMessagePart.ToolCall }
-                if (reasoning.isNotBlank()) {
-                    ReasoningSection(
-                        reasoning = reasoning,
-                        isStreaming = reasoningStreaming
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
-                if (message.text.isNotBlank()) {
-                    MarkdownText(
-                        markdown = message.text,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
+private fun MessageActionMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    actions: List<MessageAction>
+) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        actions.forEach { action ->
+            DropdownMenuItem(
+                text = { Text(action.label) },
+                onClick = action.onClick
+            )
         }
     }
 }
