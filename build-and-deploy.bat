@@ -3,7 +3,7 @@ chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 :: Project root and paths
-set "PROJECT_DIR=C:\_Source\Synth-music"
+set "PROJECT_DIR=C:\_Source\_Android\Synth-music"
 set "APK_NAME=SynthMusic.apk"
 set "BUILD_OUTPUT=%PROJECT_DIR%\app\build\outputs\apk\release\app-release.apk"
 set "DEST_ONEDRIVE=%OneDrive%\Desktop\%APK_NAME%"
