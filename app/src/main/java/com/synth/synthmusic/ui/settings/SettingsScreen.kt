@@ -40,7 +40,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -63,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.synth.synthmusic.domain.model.AccentColor
 import com.synth.synthmusic.domain.model.ThemeMode
+import com.synth.synthmusic.ui.components.SynthListItem
 import com.synth.synthmusic.ui.settings.components.SettingsGroupCard
 import com.synth.synthmusic.ui.settings.components.SettingSwitch
 import com.synth.synthmusic.ui.settings.components.ThemePickerDialog
@@ -139,7 +139,7 @@ fun SettingsScreen(
                 title = "Appearance",
                 icon = Icons.Default.Palette
             ) {
-                ListItem(
+                SynthListItem(
                     headlineContent = { Text("Theme & Colors") },
                     supportingContent = {
                         Text(
@@ -173,7 +173,7 @@ fun SettingsScreen(
                 title = "AI",
                 icon = Icons.Default.AutoAwesome
             ) {
-                ListItem(
+                SynthListItem(
                     headlineContent = { Text("AI Assistant") },
                     supportingContent = { Text("Providers, models and permissions") },
                     leadingContent = {
@@ -218,7 +218,7 @@ fun SettingsScreen(
 
                 HorizontalDivider()
 
-                ListItem(
+                SynthListItem(
                     headlineContent = { Text("Rescan Library") },
                     supportingContent = { Text("Refresh all tracks and metadata") },
                     leadingContent = {
@@ -245,7 +245,7 @@ fun SettingsScreen(
 
                 HorizontalDivider()
 
-                ListItem(
+                SynthListItem(
                     headlineContent = { Text("Force Refresh Library") },
                     supportingContent = { Text("Rebuild all metadata, lyrics and artwork from files, ignoring cache") },
                     leadingContent = {

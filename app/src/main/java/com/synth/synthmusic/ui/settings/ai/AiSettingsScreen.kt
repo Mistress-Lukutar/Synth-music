@@ -40,7 +40,6 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Scaffold
@@ -64,6 +63,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.synth.synthmusic.R
+import com.synth.synthmusic.ui.components.SynthListItem
 import com.synth.synthmusic.ui.components.SynthTextField
 import com.synth.synthmusic.domain.model.AiCapability
 import com.synth.synthmusic.domain.model.AiProtocol
@@ -147,7 +147,7 @@ fun AiSettingsScreen(
                     )
                 }
                 state.providers.forEach { provider ->
-                    ListItem(
+                    SynthListItem(
                         headlineContent = { Text(provider.label) },
                         supportingContent = {
                             Text(
@@ -174,7 +174,7 @@ fun AiSettingsScreen(
                         modifier = Modifier.clickable { editingProvider = provider }
                     )
                 }
-                ListItem(
+                SynthListItem(
                     headlineContent = {
                         Text(stringResource(R.string.ai_provider_add))
                     },
@@ -192,7 +192,7 @@ fun AiSettingsScreen(
                     it.providerId == state.activeModel?.providerId &&
                         it.model.modelId == state.activeModel?.modelId
                 }
-                ListItem(
+                SynthListItem(
                     headlineContent = {
                         Text(
                             activeLabel?.let { "${it.providerLabel} • ${it.model.displayName}" }
@@ -288,7 +288,7 @@ fun AiSettingsScreen(
                         viewModel.onEvent(AiSettingsUiEvent.SetWebSearchProvider(it))
                     }
                 )
-                ListItem(
+                SynthListItem(
                     headlineContent = {
                         Text(
                             if (state.webSearchKeyConfigured) {
@@ -314,7 +314,7 @@ fun AiSettingsScreen(
                 title = stringResource(R.string.ai_custom_tools_section),
                 icon = Icons.Default.Extension
             ) {
-                ListItem(
+                SynthListItem(
                     headlineContent = {
                         Text(stringResource(R.string.ai_custom_tools_manage))
                     },
@@ -336,7 +336,7 @@ fun AiSettingsScreen(
                 title = stringResource(R.string.ai_trash_section),
                 icon = Icons.Default.Delete
             ) {
-                ListItem(
+                SynthListItem(
                     headlineContent = {
                         Text(
                             stringResource(R.string.ai_trash_count, state.trashCount)
@@ -355,7 +355,7 @@ fun AiSettingsScreen(
                     }
                 )
                 state.trashEntries.take(5).forEach { entry ->
-                    ListItem(
+                    SynthListItem(
                         headlineContent = {
                             Text(entry.fileName, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         },
@@ -384,7 +384,7 @@ fun AiSettingsScreen(
                     )
                 }
                 state.actionLog.take(10).forEach { entry ->
-                    ListItem(
+                    SynthListItem(
                         headlineContent = { Text("${entry.toolName} • ${entry.outcome.name.lowercase()}") },
                         supportingContent = { Text(entry.summary, maxLines = 2) }
                     )
@@ -715,7 +715,7 @@ private fun ModelPickerDialog(
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 item(key = "add_manual") {
-                    ListItem(
+                    SynthListItem(
                         headlineContent = {
                             Text(
                                 stringResource(R.string.ai_model_add_manual),
@@ -746,7 +746,7 @@ private fun ModelPickerDialog(
                     ) { entry ->
                         val selected = active?.providerId == entry.providerId &&
                             active?.modelId == entry.model.modelId
-                        ListItem(
+                        SynthListItem(
                             headlineContent = { Text(entry.model.displayName) },
                             supportingContent = {
                                 Column {

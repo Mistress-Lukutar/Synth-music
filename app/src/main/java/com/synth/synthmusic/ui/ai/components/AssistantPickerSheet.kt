@@ -13,7 +13,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -28,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.synth.synthmusic.R
 import com.synth.synthmusic.domain.model.AiAssistant
+import com.synth.synthmusic.ui.components.SynthListItem
 
 /**
  * Bottom sheet listing the available assistants plus the neutral General
@@ -83,7 +83,7 @@ fun AssistantPickerSheet(
                 onDeleteAssistant = onDeleteAssistant
             )
         }
-        ListItem(
+        SynthListItem(
             headlineContent = { Text(stringResource(R.string.ai_home_create_assistant)) },
             leadingContent = {
                 Icon(Icons.Default.Add, contentDescription = null)
@@ -113,7 +113,7 @@ private fun AssistantSheetRow(
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     Box {
-        ListItem(
+        SynthListItem(
             headlineContent = { Text(name) },
             supportingContent = {
                 Text(description, maxLines = 1, overflow = TextOverflow.Ellipsis)

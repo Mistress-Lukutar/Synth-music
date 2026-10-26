@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
+import com.synth.synthmusic.ui.components.SynthListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -33,7 +33,7 @@ fun SettingSwitch(
     icon: ImageVector? = null,
     modifier: Modifier = Modifier
 ) {
-    ListItem(
+    SynthListItem(
         headlineContent = {
             Text(text = title, style = MaterialTheme.typography.bodyLarge)
         },

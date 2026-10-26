@@ -22,8 +22,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import com.synth.synthmusic.ui.components.SynthListItem
 import com.synth.synthmusic.ui.components.SynthTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -143,7 +143,7 @@ fun CustomToolsScreen(
                     )
                 }
                 state.records.forEach { record ->
-                    ListItem(
+                    SynthListItem(
                         headlineContent = { Text(record.displayName) },
                         supportingContent = {
                             Column {
@@ -178,7 +178,7 @@ fun CustomToolsScreen(
                         modifier = Modifier.clickable { detailsTool = record }
                     )
                 }
-                ListItem(
+                SynthListItem(
                     headlineContent = {
                         Text(stringResource(R.string.ai_custom_tools_import))
                     },

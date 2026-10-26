@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,6 +37,7 @@ import com.synth.synthmusic.domain.model.CollectionType
 import com.synth.synthmusic.domain.model.RecentlyPlayedCollection
 import com.synth.synthmusic.ui.components.CollectionCard
 import com.synth.synthmusic.ui.components.CollectionCardStyle
+import com.synth.synthmusic.ui.components.SynthListItem
 
 /**
  * Section displaying recent search queries from history.
@@ -81,7 +81,7 @@ fun RecentSearchesSection(
         Spacer(modifier = Modifier.height(8.dp))
 
         recentSearches.forEach { query ->
-            ListItem(
+            SynthListItem(
                 headlineContent = { Text(query, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 leadingContent = {
                     Icon(Icons.Default.History, contentDescription = null)
