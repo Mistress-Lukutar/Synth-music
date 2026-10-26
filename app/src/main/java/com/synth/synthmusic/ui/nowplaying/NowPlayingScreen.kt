@@ -3,6 +3,7 @@ package com.synth.synthmusic.ui.nowplaying
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,6 +71,9 @@ import java.util.Locale
 
 /**
  * Stateless content composable for the Now Playing screen.
+ *
+ * A vertical swipe downward (past a 120 dp threshold) collapses the player via
+ * [onNavigateBack], matching the top-bar collapse button.
  *
  * @param uiState Current UI state including song metadata and playback info.
  * @param artworkCenterY Vertical center of the disc in window coordinates, used to align the background artwork.
@@ -112,7 +117,31 @@ fun NowPlayingContent(
     onShowQueue: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                // Swipe down anywhere (except on gesture-consuming children like the
+                // waveform seekbar) collapses the player, same as the top-bar button.
+                val collapseThreshold = 120.dp.toPx()
+                var accumulatedDrag = 0f
+                var collapseTriggered = false
+                detectVerticalDragGestures(
+                    onDragStart = {
+                        accumulatedDrag = 0f
+                        collapseTriggered = false
+                    },
+                    onVerticalDrag = { _, dragAmount ->
+                        if (collapseTriggered) return@detectVerticalDragGestures
+                        accumulatedDrag += dragAmount
+                        if (accumulatedDrag >= collapseThreshold) {
+                            collapseTriggered = true
+                            onNavigateBack()
+                        }
+                    }
+                )
+            }
+    ) {
         // Background layer
         BlurredArtworkBackground(
             artworkUri = uiState.song?.artworkUri,
