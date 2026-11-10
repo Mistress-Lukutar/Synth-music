@@ -134,7 +134,8 @@ class ScriptedCustomTool(
                 return ScriptHostContext.HttpTextResponse(
                     status = response.code,
                     contentType = response.header("Content-Type").orEmpty(),
-                    text = readBody(response)
+                    text = readBody(response),
+                    finalUrl = response.request.url.toString()
                 )
             }
         }
@@ -157,7 +158,8 @@ class ScriptedCustomTool(
                 return ScriptHostContext.HttpTextResponse(
                     status = response.code,
                     contentType = response.header("Content-Type").orEmpty(),
-                    text = readBody(response)
+                    text = readBody(response),
+                    finalUrl = response.request.url.toString()
                 )
             }
         }

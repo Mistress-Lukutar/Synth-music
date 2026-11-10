@@ -58,7 +58,13 @@ interface ScriptHostContext {
     fun log(message: String)
 
     /** Text response summary used by the generic HTTP host functions. */
-    data class HttpTextResponse(val status: Int, val contentType: String, val text: String)
+    data class HttpTextResponse(
+        val status: Int,
+        val contentType: String,
+        val text: String,
+        /** The effective (post-redirect) request URL. */
+        val finalUrl: String = ""
+    )
 }
 
 /** Raised by host functions to abort the script with a clean message. */
@@ -202,7 +208,8 @@ object ToolScriptRunner {
                 cx, scope, linkedMapOf(
                     "status" to response.status,
                     "contentType" to response.contentType,
-                    "text" to response.text
+                    "text" to response.text,
+                    "finalUrl" to response.finalUrl
                 )
             )
         }
@@ -215,7 +222,8 @@ object ToolScriptRunner {
                 cx, scope, linkedMapOf(
                     "status" to response.status,
                     "contentType" to response.contentType,
-                    "text" to response.text
+                    "text" to response.text,
+                    "finalUrl" to response.finalUrl
                 )
             )
         }

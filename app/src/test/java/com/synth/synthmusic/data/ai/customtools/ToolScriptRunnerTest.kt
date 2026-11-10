@@ -14,7 +14,9 @@ import org.junit.Test
 /** Pure-JVM fake of the script host surface. */
 private class FakeHost(
     private val responseText: String = """{"hello": "world"}""",
-    private val secretValue: String? = null
+    private val secretValue: String? = null,
+    private val httpGetFinalUrl: String = "",
+    private val httpPostFinalUrl: String = ""
 ) : ScriptHostContext {
 
     val logs = mutableListOf<String>()
@@ -32,7 +34,7 @@ private class FakeHost(
         headers: Map<String, String>
     ): ScriptHostContext.HttpTextResponse {
         httpGetText(url, headers)
-        return ScriptHostContext.HttpTextResponse(200, "application/json", responseText)
+        return ScriptHostContext.HttpTextResponse(200, "application/json", responseText, httpGetFinalUrl)
     }
 
     override fun httpPost(
@@ -41,7 +43,7 @@ private class FakeHost(
         contentType: String?,
         headers: Map<String, String>
     ): ScriptHostContext.HttpTextResponse =
-        ScriptHostContext.HttpTextResponse(200, "application/json", responseText)
+        ScriptHostContext.HttpTextResponse(200, "application/json", responseText, httpPostFinalUrl)
 
     override fun downloadAudio(
         url: String,
@@ -221,5 +223,75 @@ class ToolScriptRunnerTest {
         }
         val outcome = ToolScriptRunner.run(script, complex, FakeHost())
         assertEquals("number:3:true:b:deep", outcome.content)
+    }
+
+    @Test
+    fun `ctx http get exposes finalUrl to sandboxed scripts`() {
+        val fakeFinalUrl = "https://mirror.example.com/search?q=x"
+        val host = FakeHost(responseText = "{}", httpGetFinalUrl = fakeFinalUrl)
+        val script = """
+            function execute(args, ctx) {
+                var response = ctx.http.get('https://example.com/api');
+                return response.finalUrl;
+            }
+        """.trimIndent()
+        val outcome = ToolScriptRunner.run(script, args(), host)
+        assertEquals(fakeFinalUrl, outcome.content)
+    }
+
+    @Test
+    fun `ctx http post exposes finalUrl to sandboxed scripts`() {
+        val fakeFinalUrl = "https://mirror.example.com/post-target"
+        val host = FakeHost(responseText = "{}", httpPostFinalUrl = fakeFinalUrl)
+        val script = """
+            function execute(args, ctx) {
+                var response = ctx.http.post('https://example.com/api', '{}', 'application/json');
+                return response.finalUrl;
+            }
+        """.trimIndent()
+        val outcome = ToolScriptRunner.run(script, args(), host)
+        assertEquals(fakeFinalUrl, outcome.content)
+    }
+
+    @Test
+    fun `ctx http get finalUrl defaults to empty string when not set`() {
+        // FakeHost with no httpGetFinalUrl → default "" in HttpTextResponse → script sees ""
+        val host = FakeHost(responseText = "{}")
+        val script = """
+            function execute(args, ctx) {
+                var response = ctx.http.get('https://example.com/api');
+                return response.finalUrl;
+            }
+        """.trimIndent()
+        val outcome = ToolScriptRunner.run(script, args(), host)
+        assertEquals("", outcome.content)
+    }
+
+    @Test
+    fun `ctx http post finalUrl defaults to empty string when not set`() {
+        // FakeHost with no httpPostFinalUrl → default "" in HttpTextResponse → script sees ""
+        val host = FakeHost(responseText = "{}")
+        val script = """
+            function execute(args, ctx) {
+                var response = ctx.http.post('https://example.com/api', '{}', 'application/json');
+                return response.finalUrl;
+            }
+        """.trimIndent()
+        val outcome = ToolScriptRunner.run(script, args(), host)
+        assertEquals("", outcome.content)
+    }
+
+    @Test
+    fun `ctx http get response carries all expected fields including finalUrl`() {
+        val fakeFinalUrl = "https://redirect.example.com/final"
+        val host = FakeHost(responseText = "body", httpGetFinalUrl = fakeFinalUrl)
+        val script = """
+            function execute(args, ctx) {
+                var response = ctx.http.get('https://example.com/api');
+                return [response.status, response.contentType, response.text, response.finalUrl].join('|');
+            }
+        """.trimIndent()
+        val outcome = ToolScriptRunner.run(script, args(), host)
+        assertEquals("200|application/json|body|${fakeFinalUrl}", outcome.content)
     }
 }
