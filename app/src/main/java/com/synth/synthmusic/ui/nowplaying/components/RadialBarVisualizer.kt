@@ -291,6 +291,9 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
     // opposite position and nowhere else.
     private val bandValues = FloatArray((barCount + 1) / 2)
 
+    // Scratch buffer for the circular smoothing pass (same size as bandValues).
+    private val bandScratch = FloatArray((barCount + 1) / 2)
+
     // Global AGC peak, the smoothed bass envelope and its slow average.
     // A single global peak preserves the spectral shape; per-band averages
     // flatten it and make every bar settle at the same level.
@@ -358,6 +361,23 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
                 val tilted = normalized * (1f + HighTiltStrength * (s.toFloat() / bandCount))
                 bandValues[s] = tilted.coerceAtMost(1f)
             }
+
+            // Pass 3: circular Gaussian smoothing along the band axis
+            // (kernel [1 4 6 4 1] / 16, indices wrap around). On the ring the
+            // highest band sits next to the lowest one at both seams; blending
+            // circular neighbours turns that hard bass-to-treble cut into a
+            // gradual ramp where the seam bars share each other's motion. In
+            // smooth spectral regions neighbours are already similar, so the
+            // spectrum shape is preserved.
+            for (s in 0 until bandCount) {
+                val m2 = bandValues[(s + bandCount - 2) % bandCount]
+                val m1 = bandValues[(s + bandCount - 1) % bandCount]
+                val p1 = bandValues[(s + 1) % bandCount]
+                val p2 = bandValues[(s + 2) % bandCount]
+                bandScratch[s] =
+                    (m2 + 4f * m1 + 6f * bandValues[s] + 4f * p1 + p2) / 16f
+            }
+            System.arraycopy(bandScratch, 0, bandValues, 0, bandCount)
 
             // Beat detection: fast bass envelope vs. its slow average, with a
             // refractory period so sustained bass does not machine-gun beats.
