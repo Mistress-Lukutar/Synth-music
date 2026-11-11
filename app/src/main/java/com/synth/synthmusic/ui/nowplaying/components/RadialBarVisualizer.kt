@@ -33,16 +33,20 @@ import com.synth.synthmusic.ui.theme.SynthMusicTheme
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.PI
+import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.sin
-import kotlin.random.Random
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.withRotation
 
 internal const val DefaultBarCount = 80
+
+// Natural logarithm of 2, used for time-based exponential decays.
+private const val LN2 = 0.6931472f
 
 internal const val DefaultSegmentsPerBar = 10
 private const val BarWidthRatio = 0.1f
@@ -57,13 +61,44 @@ private const val GlowAlphaThreshold = 0.05f
 private const val GlowBitmapScale = 0.5f
 private const val GlowBlurRadiusPx = 6f
 
-// Motion analysis constants.
-private const val AttackFactor = 0.80f
-private const val ReleaseFactor = 0.05f
-private const val BeatDecay = 0.9f
-private const val HistoryDecay = 0.992f
+// Motion analysis constants. All frame-based factors are tuned for the
+// Visualizer's maximum capture rate (~20 Hz).
+private const val AttackFactor = 0.5f
+private const val ReleaseFactor = 0.12f
 private const val MinBarHeight = 0.0f
 private const val MaxBarHeight = 2.0f
+
+// FFT byte pairs are signed values in [-128, 127]; the largest possible bin
+// magnitude is 128 * sqrt(2). Dividing by it maps magnitudes into [0, 1].
+private const val FftMagnitudeScale = 181.02f
+
+// Global automatic gain control: the whole spectrum is divided by a single
+// recent peak so the spectral shape (and thus contrast) is preserved.
+private const val PeakDecayHalfLifeSec = 2.5f
+private const val MinPeak = 0.02f
+// Below this frame maximum the music counts as silent and the ring falls
+// back to a slow idle breathing animation.
+private const val IdleThreshold = 0.01f
+// Exponent applied after AGC; > 1 pushes mid-level bands down and makes
+// loud hits punchier.
+private const val SpectrumGamma = 1.25f
+// High-frequency bins carry far less energy than bass; a gentle tilt keeps
+// the top of the spectrum visible without per-bar normalization.
+private const val HighTiltStrength = 1.2f
+
+// Beat detection on the smoothed bass envelope versus its slow average.
+private const val BassAttackFactor = 0.5f
+private const val BassReleaseFactor = 0.15f
+private const val BassAverageRatePerSec = 2.5f
+private const val BeatRatio = 1.35f
+private const val BeatMinEnvelope = 0.05f
+private const val BeatRefractorySec = 0.15f
+private const val BeatPulseHalfLifeSec = 0.12f
+// A beat boosts the bass bars (a fraction of the spectrum) plus a tiny
+// global nudge, instead of lighting a rotating sector.
+private const val BeatBandFraction = 0.15f
+private const val BeatBoost = 0.4f
+private const val BeatGlobalBoost = 0.08f
 
 // Ring layout ratios, measured from the canvas center to its edge.
 private const val RingStartRatio = 0.65f
@@ -228,102 +263,112 @@ fun RadialBarVisualizer(
 }
 
 /**
- * Converts raw FFT data into lively, music-reactive bar heights.
+ * Converts raw FFT data into music-reactive bar heights.
  *
- * The algorithm intentionally prioritizes visual movement over frequency
- * accuracy:
- * - Frequency bins are mapped to bars on a logarithmic scale so that bass
- *   energy does not overwhelm the first few columns.
- * - Each bar normalizes against its own recent peak, allowing every column
- *   around the circle to light up independently.
- * - Rotating waves and a slow noise drift guarantee constant motion even
- *   during sparse musical passages.
- * - Beat detection on the bass band triggers radial pulses that travel
- *   around the ring.
+ * The algorithm is driven by the actual spectrum:
+ * - Frequency bins are mapped to bars on a logarithmic scale and averaged
+ *   per band, then mirrored around the ring so bass sits on both sides.
+ * - A single global AGC peak keeps the spectral shape intact (per-bar
+ *   normalization would flatten it), with a gentle tilt boosting the
+ *   energy-starved high end.
+ * - Beat detection compares a smoothed bass envelope against its slow
+ *   average; a beat boosts the bass bars instead of a rotating sector.
+ * - During silence the ring falls back to a slow idle breathing animation.
  */
 private class AudioMotionAnalyzer(private val barCount: Int) {
     private val lock = Any()
 
     private val heights = FloatArray(barCount)
     private val targets = FloatArray(barCount)
-    private val historyMax = FloatArray(barCount) { 0.01f }
-    private val noisePhase = FloatArray(barCount) { Random.nextFloat() * 1000f }
+    private val bandValues = FloatArray((barCount + 1) / 2)
 
+    // Global AGC peak, the smoothed bass envelope and its slow average.
+    private var recentPeak = MinPeak
+    private var bassEnvelope = 0f
     private var bassAverage = 0f
     private var beatPulse = 0f
+    private var lastBeatTimeNs = 0L
+    private var lastFrameTimeNs = 0L
     private val startTimeNs = System.nanoTime()
 
     fun process(fft: ByteArray) {
         val binCount = fft.size / 2
-        if (binCount <= 0) return
+        if (binCount <= 1) return
 
+        val nowNs = System.nanoTime()
+        val dt = if (lastFrameTimeNs == 0L) {
+            0.05f
+        } else {
+            ((nowNs - lastFrameTimeNs) / 1_000_000_000f).coerceIn(0.005f, 0.25f)
+        }
+        lastFrameTimeNs = nowNs
+
+        // Normalized magnitudes in [0, 1]; the DC bin is skipped because it
+        // only carries an offset, not musical energy.
         val magnitudes = FloatArray(binCount)
-        for (i in 0 until binCount) {
+        for (i in 1 until binCount) {
             val real = fft[i * 2].toFloat()
             val imag = fft[i * 2 + 1].toFloat()
-            magnitudes[i] = hypot(real, imag)
+            magnitudes[i] = hypot(real, imag) / FftMagnitudeScale
         }
 
-        // Frequency-band energies used to drive intensity and detect beats.
-        val bass = averageMagnitude(magnitudes, 0, binCount / 32)
-        val lowMid = averageMagnitude(magnitudes, binCount / 32, binCount / 16)
-        val mid = averageMagnitude(magnitudes, binCount / 16, binCount / 8)
-        val highMid = averageMagnitude(magnitudes, binCount / 8, binCount / 4)
-        val high = averageMagnitude(magnitudes, binCount / 4, binCount / 2)
-
-        // Beat detection: a pronounced spike in the bass band above its moving average.
-        bassAverage = bassAverage * 0.94f + bass * 0.06f
-        val isBeat = bass > bassAverage * 1.6f && bass > 0.08f
-        if (isBeat) {
-            beatPulse = 1f
-        }
-
-        val elapsedSec = (System.nanoTime() - startTimeNs) / 1_000_000_000f
-        val energy = (bass * 2f + lowMid * 1.3f + mid * 0.7f + highMid * 0.4f + high * 0.2f)
-            .coerceIn(0f, 1f)
-        val rotationSpeed = 0.7f + energy * 2.8f
+        val bass = averageMagnitude(magnitudes, 1, (binCount / 32).coerceAtLeast(2))
 
         synchronized(lock) {
+            // Per-band energies over half the bars; the ring mirrors them.
+            val half = bandValues.size
+            var frameMax = 0f
+            for (s in 0 until half) {
+                val startBin = logBin(s, half, binCount)
+                val endBin = logBin(s + 1, half, binCount)
+                var value = averageMagnitude(magnitudes, startBin, endBin)
+                value *= 1f + HighTiltStrength * (s.toFloat() / half)
+                bandValues[s] = value
+                if (value > frameMax) frameMax = value
+            }
+
+            // Global AGC: instant attack, slow exponential release.
+            val peakDecay = exp(-dt * LN2 / PeakDecayHalfLifeSec)
+            recentPeak = max(recentPeak * peakDecay, frameMax).coerceAtLeast(MinPeak)
+
+            // Beat detection: fast bass envelope vs. its slow average, with a
+            // refractory period so sustained bass does not machine-gun beats.
+            bassEnvelope += (bass - bassEnvelope) *
+                if (bass > bassEnvelope) BassAttackFactor else BassReleaseFactor
+            bassAverage += (bass - bassAverage) *
+                (BassAverageRatePerSec * dt).coerceAtMost(0.5f)
+            val isBeat = bassEnvelope > bassAverage * BeatRatio + BeatMinEnvelope &&
+                nowNs - lastBeatTimeNs > (BeatRefractorySec * 1_000_000_000f).toLong()
+            if (isBeat) {
+                beatPulse = 1f
+                lastBeatTimeNs = nowNs
+            }
+            beatPulse *= exp(-dt * LN2 / BeatPulseHalfLifeSec)
+
+            val idle = frameMax < IdleThreshold
+            val elapsedSec = (nowNs - startTimeNs) / 1_000_000_000f
+            val beatBandCount = max(1, (half * BeatBandFraction).toInt())
+
             for (i in 0 until barCount) {
+                val spectrumIndex = if (i < half) i else barCount - 1 - i
                 val angle = (i.toFloat() / barCount) * 2f * PI.toFloat()
 
-                // Logarithmically mapped frequency energy for this bar.
-                val startBin = logBin(i, barCount, binCount)
-                val endBin = logBin(i + 1, barCount, binCount)
-                val freqEnergy = maxMagnitude(magnitudes, startBin, endBin)
-
-                // Per-bar normalization so quiet frequency ranges can still move.
-                historyMax[i] = max(historyMax[i] * HistoryDecay, freqEnergy)
-                val normalized = if (historyMax[i] > 0.001f) {
-                    freqEnergy / historyMax[i]
+                val target = if (idle) {
+                    // Slow breathing so the ring never looks dead.
+                    0.06f + 0.05f * sin(elapsedSec * 1.2f + spectrumIndex * 0.35f)
                 } else {
-                    0f
+                    val normalized = (bandValues[spectrumIndex] / recentPeak).pow(SpectrumGamma)
+                    val beatBoost = if (spectrumIndex < beatBandCount) {
+                        BeatBoost * (1f - spectrumIndex.toFloat() / beatBandCount)
+                    } else {
+                        0f
+                    }
+                    normalized + beatBoost * beatPulse + BeatGlobalBoost * beatPulse
                 }
-
-                // Rotating waves around the circle.
-                val wave1 = sin(angle * 3f - elapsedSec * rotationSpeed * 4f)
-                val wave2 = sin(angle * 5f + elapsedSec * rotationSpeed * 2.5f)
-                val wave3 = sin(angle * 8f - elapsedSec * rotationSpeed * 6f)
-                val wave = (wave1 * 0.4f + wave2 * 0.3f + wave3 * 0.2f + 0.9f) / 1.8f
-
-                // Slow per-bar noise drift.
-                noisePhase[i] += 0.015f + energy * 0.025f
-                val noise = (sin(noisePhase[i]) + 1f) * 0.5f
-
-                // Beat pulse travels around the ring as a wave.
-                val beatWave = sin(angle - elapsedSec * rotationSpeed * 3f)
-                val beatEffect = beatPulse * (0.55f + beatWave * 0.45f)
-
-                val target = MinBarHeight +
-                    normalized * 0.45f +
-                    wave * 0.25f +
-                    beatEffect * 0.55f +
-                    noise * 0.10f
                 targets[i] = target.coerceIn(MinBarHeight, MaxBarHeight)
             }
 
-            // Decay the global beat pulse and smooth each bar toward its target.
-            beatPulse *= BeatDecay
+            // Smooth each bar toward its target with asymmetric factors.
             for (i in 0 until barCount) {
                 val diff = targets[i] - heights[i]
                 val factor = if (diff > 0) AttackFactor else ReleaseFactor
@@ -351,16 +396,6 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
             sum += magnitudes[i]
         }
         return sum / (to - from)
-    }
-
-    private fun maxMagnitude(magnitudes: FloatArray, start: Int, end: Int): Float {
-        val from = start.coerceIn(0, magnitudes.size)
-        val to = end.coerceIn(from, magnitudes.size)
-        var max = 0f
-        for (i in from until to) {
-            if (magnitudes[i] > max) max = magnitudes[i]
-        }
-        return max
     }
 
     /**
