@@ -89,7 +89,7 @@ private const val HighTiltStrength = 1.0f
 // The Visualizer FFT extends to Nyquist (typically 24 kHz), but lossy sources
 // low-pass well below that and musical energy above ~15 kHz is negligible;
 // bands mapped there never move. The band grid is capped at this frequency.
-private const val MaxVisualFreqHz = 12000f
+private const val MaxVisualFreqHz = 10000f
 
 // Beat detection on the smoothed bass envelope versus its slow average.
 private const val BassAttackFactor = 0.5f
