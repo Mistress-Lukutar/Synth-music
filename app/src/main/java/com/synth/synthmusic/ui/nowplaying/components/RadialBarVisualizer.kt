@@ -35,7 +35,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.hypot
-import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -63,8 +62,8 @@ private const val GlowBlurRadiusPx = 6f
 
 // Motion analysis constants. All frame-based factors are tuned for the
 // Visualizer's maximum capture rate (~20 Hz).
-private const val AttackFactor = 0.5f
-private const val ReleaseFactor = 0.12f
+private const val AttackFactor = 0.6f
+private const val ReleaseFactor = 0.18f
 private const val MinBarHeight = 0.0f
 private const val MaxBarHeight = 2.0f
 
@@ -79,13 +78,13 @@ private const val MinPeak = 0.02f
 // Below this frame maximum the music counts as silent and the ring falls
 // back to a slow idle breathing animation.
 private const val IdleThreshold = 0.01f
-// Exponent applied per-band after normalisation; values > 1 compress quiet
-// bands harder than loud ones, which exaggerates the bass-vs-treble imbalance
-// when a global peak is used.  Keeping it at 1.0 preserves spectral balance.
-private const val SpectrumGamma = 1.0f
-// High-frequency bins carry far less energy than bass; a gentle tilt keeps
-// the top of the spectrum visible without per-bar normalization.
-private const val HighTiltStrength = 0.3f
+// Exponent applied after normalisation; > 1 pushes mid-level bands down and
+// makes loud hits punchier.
+private const val SpectrumGamma = 1.2f
+// High-frequency bands carry far less energy than bass. Applied AFTER the AGC
+// normalisation so the tilt lifts the top end for display without inflating
+// the AGC peak reference (a pre-normalisation tilt would crush the bass).
+private const val HighTiltStrength = 1.0f
 
 // Beat detection on the smoothed bass envelope versus its slow average.
 private const val BassAttackFactor = 0.5f
@@ -283,12 +282,10 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
     private val targets = FloatArray(barCount)
     private val bandValues = FloatArray((barCount + 1) / 2)
 
-    // Per-band rolling averages for normalisation; each band is divided by its
-    // own historical average so a spike in one frequency range does not suppress
-    // the others.  Decay factor tuned to ~2.5 s half-life (same as old AGC).
-    private val bandAverages = FloatArray(bandValues.size) { MinPeak }
-
-    // The smoothed bass envelope and its slow average.
+    // Global AGC peak, the smoothed bass envelope and its slow average.
+    // A single global peak preserves the spectral shape; per-band averages
+    // flatten it and make every bar settle at the same level.
+    private var recentPeak = MinPeak
     private var bassEnvelope = 0f
     private var bassAverage = 0f
     private var beatPulse = 0f
@@ -320,23 +317,29 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
         val bass = averageMagnitude(magnitudes, 1, (binCount / 32).coerceAtLeast(2))
 
         synchronized(lock) {
-            // Per-band energies over half the bars; the ring mirrors them.
-            // Each band is normalised against its own rolling average so that a
-            // transient spike in one frequency range does not suppress others.
-            val avgDecay = exp(-dt * LN2 / PeakDecayHalfLifeSec)
+            // Pass 1: raw per-band energies over half the bars; the ring
+            // mirrors them. The AGC peak is taken from these UNTILTED values.
             val half = bandValues.size
+            var frameMax = 0f
             for (s in 0 until half) {
                 val startBin = logBin(s, half, binCount)
-                val endBin = logBin(s + 1, half, binCount)
-                var value = averageMagnitude(magnitudes, startBin, endBin)
-                // Per-band normalisation: ratio > 1 means louder than usual, < 1 means quieter.
-                val normAvg = bandAverages[s].coerceAtLeast(MinPeak)
-                value = (value / normAvg).coerceAtMost(3f)
-                // Gentle tilt so high-frequency bins stay visible.
-                value *= 1f + HighTiltStrength * (s.toFloat() / half)
+                var endBin = logBin(s + 1, half, binCount)
+                // Crowded low-frequency bands can map to the same bin; give
+                // every band at least one bin so none of them reads zero.
+                if (endBin <= startBin) endBin = (startBin + 1).coerceAtMost(binCount)
+                val value = averageMagnitude(magnitudes, startBin, endBin)
                 bandValues[s] = value
-                // Exponential moving average for the next frame's normalisation reference.
-                bandAverages[s] = bandAverages[s] * avgDecay + value * (1f - avgDecay)
+                if (value > frameMax) frameMax = value
+            }
+
+            // Pass 2: global AGC (instant attack, slow exponential release),
+            // then tilt the top of the spectrum for display.
+            val peakDecay = exp(-dt * LN2 / PeakDecayHalfLifeSec)
+            recentPeak = max(recentPeak * peakDecay, frameMax).coerceAtLeast(MinPeak)
+            for (s in 0 until half) {
+                val normalized = (bandValues[s] / recentPeak).coerceIn(0f, 1f)
+                val tilted = normalized * (1f + HighTiltStrength * (s.toFloat() / half))
+                bandValues[s] = tilted.coerceAtMost(1f)
             }
 
             // Beat detection: fast bass envelope vs. its slow average, with a
@@ -411,16 +414,20 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
     }
 
     /**
-     * Maps a bar index to an FFT bin using a logarithmic frequency scale.
-     * Lower indices cover fewer low-frequency bins; higher indices cover
-     * progressively wider high-frequency ranges.
+     * Maps a band index to an FFT bin on a logarithmic frequency scale: bands
+     * are evenly spaced in log-frequency, so every band covers a constant
+     * octave interval. Starting from bin 2 keeps DC leakage out of the mapping
+     * and stops the lowest band from swallowing the whole low-mid range (the
+     * previous curve mapped band 0 to roughly 0–1 kHz, which pinned the first
+     * bars of the ring at maximum almost permanently).
      */
-    private fun logBin(bar: Int, totalBars: Int, totalBins: Int): Int {
-        if (bar <= 0) return 0
-        if (bar >= totalBars) return totalBins
-        val t = bar.toFloat() / totalBars
-        val logT = ln(1f + t * 9f) / ln(10f)
-        return (logT * totalBins).toInt().coerceIn(0, totalBins)
+    private fun logBin(band: Int, totalBands: Int, totalBins: Int): Int {
+        if (band <= 0) return 0
+        if (band >= totalBands) return totalBins
+        val minBin = 2f
+        val t = band.toFloat() / totalBands
+        val bin = minBin * (totalBins / minBin).pow(t)
+        return bin.toInt().coerceIn(0, totalBins)
     }
 }
 
