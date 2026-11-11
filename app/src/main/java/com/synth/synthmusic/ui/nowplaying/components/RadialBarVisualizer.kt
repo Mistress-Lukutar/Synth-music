@@ -90,12 +90,26 @@ private val glowBitmapCache = mutableMapOf<Pair<Int, Int>, Bitmap>()
 /**
  * Returns a reusable Bitmap for the glow layer at the requested full-size
  * dimensions. The bitmap is created at [GlowBitmapScale] resolution and cached
- * by its scaled size to avoid allocations on every frame.
+ * by its scaled size to avoid allocations on every frame. Only the most
+ * recently requested size is kept: stale entries (e.g. after a resize or
+ * configuration change) are recycled instead of leaking.
  */
 private fun obtainGlowBitmap(fullWidth: Int, fullHeight: Int): Bitmap {
     val scaledWidth = (fullWidth * GlowBitmapScale).toInt().coerceAtLeast(1)
     val scaledHeight = (fullHeight * GlowBitmapScale).toInt().coerceAtLeast(1)
     val key = scaledWidth to scaledHeight
+
+    val staleIterator = glowBitmapCache.entries.iterator()
+    while (staleIterator.hasNext()) {
+        val entry = staleIterator.next()
+        if (entry.key != key) {
+            staleIterator.remove()
+            if (!entry.value.isRecycled) {
+                entry.value.recycle()
+            }
+        }
+    }
+
     return glowBitmapCache.getOrPut(key) {
         createBitmap(scaledWidth, scaledHeight)
     }
