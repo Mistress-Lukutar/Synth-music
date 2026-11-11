@@ -89,7 +89,7 @@ private const val HighTiltStrength = 1.0f
 // The Visualizer FFT extends to Nyquist (typically 24 kHz), but lossy sources
 // low-pass well below that and musical energy above ~15 kHz is negligible;
 // bands mapped there never move. The band grid is capped at this frequency.
-private const val MaxVisualFreqHz = 15000f
+private const val MaxVisualFreqHz = 12000f
 
 // Beat detection on the smoothed bass envelope versus its slow average.
 private const val BassAttackFactor = 0.5f
@@ -271,8 +271,9 @@ fun RadialBarVisualizer(
  * Converts raw FFT data into music-reactive bar heights.
  *
  * The algorithm is driven by the actual spectrum:
- * - Frequency bins are mapped to bars on a logarithmic scale and averaged
- *   per band, then mirrored around the ring so bass sits on both sides.
+ * - Frequency bins are mapped to bands on a logarithmic scale and averaged,
+ *   then laid around the ring with 180-degree rotational symmetry: every bar
+ *   repeats only at its diametrically opposite position.
  * - A single global AGC peak keeps the spectral shape intact (per-bar
  *   normalization would flatten it), with a gentle tilt boosting the
  *   energy-starved high end.
@@ -285,6 +286,9 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
 
     private val heights = FloatArray(barCount)
     private val targets = FloatArray(barCount)
+    // Distinct band values: half the ring. Bars are mapped with 180-degree
+    // rotational symmetry, so each bar repeats only on its diametrically
+    // opposite position and nowhere else.
     private val bandValues = FloatArray((barCount + 1) / 2)
 
     // Global AGC peak, the smoothed bass envelope and its slow average.
@@ -329,13 +333,14 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
         val bass = averageMagnitude(magnitudes, 1, (binCount / 32).coerceAtLeast(2))
 
         synchronized(lock) {
-            // Pass 1: raw per-band energies over half the bars; the ring
-            // mirrors them. The AGC peak is taken from these UNTILTED values.
-            val half = bandValues.size
+            // Pass 1: raw per-band energies for half the ring; every bar
+            // repeats only at its diametrically opposite position. The AGC
+            // peak is taken from these UNTILTED values.
+            val bandCount = bandValues.size
             var frameMax = 0f
-            for (s in 0 until half) {
-                val startBin = logBin(s, half, maxBin)
-                var endBin = logBin(s + 1, half, maxBin)
+            for (s in 0 until bandCount) {
+                val startBin = logBin(s, bandCount, maxBin)
+                var endBin = logBin(s + 1, bandCount, maxBin)
                 // Crowded low-frequency bands can map to the same bin; give
                 // every band at least one bin so none of them reads zero.
                 if (endBin <= startBin) endBin = (startBin + 1).coerceAtMost(maxBin)
@@ -348,9 +353,9 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
             // then tilt the top of the spectrum for display.
             val peakDecay = exp(-dt * LN2 / PeakDecayHalfLifeSec)
             recentPeak = max(recentPeak * peakDecay, frameMax).coerceAtLeast(MinPeak)
-            for (s in 0 until half) {
+            for (s in 0 until bandCount) {
                 val normalized = (bandValues[s] / recentPeak).coerceIn(0f, 1f)
-                val tilted = normalized * (1f + HighTiltStrength * (s.toFloat() / half))
+                val tilted = normalized * (1f + HighTiltStrength * (s.toFloat() / bandCount))
                 bandValues[s] = tilted.coerceAtMost(1f)
             }
 
@@ -372,18 +377,21 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
             // quiet and the ring falls back to a slow breathing animation.
             val idle = bassEnvelope < IdleThreshold
             val elapsedSec = (nowNs - startTimeNs) / 1_000_000_000f
-            val beatBandCount = max(1, (half * BeatBandFraction).toInt())
+            val beatBandCount = max(1, (bandCount * BeatBandFraction).toInt())
 
+            // 180-degree rotational mapping: bar i and bar i + barCount/2
+            // share band (i mod half) and are each other's only repeat, so
+            // the spectrum ascends continuously clockwise around the ring.
+            val half = max(1, barCount / 2)
             for (i in 0 until barCount) {
-                val spectrumIndex = if (i < half) i else barCount - 1 - i
-                val angle = (i.toFloat() / barCount) * 2f * PI.toFloat()
+                val spectrumIndex = i % half
 
                 val target = if (idle) {
                     // Slow breathing so the ring never looks dead.
                     0.06f + 0.05f * sin(elapsedSec * 1.2f + spectrumIndex * 0.35f)
                 } else {
-                    // bandValues[spectrumIndex] is already normalised against its own
-                    // rolling average; apply gamma for punch without crushing quiet bands.
+                    // bandValues is already AGC-normalised and tilted; gamma
+                    // adds punch without crushing quiet bands.
                     val normalized = bandValues[spectrumIndex].pow(SpectrumGamma)
                     val beatBoost = if (spectrumIndex < beatBandCount) {
                         BeatBoost * (1f - spectrumIndex.toFloat() / beatBandCount)
