@@ -79,12 +79,13 @@ private const val MinPeak = 0.02f
 // Below this frame maximum the music counts as silent and the ring falls
 // back to a slow idle breathing animation.
 private const val IdleThreshold = 0.01f
-// Exponent applied after AGC; > 1 pushes mid-level bands down and makes
-// loud hits punchier.
-private const val SpectrumGamma = 1.25f
+// Exponent applied per-band after normalisation; values > 1 compress quiet
+// bands harder than loud ones, which exaggerates the bass-vs-treble imbalance
+// when a global peak is used.  Keeping it at 1.0 preserves spectral balance.
+private const val SpectrumGamma = 1.0f
 // High-frequency bins carry far less energy than bass; a gentle tilt keeps
 // the top of the spectrum visible without per-bar normalization.
-private const val HighTiltStrength = 1.2f
+private const val HighTiltStrength = 0.3f
 
 // Beat detection on the smoothed bass envelope versus its slow average.
 private const val BassAttackFactor = 0.5f
@@ -282,8 +283,12 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
     private val targets = FloatArray(barCount)
     private val bandValues = FloatArray((barCount + 1) / 2)
 
-    // Global AGC peak, the smoothed bass envelope and its slow average.
-    private var recentPeak = MinPeak
+    // Per-band rolling averages for normalisation; each band is divided by its
+    // own historical average so a spike in one frequency range does not suppress
+    // the others.  Decay factor tuned to ~2.5 s half-life (same as old AGC).
+    private val bandAverages = FloatArray(bandValues.size) { MinPeak }
+
+    // The smoothed bass envelope and its slow average.
     private var bassEnvelope = 0f
     private var bassAverage = 0f
     private var beatPulse = 0f
@@ -316,20 +321,23 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
 
         synchronized(lock) {
             // Per-band energies over half the bars; the ring mirrors them.
+            // Each band is normalised against its own rolling average so that a
+            // transient spike in one frequency range does not suppress others.
+            val avgDecay = exp(-dt * LN2 / PeakDecayHalfLifeSec)
             val half = bandValues.size
-            var frameMax = 0f
             for (s in 0 until half) {
                 val startBin = logBin(s, half, binCount)
                 val endBin = logBin(s + 1, half, binCount)
                 var value = averageMagnitude(magnitudes, startBin, endBin)
+                // Per-band normalisation: ratio > 1 means louder than usual, < 1 means quieter.
+                val normAvg = bandAverages[s].coerceAtLeast(MinPeak)
+                value = (value / normAvg).coerceAtMost(3f)
+                // Gentle tilt so high-frequency bins stay visible.
                 value *= 1f + HighTiltStrength * (s.toFloat() / half)
                 bandValues[s] = value
-                if (value > frameMax) frameMax = value
+                // Exponential moving average for the next frame's normalisation reference.
+                bandAverages[s] = bandAverages[s] * avgDecay + value * (1f - avgDecay)
             }
-
-            // Global AGC: instant attack, slow exponential release.
-            val peakDecay = exp(-dt * LN2 / PeakDecayHalfLifeSec)
-            recentPeak = max(recentPeak * peakDecay, frameMax).coerceAtLeast(MinPeak)
 
             // Beat detection: fast bass envelope vs. its slow average, with a
             // refractory period so sustained bass does not machine-gun beats.
@@ -345,7 +353,9 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
             }
             beatPulse *= exp(-dt * LN2 / BeatPulseHalfLifeSec)
 
-            val idle = frameMax < IdleThreshold
+            // Silence detection: when the bass envelope is near zero the track is
+            // quiet and the ring falls back to a slow breathing animation.
+            val idle = bassEnvelope < IdleThreshold
             val elapsedSec = (nowNs - startTimeNs) / 1_000_000_000f
             val beatBandCount = max(1, (half * BeatBandFraction).toInt())
 
@@ -357,7 +367,9 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
                     // Slow breathing so the ring never looks dead.
                     0.06f + 0.05f * sin(elapsedSec * 1.2f + spectrumIndex * 0.35f)
                 } else {
-                    val normalized = (bandValues[spectrumIndex] / recentPeak).pow(SpectrumGamma)
+                    // bandValues[spectrumIndex] is already normalised against its own
+                    // rolling average; apply gamma for punch without crushing quiet bands.
+                    val normalized = bandValues[spectrumIndex].pow(SpectrumGamma)
                     val beatBoost = if (spectrumIndex < beatBandCount) {
                         BeatBoost * (1f - spectrumIndex.toFloat() / beatBandCount)
                     } else {
