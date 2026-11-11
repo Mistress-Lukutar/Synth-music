@@ -86,6 +86,11 @@ private const val SpectrumGamma = 1.2f
 // the AGC peak reference (a pre-normalisation tilt would crush the bass).
 private const val HighTiltStrength = 1.0f
 
+// The Visualizer FFT extends to Nyquist (typically 24 kHz), but lossy sources
+// low-pass well below that and musical energy above ~15 kHz is negligible;
+// bands mapped there never move. The band grid is capped at this frequency.
+private const val MaxVisualFreqHz = 15000f
+
 // Beat detection on the smoothed bass envelope versus its slow average.
 private const val BassAttackFactor = 0.5f
 private const val BassReleaseFactor = 0.15f
@@ -223,7 +228,7 @@ fun RadialBarVisualizer(
                             samplingRate: Int
                         ) {
                             fft ?: return
-                            analyzer.process(fft)
+                            analyzer.process(fft, samplingRate)
                         }
                     },
                     maxRate,
@@ -293,9 +298,16 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
     private var lastFrameTimeNs = 0L
     private val startTimeNs = System.nanoTime()
 
-    fun process(fft: ByteArray) {
+    fun process(fft: ByteArray, samplingRateMilliHz: Int) {
         val binCount = fft.size / 2
         if (binCount <= 1) return
+
+        // Cap the logarithmic band grid at MaxVisualFreqHz instead of Nyquist:
+        // the top of the spectrum carries no usable musical energy and bands
+        // mapped there would never move. The capture rate arrives in mHz.
+        val nyquistHz = (samplingRateMilliHz / 2000f).takeIf { it > 0f } ?: 24000f
+        val maxBin = (MaxVisualFreqHz * binCount / nyquistHz).toInt()
+            .coerceIn(16, binCount)
 
         val nowNs = System.nanoTime()
         val dt = if (lastFrameTimeNs == 0L) {
@@ -322,11 +334,11 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
             val half = bandValues.size
             var frameMax = 0f
             for (s in 0 until half) {
-                val startBin = logBin(s, half, binCount)
-                var endBin = logBin(s + 1, half, binCount)
+                val startBin = logBin(s, half, maxBin)
+                var endBin = logBin(s + 1, half, maxBin)
                 // Crowded low-frequency bands can map to the same bin; give
                 // every band at least one bin so none of them reads zero.
-                if (endBin <= startBin) endBin = (startBin + 1).coerceAtMost(binCount)
+                if (endBin <= startBin) endBin = (startBin + 1).coerceAtMost(maxBin)
                 val value = averageMagnitude(magnitudes, startBin, endBin)
                 bandValues[s] = value
                 if (value > frameMax) frameMax = value
@@ -419,15 +431,16 @@ private class AudioMotionAnalyzer(private val barCount: Int) {
      * octave interval. Starting from bin 2 keeps DC leakage out of the mapping
      * and stops the lowest band from swallowing the whole low-mid range (the
      * previous curve mapped band 0 to roughly 0–1 kHz, which pinned the first
-     * bars of the ring at maximum almost permanently).
+     * bars of the ring at maximum almost permanently). The grid ends at
+     * [maxBin], which is capped below Nyquist — see [MaxVisualFreqHz].
      */
-    private fun logBin(band: Int, totalBands: Int, totalBins: Int): Int {
+    private fun logBin(band: Int, totalBands: Int, maxBin: Int): Int {
         if (band <= 0) return 0
-        if (band >= totalBands) return totalBins
+        if (band >= totalBands) return maxBin
         val minBin = 2f
         val t = band.toFloat() / totalBands
-        val bin = minBin * (totalBins / minBin).pow(t)
-        return bin.toInt().coerceIn(0, totalBins)
+        val bin = minBin * (maxBin / minBin).pow(t)
+        return bin.toInt().coerceIn(0, maxBin)
     }
 }
 
