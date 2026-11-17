@@ -8,13 +8,21 @@ import com.synth.synthmusic.domain.repository.SongRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
+import org.jaudiotagger.audio.flac.metadatablock.MetadataBlockDataPicture
+import org.jaudiotagger.tag.Tag
+import org.jaudiotagger.tag.flac.FlacTag
 import org.jaudiotagger.tag.images.StandardArtwork
+import org.jaudiotagger.tag.reference.PictureTypes
+import org.jaudiotagger.tag.vorbiscomment.VorbisCommentFieldKey
+import org.jaudiotagger.tag.vorbiscomment.VorbisCommentTag
+import org.jaudiotagger.tag.vorbiscomment.util.Base64Coder
 import android.net.Uri
 import java.io.ByteArrayOutputStream
 import java.io.File
 
 /**
- * Writes a new artwork image into an MP3 file's ID3 tags and updates the local cache.
+ * Writes a new artwork image into an audio file's tags (ID3 for MP3, FLAC/Ogg
+ * Vorbis picture blocks otherwise) and updates the local cache.
  *
  * The image is down-sampled to a maximum dimension of 1200px and compressed as JPEG
  * to avoid bloating the audio file.
@@ -26,21 +34,17 @@ class WriteArtworkToMp3UseCase(
 
     suspend operator fun invoke(song: Song, imageBytes: ByteArray): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            val scaledBytes = scaleAndCompress(imageBytes)
+            val image = scaleAndCompress(imageBytes)
             val audioFile = AudioFileIO.read(File(song.path))
             val tag = audioFile.tagOrCreateAndSetDefault
 
             tag.deleteArtworkField()
-            val artwork = StandardArtwork()
-            artwork.binaryData = scaledBytes
-            artwork.mimeType = "image/jpeg"
-            artwork.pictureType = org.jaudiotagger.tag.reference.PictureTypes.DEFAULT_ID
-            tag.setField(artwork)
+            addArtworkField(tag, image)
 
             AudioFileIO.write(audioFile)
 
             // Update local cache so the UI picks it up immediately
-            val coverFile = coverCache.saveSongArtwork(song.id, scaledBytes)
+            val coverFile = coverCache.saveSongArtwork(song.id, image.bytes)
             songRepository.updateSongArtwork(song.id, Uri.fromFile(coverFile).toString())
         }
     }
@@ -82,7 +86,59 @@ class WriteArtworkToMp3UseCase(
         }
     }
 
-    private fun scaleAndCompress(bytes: ByteArray): ByteArray {
+    /**
+     * Builds and sets the artwork field without jaudiotagger's Artwork-based path.
+     *
+     * That path derives picture dimensions through `javax.imageio`, which does not
+     * exist on Android ("Failed resolution of: Ljavax/imageio/ImageIO"), so FLAC and
+     * Ogg Vorbis picture fields are constructed directly with dimensions decoded by
+     * [scaleAndCompress] instead. ID3/Mp4 tags embed the raw bytes as-is.
+     */
+    private fun addArtworkField(tag: Tag, image: ScaledImage) {
+        when (tag) {
+            is FlacTag -> tag.setField(
+                tag.createArtworkField(
+                    image.bytes,
+                    PictureTypes.DEFAULT_ID,
+                    JPEG_MIME_TYPE,
+                    "",
+                    image.width,
+                    image.height,
+                    0,
+                    0
+                )
+            )
+            is VorbisCommentTag -> {
+                val picture = MetadataBlockDataPicture(
+                    image.bytes,
+                    PictureTypes.DEFAULT_ID,
+                    JPEG_MIME_TYPE,
+                    "",
+                    image.width,
+                    image.height,
+                    0,
+                    0
+                )
+                tag.setField(
+                    tag.createField(
+                        VorbisCommentFieldKey.METADATA_BLOCK_PICTURE,
+                        String(Base64Coder.encode(picture.rawContent))
+                    )
+                )
+            }
+            else -> tag.setField(StandardArtwork().apply {
+                binaryData = image.bytes
+                mimeType = JPEG_MIME_TYPE
+                pictureType = PictureTypes.DEFAULT_ID
+            })
+        }
+    }
+
+    /**
+     * Down-samples to a maximum dimension of 1200px and compresses as JPEG,
+     * keeping the original pixel dimensions for picture metadata fields.
+     */
+    private fun scaleAndCompress(bytes: ByteArray): ScaledImage {
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
 
@@ -98,11 +154,25 @@ class WriteArtworkToMp3UseCase(
             this.inSampleSize = inSampleSize
         }
         val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
-            ?: return bytes
+            ?: return ScaledImage(
+                bytes,
+                options.outWidth.coerceAtLeast(0),
+                options.outHeight.coerceAtLeast(0)
+            )
 
-        return ByteArrayOutputStream().use { stream ->
+        val compressedBytes = ByteArrayOutputStream().use { stream ->
             bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
             stream.toByteArray()
         }
+        val width = if (options.outWidth > 0) options.outWidth else bitmap.width
+        val height = if (options.outHeight > 0) options.outHeight else bitmap.height
+        return ScaledImage(compressedBytes, width, height)
+    }
+
+    /** Re-encoded image bytes paired with the source picture dimensions. */
+    private data class ScaledImage(val bytes: ByteArray, val width: Int, val height: Int)
+
+    private companion object {
+        const val JPEG_MIME_TYPE = "image/jpeg"
     }
 }

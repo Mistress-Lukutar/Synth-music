@@ -24,6 +24,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.jaudiotagger.tag.TagOptionSingleton
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
@@ -38,6 +39,9 @@ class MusicApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // jaudiotagger must resolve artwork through Android handlers; the desktop
+        // handlers depend on javax.imageio, which does not exist on Android.
+        TagOptionSingleton.getInstance().setAndroid(true)
         initImageLoader()
         startKoin {
             androidContext(this@MusicApplication)
