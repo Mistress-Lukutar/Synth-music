@@ -14,7 +14,9 @@ interface AlbumDao {
     @Query("SELECT * FROM albums ORDER BY title COLLATE NOCASE ASC")
     fun observeAll(): Flow<List<AlbumEntity>>
 
-    @Query("SELECT * FROM albums WHERE artist = :artist ORDER BY title COLLATE NOCASE ASC")
+    // Oldest albums first; albums without a known year (year = 0) go last,
+    // ties are broken alphabetically. The (year = 0) boolean sorts 0 before 1.
+    @Query("SELECT * FROM albums WHERE artist = :artist ORDER BY (year = 0), year ASC, title COLLATE NOCASE ASC")
     fun observeByArtist(artist: String): Flow<List<AlbumEntity>>
 
     @Query("SELECT * FROM albums WHERE id = :albumId")
