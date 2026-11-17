@@ -240,7 +240,7 @@ fun NowPlayingContent(
                 RotatingVinyl(
                     artworkUri = uiState.song?.artworkUri,
                     isPlaying = uiState.isPlaying,
-                    size = 230.dp,
+                    size = 207.dp,
                     coverColors = coverColors
                 )
             }

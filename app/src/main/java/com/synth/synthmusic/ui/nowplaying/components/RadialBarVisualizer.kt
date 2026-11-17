@@ -48,10 +48,14 @@ internal const val DefaultBarCount = 80
 private const val LN2 = 0.6931472f
 
 internal const val DefaultSegmentsPerBar = 10
-private const val BarWidthRatio = 0.1f
+// Fixed bar thickness, density-independent.
+private val BarWidth = 2.dp
 private const val FirstSegmentBrightness = 1.0f
 private const val OuterSegmentMaxAlpha = 0.4f
 private const val SaturationBoost = 1.5f
+// Minimum HSV brightness for the bar accent: palette colors from dark covers
+// would otherwise melt into the dark blurred-artwork background.
+private const val BrightnessFloor = 0.75f
 
 // Glow constants.
 private const val GlowSizeMultiplier = 6.5f
@@ -105,10 +109,13 @@ private const val BeatBandFraction = 0.15f
 private const val BeatBoost = 0.4f
 private const val BeatGlobalBoost = 0.08f
 
-// Ring layout ratios, measured from the canvas center to its edge.
-private const val RingStartRatio = 0.65f
-private const val Part1EndRatio = 0.72f
-private const val Part2EndRatio = 0.74f
+// Ring layout ratios, measured from the canvas center to its edge. The ring
+// starts just outside the vinyl disc (207dp diameter on NowPlayingScreen,
+// roughly half the canvas width) and extends to the canvas edge, so shrinking
+// the disc requires retuning these.
+private const val RingStartRatio = 0.59f
+private const val Part1EndRatio = 0.66f
+private const val Part2EndRatio = 0.68f
 private const val Part3EndRatio = 0.95f
 
 // How much of the accent color is mixed into the bright Part 2 tint.
@@ -167,8 +174,9 @@ private fun obtainGlowBitmap(fullWidth: Int, fullHeight: Int): Bitmap {
  * outer rings use a heavier accent mix, while the middle bright ring uses a
  * lighter mix so it pops more.
  *
- * Only the first color from [barColors] is used as the accent color; when the
- * list is empty the theme primary color is used.
+ * Only the first color from [barColors] is used as the accent color (with an
+ * artificial brightness lift); when the list is empty the theme primary color
+ * is used.
  *
  * @param modifier Modifier for layout.
  * @param audioSessionId Audio session to capture from.
@@ -618,7 +626,7 @@ private fun DrawScope.drawStaticRing(
         segmentsPerBar,
         (ringThickness / segmentDepth).toInt().coerceAtLeast(1)
     )
-    val barWidth = (2f * PI.toFloat() * innerRadius / barCount) * BarWidthRatio
+    val barWidth = BarWidth.toPx()
     val cornerRadius = (barWidth / 2f).coerceAtLeast(1f)
     val availableLength = (ringThickness - segmentHeightPx).coerceAtLeast(0f)
     val spacing = if (effectiveSegments > 1) availableLength / (effectiveSegments - 1) else 0f
@@ -664,7 +672,7 @@ private fun DrawScope.drawBrightEnergyRing(
     val barCount = barHeights.size
     val ringThickness = outerRadius - innerRadius
     val centerRadius = (innerRadius + outerRadius) / 2f
-    val barWidth = (2f * PI.toFloat() * centerRadius / barCount) * BarWidthRatio
+    val barWidth = BarWidth.toPx()
     val cornerRadius = (barWidth / 2f).coerceAtLeast(1f)
     val minHalfHeight = ringThickness / 2f
     val maxHalfHeight = (ringThickness / 2f) * Part2OverlapFactor
@@ -716,7 +724,7 @@ private fun DrawScope.drawAnimatedRing(
         segmentsPerBar,
         (ringThickness / segmentDepth).toInt().coerceAtLeast(1)
     )
-    val barWidth = (2f * PI.toFloat() * innerRadius / barCount) * BarWidthRatio
+    val barWidth = BarWidth.toPx()
     val cornerRadius = (barWidth / 2f).coerceAtLeast(1f)
     val availableLength = (ringThickness - segmentHeightPx).coerceAtLeast(0f)
     val spacing = if (effectiveSegments > 1) availableLength / (effectiveSegments - 1) else 0f
@@ -849,16 +857,19 @@ private fun drawRadialSegmentOnCanvas(
 }
 
 /**
- * Increases the saturation of a color while preserving its hue and value.
+ * Increases the saturation of a color while preserving its hue, and lifts its
+ * brightness to at least [BrightnessFloor] so bars from dark covers stay
+ * visible against the dark background.
  *
  * @param color Source color.
  * @param factor Multiplier applied to the saturation channel.
- * @return A more saturated version of the input color.
+ * @return A more saturated, brighter version of the input color.
  */
 private fun saturateColor(color: Color, factor: Float): Color {
     val hsv = FloatArray(3)
     android.graphics.Color.colorToHSV(color.toArgb(), hsv)
     hsv[1] = (hsv[1] * factor).coerceIn(0f, 1f)
+    hsv[2] = hsv[2].coerceAtLeast(BrightnessFloor)
     return Color(android.graphics.Color.HSVToColor(hsv))
 }
 
